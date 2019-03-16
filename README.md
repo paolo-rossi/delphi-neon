@@ -6,8 +6,7 @@
 
 [Delphi](https://www.embarcadero.com/products/delphi) serialization library. Available for Delphi 10.x
 
-![Neon Library](https://user-images.githubusercontent.com/4686497/54478044-60a9e600-480e-11e9-88d8-23fe882d1570.png)
-
+![Neon Library](https://user-images.githubusercontent.com/4686497/54478586-175c9500-4814-11e9-98c3-09b9aca9ad66.png)
 
 ## What is Neon
 
