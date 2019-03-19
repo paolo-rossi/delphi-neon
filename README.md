@@ -2,7 +2,11 @@
 
 <br />
 
-![Neon Library](https://user-images.githubusercontent.com/4686497/54478586-175c9500-4814-11e9-98c3-09b9aca9ad66.png)
+<p align="center">
+  <a href="http://wirl.delphiblocks.com/">
+    <img src="https://user-images.githubusercontent.com/4686497/54478586-175c9500-4814-11e9-98c3-09b9aca9ad66.png" alt="Neon Library" width="400" />
+  </a>
+</p>
 
 ## What is Neon
 
