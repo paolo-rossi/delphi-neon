@@ -178,6 +178,8 @@ type
 
   TNeon = class
   public
+    class function Print(AJSONValue: TJSONValue; APretty: Boolean): string; static;
+  public
     class function ValueToJSON(const AValue: TValue): TJSONValue; overload;
     class function ValueToJSON(const AValue: TValue; AConfig: INeonConfiguration): TJSONValue; overload;
 
@@ -1196,9 +1198,82 @@ var
 begin
   LJSON := ObjectToJSON(AObject, AConfig);
   try
-    Result := TJSONUtils.ToJSON(LJSON);
+    Result := Print(LJSON, AConfig.GetPrettyPrint);
   finally
     LJSON.Free;
+  end;
+end;
+
+class function TNeon.Print(AJSONValue: TJSONValue; APretty: Boolean): string;
+var
+  LJSONString: string;
+  LChar: Char;
+  LOffset: Integer;
+  LIndex: Integer;
+  LOutsideString: Boolean;
+
+  function Spaces(AOffset: Integer): string;
+  begin
+    Result := StringOfChar(#32, AOffset * 2);
+  end;
+
+begin
+  if not APretty then
+    Exit(AJSONValue.ToJSON);
+
+  Result := '';
+  LOffset := 0;
+  LOutsideString := True;
+  LJSONString := AJSONValue.ToJSON;
+
+  for LIndex := 0 to Length(LJSONString) - 1 do
+  begin
+    LChar := LJSONString.Chars[LIndex];
+
+    if LChar = '"' then
+      LOutsideString := not LOutsideString;
+
+    if LOutsideString and (LChar = '{') then
+    begin
+      Inc(LOffset);
+      Result := Result + LChar;
+      Result := Result + sLineBreak;
+      Result := Result + Spaces(LOffset);
+    end
+    else if LOutsideString and (LChar = '}') then
+    begin
+      Dec(LOffset);
+      Result := Result + sLineBreak;
+      Result := Result + Spaces(LOffset);
+      Result := Result + LChar;
+    end
+    else if LOutsideString and (LChar = ',') then
+    begin
+      Result := Result + LChar;
+      Result := Result + sLineBreak;
+      Result := Result + Spaces(LOffset);
+    end
+    else if LOutsideString and (LChar = '[') then
+    begin
+      Inc(LOffset);
+      Result := Result + LChar;
+      Result := Result + sLineBreak;
+      Result := Result + Spaces(LOffset);
+    end
+    else if LOutsideString and (LChar = ']') then
+    begin
+      Dec(LOffset);
+      Result := Result + sLineBreak;
+      Result := Result + Spaces(LOffset);
+      Result := Result + LChar;
+    end
+    else if LOutsideString and (LChar = ':') then
+    begin
+      Result := Result + LChar;
+      Result := Result + ' ';
+    end
+    else
+      Result := Result + LChar;
   end;
 end;
 

@@ -50,9 +50,11 @@ type
     chkVisibilityProtected: TCheckBox;
     chkVisibilityPublic: TCheckBox;
     chkVisibilityPublished: TCheckBox;
-    grpVisibility: TGroupBox;
+    lblCaption: TLabel;
+    GroupBox1: TGroupBox;
+    chkUseUTCDate: TCheckBox;
+    chkPrettyPrinting: TCheckBox;
     chkIgnorePrefix: TCheckBox;
-    Label1: TLabel;
   private
     FCustomCaseAlgo: TCaseFunc;
   public
@@ -96,8 +98,13 @@ begin
     Result.SetMembers(TNeonMembers.Properties);
 
   // F Prefix setting
-  if chkIgnorePrefix.Checked then
-    Result.SetIgnoreFieldPrefix(True);
+  Result.SetIgnoreFieldPrefix(chkIgnorePrefix.Checked);
+
+  // Use UTC Date
+  Result.SetUseUTCDate(chkUseUTCDate.Checked);
+
+  // Pretty Printing
+  Result.SetPrettyPrint(chkPrettyPrinting.Checked);
 
   // Visibility settings
   if chkVisibilityPrivate.Checked then

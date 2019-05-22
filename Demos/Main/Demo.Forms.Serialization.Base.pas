@@ -87,7 +87,7 @@ begin
   try
     LJSON := LWriter.ObjectToJSON(AObject);
     try
-      Log(TJSONUtils.PrettyPrint(LJSON), AWhere);
+      Log(TNeon.Print(LJSON, AConfig.GetPrettyPrint), AWhere);
       LogError(LWriter.Errors);
     finally
       LJSON.Free;
@@ -149,7 +149,7 @@ begin
   try
     LJSON := LWriter.ValueToJSON(AValue);
     try
-      Log(TJSONUtils.PrettyPrint(LJSON), AWhere);
+      Log(TNeon.Print(LJSON, AConfig.GetPrettyPrint), AWhere);
       LogError(LWriter.Errors);
     finally
       LJSON.Free;

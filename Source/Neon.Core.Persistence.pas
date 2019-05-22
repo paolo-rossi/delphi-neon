@@ -44,6 +44,9 @@ type
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
+    function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
+
+    function GetPrettyPrint: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
   end;
 
@@ -120,12 +123,14 @@ type
     FMemberCustomCase: TCaseFunc;
     FIgnoreFieldPrefix: Boolean;
     FUseUTCDate: Boolean;
+    FPrettyPrint: Boolean;
     FSerializers: TNeonSerializerRegistry;
   public
     constructor Create;
     destructor Destroy; override;
 
     class function Default: INeonConfiguration; static;
+    class function Pretty: INeonConfiguration; static;
     class function Snake: INeonConfiguration; static;
     class function Camel: INeonConfiguration; static;
 
@@ -135,6 +140,8 @@ type
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
+    function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
+    function GetPrettyPrint: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
 
     property Members: TNeonMembers read FMembers write FMembers;
@@ -402,6 +409,7 @@ begin
   SetIgnoreFieldPrefix(False);
   SetVisibility([mvPublic, mvPublished]);
   SetUseUTCDate(True);
+  SetPrettyPrint(False);
 end;
 
 class function TNeonConfiguration.Default: INeonConfiguration;
@@ -415,9 +423,20 @@ begin
   inherited;
 end;
 
+function TNeonConfiguration.GetPrettyPrint: Boolean;
+begin
+  Result := FPrettyPrint;
+end;
+
 function TNeonConfiguration.GetSerializers: TNeonSerializerRegistry;
 begin
   Result := FSerializers;
+end;
+
+class function TNeonConfiguration.Pretty: INeonConfiguration;
+begin
+  Result := TNeonConfiguration.Create;
+  Result.SetPrettyPrint(True);
 end;
 
 class function TNeonConfiguration.Camel: INeonConfiguration;
@@ -438,6 +457,12 @@ end;
 function TNeonConfiguration.SetMembers(AValue: TNeonMembers): INeonConfiguration;
 begin
   FMembers := AValue;
+  Result := Self;
+end;
+
+function TNeonConfiguration.SetPrettyPrint(AValue: Boolean): INeonConfiguration;
+begin
+  FPrettyPrint := AValue;
   Result := Self;
 end;
 

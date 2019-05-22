@@ -1,10 +1,10 @@
 object frameConfiguration: TframeConfiguration
   Left = 0
   Top = 0
-  Width = 567
-  Height = 156
+  Width = 693
+  Height = 148
   TabOrder = 0
-  object Label1: TLabel
+  object lblCaption: TLabel
     Left = 16
     Top = 7
     Width = 207
@@ -19,60 +19,60 @@ object frameConfiguration: TframeConfiguration
     ParentFont = False
   end
   object grpCase: TGroupBox
-    Left = 142
+    Left = 16
     Top = 35
-    Width = 387
+    Width = 513
     Height = 46
     Caption = 'Case '
     TabOrder = 0
     object rbCasePascal: TRadioButton
       Left = 8
       Top = 16
-      Width = 57
+      Width = 80
       Height = 17
-      Caption = 'Pascal'
+      Caption = 'PascalCase'
       Checked = True
       TabOrder = 0
       TabStop = True
     end
     object rbCaseCamel: TRadioButton
-      Left = 71
+      Left = 94
       Top = 16
-      Width = 50
+      Width = 74
       Height = 17
-      Caption = 'Camel'
+      Caption = 'CamelCase'
       TabOrder = 1
     end
     object rbCaseSnake: TRadioButton
-      Left = 133
+      Left = 174
       Top = 16
-      Width = 50
+      Width = 75
       Height = 17
-      Caption = 'Snake'
+      Caption = 'SnakeCase'
       TabOrder = 2
     end
     object rbCaseLower: TRadioButton
-      Left = 195
+      Left = 257
       Top = 16
-      Width = 50
+      Width = 73
       Height = 17
-      Caption = 'Lower'
+      Caption = 'LowerCase'
       TabOrder = 3
     end
     object rbCaseUpper: TRadioButton
-      Left = 251
+      Left = 340
       Top = 16
-      Width = 50
+      Width = 74
       Height = 17
-      Caption = 'Upper'
+      Caption = 'UpperCase'
       TabOrder = 4
     end
     object rbCaseCustom: TRadioButton
-      Left = 310
+      Left = 421
       Top = 16
-      Width = 58
+      Width = 78
       Height = 17
-      Caption = 'Custom'
+      Caption = 'CustomCase'
       TabOrder = 5
     end
   end
@@ -159,20 +159,38 @@ object frameConfiguration: TframeConfiguration
       TabOrder = 2
     end
   end
-  object grpVisibility: TGroupBox
-    Left = 16
+  object GroupBox1: TGroupBox
+    Left = 535
     Top = 35
-    Width = 120
-    Height = 46
-    Caption = 'Field Prefix "F" '
+    Width = 146
+    Height = 98
+    Caption = 'Misc Options '
     TabOrder = 3
+    object chkUseUTCDate: TCheckBox
+      Left = 7
+      Top = 47
+      Width = 107
+      Height = 17
+      Caption = 'Use UTC Dates'
+      TabOrder = 0
+    end
+    object chkPrettyPrinting: TCheckBox
+      Left = 7
+      Top = 72
+      Width = 107
+      Height = 17
+      Caption = 'Pretty Printing'
+      Checked = True
+      State = cbChecked
+      TabOrder = 1
+    end
     object chkIgnorePrefix: TCheckBox
       Left = 7
-      Top = 16
+      Top = 22
       Width = 107
       Height = 17
       Caption = 'Ignore Prefix "F"'
-      TabOrder = 0
+      TabOrder = 2
     end
   end
 end
