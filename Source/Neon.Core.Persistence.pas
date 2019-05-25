@@ -47,6 +47,7 @@ type
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
 
     function GetPrettyPrint: Boolean;
+    function GetUseUTCDate: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
   end;
 
@@ -90,8 +91,8 @@ type
     procedure ClearCache;
     procedure Assign(ARegistry: TNeonSerializerRegistry);
 
-    procedure RegisterSerializer(ASerializerClass: TCustomSerializerClass); overload;
-    procedure RegisterSerializer<T>(ASerializerClass: TCustomSerializerClass); overload;
+    function RegisterSerializer(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry; overload;
+    function RegisterSerializer<T>(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry; overload;
     procedure RegisterSerializer(ATargetClass: TClass; ASerializerClass: TCustomSerializerClass); overload;
     procedure RegisterSerializer(ATargetInfo: PTypeInfo; ASerializerClass: TCustomSerializerClass); overload;
 
@@ -100,6 +101,7 @@ type
     procedure UnregisterSerializer(ATargetInfo: PTypeInfo); overload;
 
     function GetSerializer<T>: TCustomSerializer; overload;
+    function GetSerializer(AValue: TValue): TCustomSerializer; overload;
     function GetSerializer(ATargetClass: TClass): TCustomSerializer; overload;
     function GetSerializer(ATargetInfo: PTypeInfo): TCustomSerializer; overload;
 
@@ -141,6 +143,8 @@ type
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
+
+    function GetUseUTCDate: Boolean;
     function GetPrettyPrint: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
 
@@ -151,19 +155,20 @@ type
     property IgnoreFieldPrefix: Boolean read FIgnoreFieldPrefix write FIgnoreFieldPrefix;
     property UseUTCDate: Boolean read FUseUTCDate write FUseUTCDate;
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
-
   end;
 
   TNeonRttiObject = class
   protected
     FOperation: TNeonOperation;
     FRttiObject: TRttiObject;
-    FNeonInclude: Boolean;
+    FNeonInclude: TIncludeValue;
     FAttributes: TArray<TCustomAttribute>;
     FNeonMembers: TNeonMembers;
     FNeonVisibility: TNeonVisibility;
     FNeonIgnore: Boolean;
     FNeonProperty: string;
+    FNeonSerializerName: string;
+    FNeonSerializerClass: TClass;
   protected
     procedure ParseAttributes; virtual;
     procedure ProcessAttribute(AAttribute: TCustomAttribute); virtual;
@@ -175,7 +180,9 @@ type
     property Attributes: TArray<TCustomAttribute> read FAttributes write FAttributes;
     // Neon-based properties
     property NeonIgnore: Boolean read FNeonIgnore write FNeonIgnore;
-    property NeonInclude: Boolean read FNeonInclude write FNeonInclude;
+    property NeonInclude: TIncludeValue read FNeonInclude write FNeonInclude;
+    property NeonSerializerName: string read FNeonSerializerName write FNeonSerializerName;
+    property NeonSerializerClass: TClass read FNeonSerializerClass write FNeonSerializerClass;
     property NeonProperty: string read FNeonProperty write FNeonProperty;
     property NeonMembers: TNeonMembers read FNeonMembers write FNeonMembers;
     property NeonVisibility: TNeonVisibility read FNeonVisibility write FNeonVisibility;
@@ -433,6 +440,11 @@ begin
   Result := FSerializers;
 end;
 
+function TNeonConfiguration.GetUseUTCDate: Boolean;
+begin
+  Result := FUseUTCDate;
+end;
+
 class function TNeonConfiguration.Pretty: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
@@ -589,25 +601,29 @@ end;
 
 procedure TNeonRttiMember.ProcessAttribute(AAttribute: TCustomAttribute);
 var
+  LIncludeAttribute: NeonIncludeAttribute;
   LContext: TNeonIgnoreIfContext;
   LMethodName: string;
   LMethod: TRttiMethod;
   LRes: TValue;
 begin
   LRes := False;
-  if AAttribute is NeonIncludeIfAttribute then
+  if AAttribute is NeonIncludeAttribute then
   begin
-    LMethodName := (AAttribute as NeonIncludeIfAttribute).Value;
-    LMethod := FParent.FType.GetMethod(LMethodName);
-    if Assigned(LMethod) then
+    LIncludeAttribute := AAttribute as NeonIncludeAttribute;
+    if LIncludeAttribute.IncludeValue.Value = Include.CustomFunction then
     begin
-      LContext := TNeonIgnoreIfContext.Create(Self.Name, FOperation);
-      LRes := LMethod.Invoke(TObject(FParent.Instance), [TValue.From<TNeonIgnoreIfContext>(LContext)]);
-      case LRes.AsType<Boolean> of
-        True: FNeonIncludeIf := TNeonIncludeOption.Include;
-        False: FNeonIncludeIf := TNeonIncludeOption.Exclude;
+      LMethodName := LIncludeAttribute.IncludeValue.IncludeFunction;
+      LMethod := FParent.FType.GetMethod(LMethodName);
+      if Assigned(LMethod) then
+      begin
+        LContext := TNeonIgnoreIfContext.Create(Self.Name, FOperation);
+        LRes := LMethod.Invoke(TObject(FParent.Instance), [TValue.From<TNeonIgnoreIfContext>(LContext)]);
+        case LRes.AsType<Boolean> of
+          True: FNeonIncludeIf := TNeonIncludeOption.Include;
+          False: FNeonIncludeIf := TNeonIncludeOption.Exclude;
+        end;
       end;
-
     end;
   end;
 end;
@@ -720,7 +736,7 @@ var
 begin
   for LMember in Self do
   begin
-    if LMember.NeonInclude then
+    if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = Include.Always) then
     begin
       LMember.Serializable := True;
       Continue;
@@ -731,20 +747,6 @@ begin
 
     if not LMember.IsWritable then
       Continue;
-
-    {
-    case LMember.NeonIncludeIf of
-      TNeonIncludeOption.Include:
-      begin
-        LMember.Serializable := True;
-        Continue;
-      end;
-      TNeonIncludeOption.Exclude:
-      begin
-        Continue;
-      end;
-    end;
-    }
 
     if MatchesVisibility(LMember.Visibility) then
     if MatchesMemberChoice(LMember.MemberType) then
@@ -758,7 +760,7 @@ var
 begin
   for LMember in Self do
   begin
-    if LMember.NeonInclude then
+    if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = Include.Always) then
     begin
       LMember.Serializable := True;
       Continue;
@@ -874,7 +876,12 @@ begin
   for LAttribute in FAttributes do
   begin
     if LAttribute is NeonIncludeAttribute then
-      FNeonInclude := True
+      FNeonInclude := (LAttribute as NeonIncludeAttribute).IncludeValue
+    else if LAttribute is NeonSerializeAttribute then
+    begin
+      FNeonSerializerName := (LAttribute as NeonSerializeAttribute).Name;
+      FNeonSerializerClass := (LAttribute as NeonSerializeAttribute).Clazz;
+    end
     else if LAttribute is NeonIgnoreAttribute then
       FNeonIgnore := True
     else if LAttribute is NeonPropertyAttribute then
@@ -941,6 +948,11 @@ begin
   Result := FRegistry.Count;
 end;
 
+function TNeonSerializerRegistry.GetSerializer(AValue: TValue): TCustomSerializer;
+begin
+  //
+end;
+
 function TNeonSerializerRegistry.GetSerializer<T>: TCustomSerializer;
 begin
   Result := InternalGetSerializer(TypeInfo(T));
@@ -972,9 +984,10 @@ begin
   end;
 end;
 
-procedure TNeonSerializerRegistry.RegisterSerializer<T>(ASerializerClass: TCustomSerializerClass);
+function TNeonSerializerRegistry.RegisterSerializer<T>(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry;
 begin
   FRegistry.Add(TypeInfo(T), ASerializerClass);
+  Result := Self;
 end;
 
 procedure TNeonSerializerRegistry.RegisterSerializer(ATargetClass: TClass; ASerializerClass: TCustomSerializerClass);
@@ -987,9 +1000,10 @@ begin
   FRegistry.Add(ATargetInfo, ASerializerClass);
 end;
 
-procedure TNeonSerializerRegistry.RegisterSerializer(ASerializerClass: TCustomSerializerClass);
+function TNeonSerializerRegistry.RegisterSerializer(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry;
 begin
   FRegistry.Add(ASerializerClass.GetTargetInfo, ASerializerClass);
+  Result := Self;
 end;
 
 procedure TNeonSerializerRegistry.UnregisterSerializer(ATargetInfo: PTypeInfo);

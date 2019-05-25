@@ -126,7 +126,8 @@ type
     /// <summary>
     ///   This method chooses the right Writer based on the Kind of the AValue parameter
     /// </summary>
-    function WriteDataMember(const AValue: TValue): TJSONValue;
+    function WriteDataMember(const AValue: TValue): TJSONValue; overload;
+    function WriteDataMember(const AValue: TValue; ANeonMember: TNeonRttiMember): TJSONValue; overload;
   public
     constructor Create(const AConfig: INeonConfiguration);
 
@@ -363,6 +364,12 @@ begin
   end;
 end;
 
+function TNeonSerializerJSON.WriteDataMember(const AValue: TValue; ANeonMember: TNeonRttiMember): TJSONValue;
+begin
+  // further processing then call WriteDataMember
+  Result := WriteDataMember(AValue);
+end;
+
 function TNeonSerializerJSON.WriteDataSet(const AValue: TValue): TJSONValue;
 var
   LDataSet: TDataSet;
@@ -427,7 +434,7 @@ begin
       if LNeonMember.Serializable then
       begin
         try
-          LJSONValue := WriteDataMember(LNeonMember.GetValue);
+          LJSONValue := WriteDataMember(LNeonMember.GetValue, LNeonMember);
           if Assigned(LJSONValue) then
             (AResult as TJSONObject).AddPair(GetNameFromMember(LNeonMember), LJSONValue);
         except

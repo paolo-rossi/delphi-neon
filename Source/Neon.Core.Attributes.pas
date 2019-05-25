@@ -23,6 +23,8 @@ unit Neon.Core.Attributes;
 
 interface
 
+{$SCOPEDENUMS ON}
+
 uses
   System.Classes, System.SysUtils, System.Rtti,
   Neon.Core.Types;
@@ -58,14 +60,52 @@ type
   NeonIgnoreAttribute = class(NeonAttribute);
 
   /// <summary>
-  ///   The Neon attribute [NeonIncludeIf] is used to compute the inclusion of the
-  ///   field/property at run time. The member is serialized if the method passed as
-  ///   parameter returns True
+  ///   The Neon annotation NeonInclude tells Neon to include the property (or field)
+  ///   based on the value
   /// </summary>
   /// <remarks>
-  ///   Read + Write Attribute
+  ///   Write Attribute
   /// </remarks>
-  NeonIncludeIfAttribute = class(NeonNamedAttribute);
+  Include = (
+    /// <summary>
+    ///   Include the member
+    /// </summary>
+    Always,
+    /// <summary>
+    ///   Include the member if it's not nil
+    /// </summary>
+    NotNull,
+    /// <summary>
+    ///   Include the member if the value it's not empty
+    /// </summary>
+    NotEmpty,
+    /// <summary>
+    ///   Include the member if it's value it's not the default value
+    /// </summary>
+    NotDefault,
+    /// <summary>
+    ///   Include the member based on the result of the function specified as string
+    ///   (default function is ShouldInclude)
+    /// </summary>
+    CustomFunction);
+  TIncludeValue = record
+    Present: Boolean;
+    Value: Include;
+    IncludeFunction: string;
+  end;
+
+  /// <summary>
+  ///   The Neon annotation NeonInclude tells Neon to include the property (or field)
+  ///   based on the value of the enumeration Include
+  /// </summary>
+  NeonIncludeAttribute = class(TCustomAttribute)
+  private
+    FIncludeValue: TIncludeValue;
+  public
+    constructor Create(AIncludeValue: Include = Include.Always; const AIncludeFunction: string = 'ShouldInclude');
+
+    property IncludeValue: TIncludeValue read FIncludeValue write FIncludeValue;
+  end;
 
   /// <summary>
   ///   The NeonIgnoreProperties Neon annotation is used to specify a list of properties
@@ -117,37 +157,25 @@ type
   end;
 
   /// <summary>
-  ///   The Neon annotation NeonInclude tells Neon to include the property (or field)
-  /// </summary>
-  /// <remarks>
-  ///   Write Attribute
-  /// </remarks>
-  NeonIncludeAttribute = class(NeonAttribute);
-
-  /// <summary>
   ///   The NeonSerialize Neon annotation is used to specify a custom serializer for a
   ///   field in a Delphi object.
   /// </summary>
   NeonSerializeAttribute = class(NeonAttribute)
   private
-    FValue: TClass;
+    FClazz: TClass;
+    FName: string;
   public
-    constructor Create(const AValue: TClass); overload;
-    constructor Create(const AValue: string); overload;
-    property Value: TClass read FValue write FValue;
+    constructor Create(const AClass: TClass); overload;
+    constructor Create(const AName: string); overload;
+    property Clazz: TClass read FClazz write FClazz;
+    property Name: string read FName write FName;
   end;
 
   /// <summary>
   ///   The Neon annotation NeonDeserialize is used to specify a custom de-serializer
   ///   class for a given field in a Delphi object.
   /// </summary>
-  NeonDeserializeAttribute = class(NeonAttribute);
-
-  /// <summary>
-  ///   The NeonPropertyOrder Neon annotation can be used to specify in what order the
-  ///   fields of your Delphi object should be serialized into JSON.
-  /// </summary>
-  NeonPropertyOrderAttribute = class(NeonAttribute);
+  NeonDeserializeAttribute = class(NeonSerializeAttribute);
 
   /// <summary>
   ///   The Neon annotation NeonValue tells Neon that Neon should not attempt to
@@ -203,14 +231,23 @@ begin
   FValue := AValue;
 end;
 
-constructor NeonSerializeAttribute.Create(const AValue: TClass);
+constructor NeonSerializeAttribute.Create(const AClass: TClass);
 begin
-  FValue := AValue;
+  FClazz := AClass;
 end;
 
-constructor NeonSerializeAttribute.Create(const AValue: string);
+constructor NeonSerializeAttribute.Create(const AName: string);
 begin
-  // Find the TClass inside the registry
+  FName := AName;
+end;
+
+{ NeonIncludeAttribute }
+
+constructor NeonIncludeAttribute.Create(AIncludeValue: Include; const AIncludeFunction: string);
+begin
+  FIncludeValue.Present := True;
+  FIncludeValue.Value := AIncludeValue;
+  FIncludeValue.IncludeFunction := AIncludeFunction;
 end;
 
 end.

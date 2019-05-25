@@ -222,7 +222,7 @@ type
     [NeonInclude]
     Field1: TArray<TDateTime>;
 
-    [NeonIncludeIf('ShouldInclude')]
+    [NeonInclude(Include.CustomFunction)]
     Field2: TRect;
   private
     function ShouldInclude(const AContext: TNeonIgnoreIfContext): Boolean;
@@ -237,7 +237,7 @@ type
     property Prop3: TDateTime read FProp3 write FProp3;
     [NeonIgnore]
     property Prop4: TPoint3D read FProp4 write FProp4;
-    [NeonIncludeIf('ShouldInclude')]
+    [NeonInclude(Include.CustomFunction)]
     property Prop5: TVector3D read FProp5 write FProp5;
   end;
 
