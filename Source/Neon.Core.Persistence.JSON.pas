@@ -1,4 +1,4 @@
-{******************************************************************************}
+  {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
 {  Copyright (c) 2018-2019 Paolo Rossi                                         }
@@ -38,13 +38,35 @@ uses
 type
   TNeonSerializerJSON = class(TNeonBase, ISerializerContext)
   private
+    /// <summary>
+    ///   Writer for members of objects and records
+    /// </summary>
     procedure WriteMembers(AType: TRttiType; AInstance: Pointer; AResult: TJSONValue);
   private
-    function WriteString(const AValue: TValue): TJSONValue;
-    function WriteChar(const AValue: TValue): TJSONValue;
-    function WriteEnum(const AValue: TValue): TJSONValue;
-    function WriteInteger(const AValue: TValue): TJSONValue;
-    function WriteFloat(const AValue: TValue): TJSONValue;
+    /// <summary>
+    ///   Writer for string types
+    /// </summary>
+    function WriteString(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+
+    /// <summary>
+    ///   Writer for Char types
+    /// </summary>
+    function WriteChar(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+
+    /// <summary>
+    ///   Writer for enums types <br />
+    /// </summary>
+    function WriteEnum(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+
+    /// <summary>
+    ///   Writer for Integer types <br />
+    /// </summary>
+    function WriteInteger(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+
+    /// <summary>
+    ///   Writer for float types <br />
+    /// </summary>
+    function WriteFloat(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for Variant types
@@ -52,12 +74,12 @@ type
     /// <remarks>
     ///   The variant will be written as string
     /// </remarks>
-    function WriteVariant(const AValue: TValue): TJSONValue;
+    function WriteVariant(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for static and dynamic arrays
     /// </summary>
-    function WriteArray(const AValue: TValue): TJSONValue;
+    function WriteArray(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for the set type
@@ -66,7 +88,7 @@ type
     ///   The output is a string with the values comma separated and enclosed by square brackets
     /// </remarks>
     /// <returns>[First,Second,Third]</returns>
-    function WriteSet(const AValue: TValue): TJSONValue;
+    function WriteSet(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for a record type
@@ -74,12 +96,12 @@ type
     /// <remarks>
     ///   For records the engine serialize the fields by default
     /// </remarks>
-    function WriteRecord(const AValue: TValue): TJSONValue;
+    function WriteRecord(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for a standard TObject (descendants)  type (no list, stream or streamable)
     /// </summary>
-    function WriteObject(const AValue: TValue): TJSONValue;
+    function WriteObject(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for an Interface type
@@ -87,17 +109,17 @@ type
     /// <remarks>
     ///   The object that implements the interface is serialized
     /// </remarks>
-    function WriteInterface(const AValue: TValue): TJSONValue;
+    function WriteInterface(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for TStream (descendants) objects
     /// </summary>
-    function WriteStream(const AValue: TValue): TJSONValue;
+    function WriteStream(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for TDataSet (descendants) objects
     /// </summary>
-    function WriteDataSet(const AValue: TValue): TJSONValue;
+    function WriteDataSet(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for "Enumerable" objects (Lists, Generic Lists, TStrings, etc...)
@@ -105,7 +127,7 @@ type
     /// <remarks>
     ///   Objects must have GetEnumerator, Clear, Add methods
     /// </remarks>
-    function WriteEnumerable(const AValue: TValue): TJSONValue;
+    function WriteEnumerable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for "Dictionary" objects (TDictionary, TObjectDictionary)
@@ -113,7 +135,7 @@ type
     /// <remarks>
     ///   Objects must have Keys, Values, GetEnumerator, Clear, Add methods
     /// </remarks>
-    function WriteEnumerableMap(const AValue: TValue): TJSONValue;
+    function WriteEnumerableMap(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for "Streamable" objects
@@ -121,13 +143,17 @@ type
     /// <remarks>
     ///   Objects must have LoadFromStream and SaveToStream methods
     /// </remarks>
-    function WriteStreamable(const AValue: TValue): TJSONValue;
+    function WriteStreamable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
   protected
+    /// <summary>
+    ///   Function to be called by a custom serializer method (ISerializeContext)
+    /// </summary>
+    function WriteDataMember(const AValue: TValue): TJSONValue; overload;
+
     /// <summary>
     ///   This method chooses the right Writer based on the Kind of the AValue parameter
     /// </summary>
-    function WriteDataMember(const AValue: TValue): TJSONValue; overload;
-    function WriteDataMember(const AValue: TValue; ANeonMember: TNeonRttiMember): TJSONValue; overload;
+    function WriteDataMember(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue; overload;
   public
     constructor Create(const AConfig: INeonConfiguration);
 
@@ -179,9 +205,23 @@ type
 
   TNeon = class
   public
+    /// <summary>
+    ///   Prints a TJSONValue in a single line or formatted (PrettyPrinting)
+    /// </summary>
     class function Print(AJSONValue: TJSONValue; APretty: Boolean): string; static;
   public
+    /// <summary>
+    ///   Serializes a value based type (record, string, integer, etc...) to a TJSONValue
+    /// </summary>
+    /// <remarks>
+    ///   A default configuration object will be provided
+    /// </remarks>
     class function ValueToJSON(const AValue: TValue): TJSONValue; overload;
+
+    /// <summary>
+    ///   Serializes a value based type (record, string, integer, etc...) to a TJSONValue
+    ///   with a given configuration
+    /// </summary>
     class function ValueToJSON(const AValue: TValue; AConfig: INeonConfiguration): TJSONValue; overload;
 
     class function ObjectToJSON(AObject: TObject): TJSONValue; overload;
@@ -238,19 +278,24 @@ begin
   Result := WriteDataMember(AValue);
 end;
 
-function TNeonSerializerJSON.WriteArray(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteArray(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
-  LIndex: Integer;
+  LIndex, LCount: Integer;
   LArray: TJSONArray;
 begin
+  LCount := AValue.GetArrayLength;
+  if ANeonObject.NeonInclude.Value = Include.NotEmpty then
+    if LCount = 0 then
+      Exit(nil);
+
   LArray := TJSONArray.Create;
-  for LIndex := 0 to AValue.GetArrayLength - 1 do
+  for LIndex := 0 to LCount - 1 do
     LArray.AddElement(WriteDataMember(AValue.GetArrayElement(LIndex)));
 
   Result := LArray;
 end;
 
-function TNeonSerializerJSON.WriteChar(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteChar(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
   if AValue.AsString = #0 then
     Result := TJSONString.Create('')
@@ -260,12 +305,22 @@ end;
 
 function TNeonSerializerJSON.WriteDataMember(const AValue: TValue): TJSONValue;
 var
+  LNeonObject: TNeonRttiObject;
+  LRttiType: TRttiType;
+begin
+  LRttiType := TRttiUtils.Context.GetType(AValue.TypeInfo);
+  LNeonObject := TNeonRttiObject.Create(LRttiType, FOperation);
+
+  Result := WriteDataMember(AValue, LNeonObject);
+end;
+
+function TNeonSerializerJSON.WriteDataMember(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+var
   LCustomSer: TCustomSerializer;
 begin
   Result := nil;
 
   // if there is a custom serializer
-  //if FConfig. then
   LCustomSer := FConfig.Serializers.GetSerializer(AValue.TypeInfo);
 
   if Assigned(LCustomSer) then
@@ -278,7 +333,7 @@ begin
     tkChar,
     tkWChar:
     begin
-      Result := WriteChar(AValue);
+      Result := WriteChar(AValue, ANeonObject);
     end;
 
     tkString,
@@ -286,73 +341,73 @@ begin
     tkWString,
     tkUString:
     begin
-      Result := WriteString(AValue);
+      Result := WriteString(AValue, ANeonObject);
     end;
 
     tkEnumeration:
     begin
-      Result := WriteEnum(AValue);
+      Result := WriteEnum(AValue, ANeonObject);
     end;
 
     tkInteger,
     tkInt64:
     begin
-      Result := WriteInteger(AValue);
+      Result := WriteInteger(AValue, ANeonObject);
     end;
 
     tkFloat:
     begin
-      Result := WriteFloat(AValue);
+      Result := WriteFloat(AValue, ANeonObject);
     end;
 
     tkClass:
     begin
       if AValue.AsObject is TDataSet then
-        Result := WriteDataSet(AValue)
+        Result := WriteDataSet(AValue, ANeonObject)
       else if AValue.AsObject is TStream then
-        Result := WriteStream(AValue)
+        Result := WriteStream(AValue, ANeonObject)
       else
       begin
-        Result := WriteEnumerableMap(AValue);
+        Result := WriteEnumerableMap(AValue, ANeonObject);
         if not Assigned(Result) then
-          Result := WriteEnumerable(AValue);
+          Result := WriteEnumerable(AValue, ANeonObject);
         if not Assigned(Result) then
-          Result := WriteStreamable(AValue);
+          Result := WriteStreamable(AValue, ANeonObject);
         if not Assigned(Result) then
-          Result := WriteObject(AValue);
+          Result := WriteObject(AValue, ANeonObject);
       end;
     end;
 
     tkArray:
     begin
-      Result := WriteArray(AValue);
+      Result := WriteArray(AValue, ANeonObject);
     end;
 
     tkDynArray:
     begin
-      Result := WriteArray(AValue);
+      Result := WriteArray(AValue, ANeonObject);
     end;
 
     tkSet:
     begin
-      Result := WriteSet(AValue);
+      Result := WriteSet(AValue, ANeonObject);
     end;
 
     tkRecord:
     begin
-      Result := WriteRecord(AValue);
+      Result := WriteRecord(AValue, ANeonObject);
       if not Assigned(Result) then
         Result := TJSONObject.Create;
     end;
 
     tkInterface:
     begin
-      Result := WriteInterface(AValue);
+      Result := WriteInterface(AValue, ANeonObject);
     end;
 
     tkVariant:
     begin
-      Result := WriteVariant(AValue);
+      Result := WriteVariant(AValue, ANeonObject);
     end;
     {
     tkUnknown,
@@ -364,17 +419,19 @@ begin
   end;
 end;
 
-function TNeonSerializerJSON.WriteDataMember(const AValue: TValue; ANeonMember: TNeonRttiMember): TJSONValue;
-begin
-  // further processing then call WriteDataMember
-  Result := WriteDataMember(AValue);
-end;
-
-function TNeonSerializerJSON.WriteDataSet(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteDataSet(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LDataSet: TDataSet;
 begin
   LDataSet := AValue.AsObject as TDataSet;
+
+  if ANeonObject.NeonInclude.Value = Include.NotNull then
+    if not Assigned(LDataSet) then
+      Exit(nil);
+
+  if ANeonObject.NeonInclude.Value = Include.NotEmpty then
+    if LDataSet.IsEmpty then
+      Exit(nil);
 
   if not Assigned(LDataSet) then
     Exit(TJSONNull.Create);
@@ -382,7 +439,7 @@ begin
   Result := TDataSetUtils.DataSetToJSONArray(LDataSet, FConfig);
 end;
 
-function TNeonSerializerJSON.WriteEnum(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteEnum(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
   if AValue.TypeInfo = System.TypeInfo(Boolean) then
   begin
@@ -395,7 +452,7 @@ begin
     Result := TJSONString.Create(GetEnumName(AValue.TypeInfo, AValue.AsOrdinal));
 end;
 
-function TNeonSerializerJSON.WriteFloat(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteFloat(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
   if (AValue.TypeInfo = System.TypeInfo(TDateTime)) or
      (AValue.TypeInfo = System.TypeInfo(TDate)) or
@@ -405,19 +462,19 @@ begin
     Result := TJSONNumber.Create(AValue.AsExtended);
 end;
 
-function TNeonSerializerJSON.WriteInteger(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteInteger(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
   Result := TJSONNumber.Create(AValue.AsInt64);
 end;
 
-function TNeonSerializerJSON.WriteInterface(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteInterface(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LInterface: IInterface;
   LObject: TObject;
 begin
   LInterface := AValue.AsInterface;
   LObject := LInterface as TObject;
-  Result := WriteObject(LObject);
+  Result := WriteObject(LObject, ANeonObject);
 end;
 
 procedure TNeonSerializerJSON.WriteMembers(AType: TRttiType; AInstance: Pointer; AResult: TJSONValue);
@@ -448,7 +505,7 @@ begin
   end;
 end;
 
-function TNeonSerializerJSON.WriteObject(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteObject(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LObject: TObject;
   LType: TRttiType;
@@ -464,74 +521,41 @@ begin
   WriteMembers(LType, LObject, Result);
 end;
 
-function TNeonSerializerJSON.WriteEnumerable(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteEnumerable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LObject: TObject;
-  LMethodGetEnumerator, LMethodAdd: TRttiMethod;
-  LMethodClear, LMethodMoveNext: TRttiMethod;
-  LEnumObject: TObject;
-  LListType, LEnumType: TRttiType;
-  LCurrentProp: TRttiProperty;
-  LValue: TValue;
   LJSONValue: TJSONValue;
+  LList: IDynamicList;
 begin
   Result := nil;
+
   LObject := AValue.AsObject;
+
+  if ANeonObject.NeonInclude.Value = Include.NotNull then
+    if not Assigned(LObject) then
+      Exit(nil);
 
   if not Assigned(LObject) then
     Exit(TJSONNull.Create);
 
-  LListType := TRttiUtils.Context.GetType(LObject.ClassType);
-
-  LMethodGetEnumerator := LListType.GetMethod('GetEnumerator');
-  if not Assigned(LMethodGetEnumerator) or
-     (LMethodGetEnumerator.MethodKind <> mkFunction) or
-     (LMethodGetEnumerator.ReturnType.Handle.Kind <> tkClass)
-  then
+  // Exit or Exception?
+  LList := TDynamicList.GuessType(LObject);
+  if not Assigned(LList) then
     Exit;
 
-  LMethodClear := LListType.GetMethod('Clear');
-  if not Assigned(LMethodClear) then
-    Exit;
+  if ANeonObject.NeonInclude.Value = Include.NotEmpty then
+    if LList.Count = 0 then
+      Exit(nil);
 
-  LMethodAdd := LListType.GetMethod('Add');
-  if not Assigned(LMethodAdd) or (Length(LMethodAdd.GetParameters) <> 1) then
-    Exit;
-
-  LEnumObject := LMethodGetEnumerator.Invoke(LObject, []).AsObject;
-  if not Assigned(LEnumObject) then
-    Exit;
-
-  try
-    LEnumType := TRttiUtils.Context.GetType(LEnumObject.ClassType);
-
-    LCurrentProp := LEnumType.GetProperty('Current');
-    if not Assigned(LCurrentProp) then
-      Exit;
-
-    LMethodMoveNext := LEnumType.GetMethod('MoveNext');
-    if not Assigned(LMethodMoveNext) or
-       (Length(LMethodMoveNext.GetParameters) <> 0) or
-       (LMethodMoveNext.MethodKind <> mkFunction) or
-       (LMethodMoveNext.ReturnType.Handle <> TypeInfo(Boolean))
-    then
-      Exit;
-
-    Result := TJSONArray.Create;
-    while LMethodMoveNext.Invoke(LEnumObject, []).AsBoolean do
-    begin
-      LValue := LCurrentProp.GetValue(LEnumObject);
-      LJSONValue := WriteDataMember(LValue);
-
-      (Result as TJSONArray).AddElement(LJSONValue);
-    end;
-
-  finally
-    LEnumObject.Free;
+  Result := TJSONArray.Create;
+  while LList.MoveNext do
+  begin
+    LJSONValue := WriteDataMember(LList.Current);
+    (Result as TJSONArray).AddElement(LJSONValue);
   end;
 end;
 
-function TNeonSerializerJSON.WriteEnumerableMap(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteEnumerableMap(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LObject: TObject;
   LJSONName: string;
@@ -542,12 +566,21 @@ var
 begin
   Result := nil;
   LObject := AValue.AsObject;
+
+  if ANeonObject.NeonInclude.Value = Include.NotNull then
+    if not Assigned(LObject) then
+      Exit(nil);
+
   if not Assigned(LObject) then
     Exit(TJSONNull.Create);
 
   LMap := TDynamicMap.GuessType(LObject);
   if not Assigned(LMap) then
     Exit;
+
+  if ANeonObject.NeonInclude.Value = Include.NotEmpty then
+    if LMap.Count = 0 then
+      Exit(nil);
 
   case LMap.GetKeyType.TypeKind  of
     tkChar, tkWChar,
@@ -570,7 +603,7 @@ begin
   end;
 end;
 
-function TNeonSerializerJSON.WriteRecord(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteRecord(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LType: TRttiType;
 begin
@@ -583,12 +616,12 @@ begin
   end;
 end;
 
-function TNeonSerializerJSON.WriteSet(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteSet(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
   Result := TJSONString.Create(SetToString(AValue.TypeInfo, Integer(AValue.GetReferenceToRawData^), True));
 end;
 
-function TNeonSerializerJSON.WriteStream(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteStream(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LStream: TStream;
   LBase64: string;
@@ -603,7 +636,7 @@ begin
   Result := TJSONString.Create(LBase64);
 end;
 
-function TNeonSerializerJSON.WriteStreamable(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteStreamable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LObject: TObject;
   LBinaryStream: TMemoryStream;
@@ -617,6 +650,7 @@ begin
     Exit(TJSONNull.Create);
 
   LStreamable := TDynamicStream.GuessType(LObject);
+
   if Assigned(LStreamable) then
   begin
     LBinaryStream := TMemoryStream.Create;
@@ -634,12 +668,16 @@ begin
   end;
 end;
 
-function TNeonSerializerJSON.WriteString(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteString(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
+  if ANeonObject.NeonInclude.Value = Include.NotEmpty then
+    if AValue.AsString.IsEmpty then
+      Exit(nil);
+
   Result := TJSONString.Create(AValue.AsString);
 end;
 
-function TNeonSerializerJSON.WriteVariant(const AValue: TValue): TJSONValue;
+function TNeonSerializerJSON.WriteVariant(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
   Result := TJSONString.Create(AValue.AsVariant);
 end;
@@ -654,8 +692,7 @@ end;
 
 { TNeonDeserializerJSON }
 
-function TNeonDeserializerJSON.ReadArray(AJSONValue: TJSONValue;
-  AType: TRttiType; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadArray(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
 var
   LIndex: NativeInt;
   LItemValue: TValue;
@@ -680,8 +717,7 @@ begin
   end;
 end;
 
-function TNeonDeserializerJSON.ReadDynArray(AJSONValue: TJSONValue; AType:
-    TRttiType; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadDynArray(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
 var
   LIndex: NativeInt;
   LItemValue: TValue;
@@ -709,8 +745,7 @@ begin
   end;
 end;
 
-function TNeonDeserializerJSON.ReadChar(AJSONValue: TJSONValue; AType:
-    TRttiType; AKind: TTypeKind): TValue;
+function TNeonDeserializerJSON.ReadChar(AJSONValue: TJSONValue; AType: TRttiType; AKind: TTypeKind): TValue;
 begin
   if (AJSONValue is TJSONNull) or AJSONValue.Value.IsEmpty then
     Exit(#0);
@@ -792,8 +827,7 @@ begin
   end;
 end;
 
-function TNeonDeserializerJSON.ReadDataSet(AJSONValue: TJSONValue;
-  AType: TRttiType; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadDataSet(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
 var
   LJSONArray: TJSONArray;
   LJSONItem: TJSONObject;
@@ -844,8 +878,7 @@ begin
   end;
 end;
 
-function TNeonDeserializerJSON.ReadEnumerable(AJSONValue: TJSONValue;
-  AType: TRttiType; const AData: TValue): Boolean;
+function TNeonDeserializerJSON.ReadEnumerable(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): Boolean;
 var
   LItemValue: TValue;
   LList: IDynamicList;
@@ -876,8 +909,7 @@ begin
   end;
 end;
 
-function TNeonDeserializerJSON.ReadEnumerableMap(AJSONValue: TJSONValue;
-  AType: TRttiType; const AData: TValue): Boolean;
+function TNeonDeserializerJSON.ReadEnumerableMap(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): Boolean;
 var
   LMap: IDynamicMap;
 {$IFDEF HAS_NEW_JSON}
@@ -962,14 +994,12 @@ begin
   Result := LNumber.AsInt;
 end;
 
-function TNeonDeserializerJSON.ReadInterface(AJSONValue: TJSONValue;
-  AType: TRttiType; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadInterface(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
 begin
   Result := AData;
 end;
 
-procedure TNeonDeserializerJSON.ReadMembers(AType: TRttiType;
-  AInstance: Pointer; AJSONObject: TJSONObject);
+procedure TNeonDeserializerJSON.ReadMembers(AType: TRttiType; AInstance: Pointer; AJSONObject: TJSONObject);
 var
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
@@ -999,8 +1029,7 @@ begin
   end;
 end;
 
-function TNeonDeserializerJSON.ReadObject(AJSONValue: TJSONValue;
-  AType: TRttiType; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadObject(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
 var
   LJSONObject: TJSONObject;
   LPData: Pointer;
@@ -1013,8 +1042,7 @@ begin
     ReadMembers(AType, LPData, LJSONObject);
 end;
 
-function TNeonDeserializerJSON.ReadRecord(AJSONValue: TJSONValue;
-  AType: TRttiType; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadRecord(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
 var
   LJSONObject: TJSONObject;
   LPData: Pointer;
