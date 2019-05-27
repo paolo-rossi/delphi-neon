@@ -101,7 +101,7 @@ begin
   LMap := TObjectDictionary<string, TNote>.Create([doOwnsValues]);
   try
     DeserializeObject(LMap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LMap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LMap, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
     LMap.Free;
   end;
@@ -114,7 +114,7 @@ begin
   LObj := TFilterClass.Create;
   try
     DeserializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
     LObj.Free;
   end;
@@ -127,7 +127,7 @@ begin
   LList := TList<Double>.Create;
   try
     DeserializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LList, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
     LList.Free;
   end;
@@ -140,7 +140,7 @@ begin
   LList := TAddressBook.Create;
   try
     DeserializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LList, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
     LList.Free;
   end;
@@ -179,7 +179,7 @@ begin
   LStreamable := TStreamableComposition.Create;
   try
     DeserializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LStreamable, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
     LStreamable.Free;
   end;

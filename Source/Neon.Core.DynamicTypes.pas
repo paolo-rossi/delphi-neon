@@ -81,15 +81,17 @@ type
   TDynamicList = class(TInterfacedObject, IDynamicList)
   private
     FInstance: TObject;
+    FEnumInstance: TObject;
     FItemType: TRttiType;
     FAddMethod: TRttiMethod;
     FClearMethod: TRttiMethod;
     FMoveNextMethod: TRttiMethod;
     FCurrentProperty: TRttiProperty;
     FCountProperty: TRttiProperty;
-    constructor Create(AInstance: TObject; AItemType: TRttiType;
+    constructor Create(AInstance, AEnumInstance: TObject; AItemType: TRttiType;
       AAddMethod, AClearMethod, AMoveNextMethod: TRttiMethod;
       ACurrentProperty, ACountProperty: TRttiProperty);
+    destructor Destroy; override;
   public
     class function GuessType(AInstance: TObject): IDynamicList;
   public
@@ -216,11 +218,12 @@ begin
   Result := FCountProperty.GetValue(FInstance).AsInteger;
 end;
 
-constructor TDynamicList.Create(AInstance: TObject; AItemType: TRttiType;
+constructor TDynamicList.Create(AInstance, AEnumInstance: TObject; AItemType: TRttiType;
   AAddMethod, AClearMethod, AMoveNextMethod: TRttiMethod;
   ACurrentProperty, ACountProperty: TRttiProperty);
 begin
   FInstance := AInstance;
+  FEnumInstance := AEnumInstance;
   FItemType := AItemType;
   FAddMethod := AAddMethod;
   FClearMethod := AClearMethod;
@@ -231,7 +234,13 @@ end;
 
 function TDynamicList.Current: TValue;
 begin
-  Result := FCurrentProperty.GetValue(FInstance);
+  Result := FCurrentProperty.GetValue(FEnumInstance);
+end;
+
+destructor TDynamicList.Destroy;
+begin
+  FEnumInstance.Free;
+  inherited;
 end;
 
 function TDynamicList.GetItemType: TRttiType;
@@ -243,7 +252,7 @@ class function TDynamicList.GuessType(AInstance: TObject): IDynamicList;
 var
   LMethodGetEnumerator, LMethodAdd: TRttiMethod;
   LMethodClear, LMethodMoveNext: TRttiMethod;
-  LEnumObject: TObject;
+  LEnumInstance: TObject;
   LListType, LItemType, LEnumType: TRttiType;
   LCountProp, LCurrentProp: TRttiProperty;
 begin
@@ -271,43 +280,39 @@ begin
   if not Assigned(LCountProp) then
     Exit;
 
-  LEnumObject := LMethodGetEnumerator.Invoke(AInstance, []).AsObject;
-  if not Assigned(LEnumObject) then
+  LEnumInstance := LMethodGetEnumerator.Invoke(AInstance, []).AsObject;
+  if not Assigned(LEnumInstance) then
     Exit;
 
-  try
-    LEnumType := TRttiUtils.Context.GetType(LEnumObject.ClassType);
+  LEnumType := TRttiUtils.Context.GetType(LEnumInstance.ClassType);
 
-    LCurrentProp := LEnumType.GetProperty('Current');
-    if not Assigned(LCurrentProp) then
-      Exit;
+  LCurrentProp := LEnumType.GetProperty('Current');
+  if not Assigned(LCurrentProp) then
+    Exit;
 
-    LMethodMoveNext := LEnumType.GetMethod('MoveNext');
-    if not Assigned(LMethodMoveNext) or
-       (Length(LMethodMoveNext.GetParameters) <> 0) or
-       (LMethodMoveNext.MethodKind <> mkFunction) or
-       (LMethodMoveNext.ReturnType.Handle <> TypeInfo(Boolean))
-    then
-      Exit;
+  LMethodMoveNext := LEnumType.GetMethod('MoveNext');
+  if not Assigned(LMethodMoveNext) or
+     (Length(LMethodMoveNext.GetParameters) <> 0) or
+     (LMethodMoveNext.MethodKind <> mkFunction) or
+     (LMethodMoveNext.ReturnType.Handle <> TypeInfo(Boolean))
+  then
+    Exit;
 
-    Result := TDynamicList.Create(
-      AInstance,
-      LItemType,
-      LMethodAdd,
-      LMethodClear,
-      LMethodMoveNext,
-      LCurrentProp,
-      LCountProp
-    );
-
-  finally
-    LEnumObject.Free;
-  end;
+  Result := TDynamicList.Create(
+    AInstance,
+    LEnumInstance,
+    LItemType,
+    LMethodAdd,
+    LMethodClear,
+    LMethodMoveNext,
+    LCurrentProp,
+    LCountProp
+  );
 end;
 
 function TDynamicList.MoveNext: Boolean;
 begin
-  Result := FMoveNextMethod.Invoke(FInstance, []).AsBoolean;
+  Result := FMoveNextMethod.Invoke(FEnumInstance, []).AsBoolean;
 end;
 
 function TDynamicList.NewItem: TValue;

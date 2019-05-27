@@ -39,7 +39,8 @@ type
     procedure btnSerSimpleStringClick(Sender: TObject);
   private
    procedure SerializeSimple<T>(AValue: T);
-   procedure DeserializeSimple<T>;
+   procedure DeserializeSimple<T>; overload;
+   procedure DeserializeSimple<T>(AValue: T); overload;
   public
     { Public declarations }
   end;
@@ -56,8 +57,11 @@ uses
 {$R *.dfm}
 
 procedure TfrmSerializationSimple.btnDesSimpleArrayClick(Sender: TObject);
+var
+  LVal: TIntArray;
 begin
-  DeserializeSimple<TIntArray>;
+  LVal := [];
+  DeserializeSimple<TIntArray>(LVal);
 end;
 
 procedure TfrmSerializationSimple.btnDesSimpleBoolClick(Sender: TObject);
@@ -81,8 +85,10 @@ begin
 end;
 
 procedure TfrmSerializationSimple.btnDesSimpleRecordClick(Sender: TObject);
+var
+  LRecord: TMyRecord;
 begin
-  DeserializeSimple<TMyRecord>;
+  DeserializeSimple<TMyRecord>(LRecord);
 end;
 
 procedure TfrmSerializationSimple.btnDesSimpleStringClick(Sender: TObject);
@@ -134,6 +140,17 @@ end;
 procedure TfrmSerializationSimple.btnSerSimpleStringClick(Sender: TObject);
 begin
   SerializeSimple<string>('Paolo Rossi');
+end;
+
+procedure TfrmSerializationSimple.DeserializeSimple<T>(AValue: T);
+var
+  LVal: T;
+begin
+  LVal := DeserializeValueTo<T>(AValue,
+    memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+
+  SerializeValueFrom<T>(
+    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
 procedure TfrmSerializationSimple.DeserializeSimple<T>;

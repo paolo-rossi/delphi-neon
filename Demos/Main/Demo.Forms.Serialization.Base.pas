@@ -49,7 +49,8 @@ type
     procedure DeserializeObject(AObject: TObject; AWhere: TStrings; AConfig: INeonConfiguration);
 
     procedure SerializeValueFrom<T>(AValue: TValue; AWhere: TStrings; AConfig: INeonConfiguration);
-    function DeserializeValueTo<T>(AWhere: TStrings; AConfig: INeonConfiguration): T;
+    function DeserializeValueTo<T>(AWhere: TStrings; AConfig: INeonConfiguration): T; overload;
+    function DeserializeValueTo<T>(AValue: T; AWhere: TStrings; AConfig: INeonConfiguration): T; overload;
   public
     constructor CreateEx(AOwner: TComponent; AConfigForm: TframeConfiguration; AColor: TColor);
   public
@@ -123,6 +124,34 @@ begin
   finally
     LJSON.Free;
   end;
+end;
+
+function TfrmSerializationBase.DeserializeValueTo<T>(AValue: T; AWhere:
+    TStrings; AConfig: INeonConfiguration): T;
+var
+  LJSON: TJSONValue;
+  LValue: TValue;
+  LReader: TNeonDeserializerJSON;
+  LWriter: TNeonSerializerJSON;
+begin
+  LJSON := TJSONObject.ParseJSONValue(AWhere.Text);
+  if not Assigned(LJSON) then
+    raise Exception.Create('Error parsing JSON string');
+
+  try
+    LReader := TNeonDeserializerJSON.Create(AConfig);
+    try
+      LValue := LReader.JSONToTValue(LJSON, TRttiUtils.Context.GetType(TypeInfo(T)), TValue.From<T>(AValue));
+      LogError(LReader.Errors);
+      Result := LValue.AsType<T>;
+    finally
+      LReader.Free;
+    end;
+  finally
+    LJSON.Free;
+  end;
+
+  SerializeValueFrom<T>(LValue, AWhere, AConfig);
 end;
 
 procedure TfrmSerializationBase.Log(const ALog: string; AWhere: TStrings);
