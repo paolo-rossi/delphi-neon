@@ -23,6 +23,8 @@ type
     btnDesSimpleArray: TButton;
     btnDesSimpleFloat: TButton;
     btnDesSimpleBool: TButton;
+    btnSerTypeClass: TButton;
+    btnDesTypeClass: TButton;
     procedure btnDesSimpleArrayClick(Sender: TObject);
     procedure btnDesSimpleBoolClick(Sender: TObject);
     procedure btnDesSimpleDateTimeClick(Sender: TObject);
@@ -32,11 +34,13 @@ type
     procedure btnDesSimpleStringClick(Sender: TObject);
     procedure btnSerSimpleArrayClick(Sender: TObject);
     procedure btnSerSimpleBoolClick(Sender: TObject);
+    procedure btnSerTypeClassClick(Sender: TObject);
     procedure btnSerSimpleDatTimeClick(Sender: TObject);
     procedure btnSerSimpleFloatClick(Sender: TObject);
     procedure btnSerSimpleIntegerClick(Sender: TObject);
     procedure btnSerSimpleRecordClick(Sender: TObject);
     procedure btnSerSimpleStringClick(Sender: TObject);
+    procedure btnDesTypeClassClick(Sender: TObject);
   private
    procedure SerializeSimple<T>(AValue: T);
    procedure DeserializeSimple<T>; overload;
@@ -113,6 +117,18 @@ begin
   SerializeSimple<Boolean>(True);
 end;
 
+procedure TfrmSerializationSimple.btnSerTypeClassClick(Sender: TObject);
+var
+  LTypeObj: TTypeClass;
+begin
+  LTypeObj := TTypeClass.Create;
+  try
+    SerializeObject(LTypeObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  finally
+    LTypeObj.Free;
+  end;
+end;
+
 procedure TfrmSerializationSimple.btnSerSimpleDatTimeClick(Sender: TObject);
 begin
   SerializeSimple<TDateTime>(Now);
@@ -140,6 +156,19 @@ end;
 procedure TfrmSerializationSimple.btnSerSimpleStringClick(Sender: TObject);
 begin
   SerializeSimple<string>('Paolo Rossi');
+end;
+
+procedure TfrmSerializationSimple.btnDesTypeClassClick(Sender: TObject);
+var
+  LTypeClass: TTypeClass;
+begin
+  LTypeClass := TTypeClass.Create;
+  try
+    DeserializeObject(LTypeClass, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LTypeClass, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  finally
+    LTypeClass.Free;
+  end;
 end;
 
 procedure TfrmSerializationSimple.DeserializeSimple<T>(AValue: T);

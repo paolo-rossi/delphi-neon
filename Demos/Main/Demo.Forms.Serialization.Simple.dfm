@@ -147,4 +147,22 @@ inherited frmSerializationSimple: TfrmSerializationSimple
   inherited memoLog: TMemo
     TabOrder = 15
   end
+  object btnSerTypeClass: TButton
+    Left = 3
+    Top = 248
+    Width = 131
+    Height = 25
+    Caption = 'Types Class'
+    TabOrder = 19
+    OnClick = btnSerTypeClassClick
+  end
+  object btnDesTypeClass: TButton
+    Left = 485
+    Top = 248
+    Width = 131
+    Height = 25
+    Caption = 'Types Class'
+    TabOrder = 20
+    OnClick = btnDesTypeClassClick
+  end
 end

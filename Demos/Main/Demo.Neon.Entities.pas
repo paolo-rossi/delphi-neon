@@ -254,6 +254,44 @@ type
     property Vector: TVector3D read FVector write FVector;
   end;
 
+  TTypeClass = class
+  private
+    FPropInteger: Integer;
+    FPropInt64: Int64;
+    FPropDouble: Double;
+    FPropDate: TDateTime;
+    FPropChar: Char;
+    FPropString: string;
+    FPropBoolean: Boolean;
+    FPropEnum: TTypeKind;
+  public
+    constructor Create;
+
+    [NeonInclude(Include.NotDefault)]
+    property PropInteger: Integer read FPropInteger write FPropInteger;
+
+    [NeonInclude(Include.NotDefault)]
+    property PropInt64: Int64 read FPropInt64 write FPropInt64;
+
+    [NeonInclude(Include.NotDefault)]
+    property PropDouble: Double read FPropDouble write FPropDouble;
+
+    [NeonInclude(Include.NotDefault)]
+    property PropDate: TDateTime read FPropDate write FPropDate;
+
+    [NeonInclude(Include.NotEmpty)]
+    property PropChar: Char read FPropChar write FPropChar;
+
+    [NeonInclude(Include.NotEmpty)]
+    property PropString: string read FPropString write FPropString;
+
+    [NeonInclude(Include.NotEmpty)]
+    property PropBoolean: Boolean read FPropBoolean write FPropBoolean;
+
+    [NeonInclude(Include.NotEmpty)]
+    property PropEnum: TTypeKind read FPropEnum write FPropEnum;
+  end;
+
 
 implementation
 
@@ -466,5 +504,23 @@ begin
   ref.Free;
   inherited;
 end;
+
+{ TTypeClass }
+
+constructor TTypeClass.Create;
+begin
+  FPropInteger := Random(10000);
+  FPropInt64 := Random(100000000);
+  FPropDouble := Random * 100;
+  FPropEnum := TTypeKind(Random(20));
+  FPropString := 'Lorem ipsum';
+  FPropChar := Char(Random(125));
+
+  FPropBoolean := FPropInteger > 4000;
+  FPropDate := IfThen(FPropEnum = tkInteger, Random * 50000, 0);
+end;
+
+initialization
+  Randomize();
 
 end.

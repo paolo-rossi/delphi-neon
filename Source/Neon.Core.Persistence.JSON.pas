@@ -332,6 +332,9 @@ type
 
 implementation
 
+uses
+  System.Variants;
+
 { TNeonSerializerJSON }
 
 constructor TNeonSerializerJSON.Create(const AConfig: INeonConfiguration);
@@ -374,8 +377,19 @@ begin
 end;
 
 function TNeonSerializerJSON.WriteChar(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+var
+  LStr: string;
 begin
-  if AValue.AsString = #0 then
+  LStr := AValue.AsString;
+  case ANeonObject.NeonInclude.Value of
+    Include.NotEmpty, Include.NotDefault:
+    begin
+      if (LStr = #0) or LStr.IsEmpty then
+        Exit(nil);
+    end;
+  end;
+
+  if (LStr = #0) or LStr.IsEmpty then
     Result := TJSONString.Create('')
   else
     Result := TJSONString.Create(AValue.AsString);
@@ -522,18 +536,21 @@ end;
 function TNeonSerializerJSON.WriteEnum(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
   if AValue.TypeInfo = System.TypeInfo(Boolean) then
-  begin
-    if AValue.AsBoolean then
-      Result := TJSONTrue.Create
-    else
-      Result := TJSONFalse.Create;
-  end
+    Result := TJSONBool.Create(AValue.AsBoolean)
   else
     Result := TJSONString.Create(GetEnumName(AValue.TypeInfo, AValue.AsOrdinal));
 end;
 
 function TNeonSerializerJSON.WriteFloat(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
+  case ANeonObject.NeonInclude.Value of
+    Include.NotDefault:
+    begin
+      if AValue.AsExtended = 0 then
+        Exit(nil);
+    end;
+  end;
+
   if (AValue.TypeInfo = System.TypeInfo(TDateTime)) or
      (AValue.TypeInfo = System.TypeInfo(TDate)) or
      (AValue.TypeInfo = System.TypeInfo(TTime)) then
@@ -544,6 +561,14 @@ end;
 
 function TNeonSerializerJSON.WriteInteger(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
+  case ANeonObject.NeonInclude.Value of
+    Include.NotDefault:
+    begin
+      if AValue.AsInt64 = 0 then
+        Exit(nil);
+    end;
+  end;
+
   Result := TJSONNumber.Create(AValue.AsInt64);
 end;
 
@@ -591,14 +616,32 @@ var
   LType: TRttiType;
 begin
   Result := TJSONObject.Create;
-  LObject := AValue.AsObject;
+  try
+    LObject := AValue.AsObject;
+    case ANeonObject.NeonInclude.Value of
+      Include.Always:
+      begin
+        if not Assigned(LObject) then
+          Exit(TJSONNull.Create);
+      end;
+    else
+      if not Assigned(LObject) then
+        Exit(nil);
+    end;
+    LType := TRttiUtils.Context.GetType(LObject.ClassType);
 
-  if not Assigned(LObject) then
-    Exit(TJSONNull.Create);
-
-  LType := TRttiUtils.Context.GetType(LObject.ClassType);
-
-  WriteMembers(LType, LObject, Result);
+    WriteMembers(LType, LObject, Result);
+    case ANeonObject.NeonInclude.Value of
+      Include.NotEmpty, Include.NotDefault:
+      begin
+        if ANeonObject.NeonInclude.Value = Include.NotEmpty then
+          if (Result as TJSONObject).Count = 0 then
+            FreeAndNil(Result);
+      end;
+    end;
+  except
+    FreeAndNil(Result);
+  end;
 end;
 
 function TNeonSerializerJSON.WriteEnumerable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -607,9 +650,11 @@ var
   LJSONValue: TJSONValue;
   LList: IDynamicList;
 begin
-  Result := nil;
-
   LObject := AValue.AsObject;
+  LList := TDynamicList.GuessType(LObject);
+  // Is not an Enumerable compatible object
+  if not Assigned(LList) then
+    Exit(nil);
 
   if ANeonObject.NeonInclude.Value = Include.NotNull then
     if not Assigned(LObject) then
@@ -617,11 +662,6 @@ begin
 
   if not Assigned(LObject) then
     Exit(TJSONNull.Create);
-
-  // Exit or Exception?
-  LList := TDynamicList.GuessType(LObject);
-  if not Assigned(LList) then
-    Exit;
 
   if ANeonObject.NeonInclude.Value = Include.NotEmpty then
     if LList.Count = 0 then
@@ -641,26 +681,32 @@ var
   LJSONName: string;
   LKeyValue, LValValue: TValue;
   LJSONValue: TJSONValue;
-
   LMap: IDynamicMap;
 begin
-  Result := nil;
   LObject := AValue.AsObject;
-
-  if ANeonObject.NeonInclude.Value = Include.NotNull then
-    if not Assigned(LObject) then
-      Exit(nil);
-
-  if not Assigned(LObject) then
-    Exit(TJSONNull.Create);
-
   LMap := TDynamicMap.GuessType(LObject);
+  // Is not an EnumerableMap-compatible object
   if not Assigned(LMap) then
-    Exit;
+    Exit(nil);
 
-  if ANeonObject.NeonInclude.Value = Include.NotEmpty then
-    if LMap.Count = 0 then
-      Exit(nil);
+  case ANeonObject.NeonInclude.Value of
+    Include.Always:
+    begin
+      if not Assigned(LObject) then
+        Exit(TJSONNull.Create);
+    end;
+    Include.NotNull:
+    begin
+      if not Assigned(LObject) then
+        Exit(nil);
+    end;
+    Include.NotEmpty:
+    begin
+      if LMap.Count = 0 then
+        Exit(nil);
+    end;
+    Include.NotDefault: ;
+  end;
 
   case LMap.GetKeyType.TypeKind  of
     tkChar, tkWChar,
@@ -691,14 +737,30 @@ begin
   LType := TRttiUtils.Context.GetType(AValue.TypeInfo);
   try
     WriteMembers(LType, AValue.GetReferenceToRawData, Result);
+    case ANeonObject.NeonInclude.Value of
+      Include.NotEmpty, Include.NotDefault:
+      begin
+        if ANeonObject.NeonInclude.Value = Include.NotEmpty then
+          if (Result as TJSONObject).Count = 0 then
+            FreeAndNil(Result);
+      end;
+    end;
   except
     FreeAndNil(Result);
   end;
 end;
 
 function TNeonSerializerJSON.WriteSet(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+var
+  LRes: string;
 begin
-  Result := TJSONString.Create(SetToString(AValue.TypeInfo, Integer(AValue.GetReferenceToRawData^), True));
+  LRes := SetToString(AValue.TypeInfo, Integer(AValue.GetReferenceToRawData^), True);
+
+  if ANeonObject.NeonInclude.Value = Include.NotEmpty then
+    if LRes = '[]' then
+      Exit(nil);
+
+  Result := TJSONString.Create(LRes);
 end;
 
 function TNeonSerializerJSON.WriteStream(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -725,7 +787,6 @@ var
 begin
   Result := nil;
   LObject := AValue.AsObject;
-
   if not Assigned(LObject) then
     Exit(TJSONNull.Create);
 
@@ -750,15 +811,32 @@ end;
 
 function TNeonSerializerJSON.WriteString(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
-  if ANeonObject.NeonInclude.Value = Include.NotEmpty then
-    if AValue.AsString.IsEmpty then
-      Exit(nil);
+  case ANeonObject.NeonInclude.Value of
+    Include.NotEmpty, Include.NotDefault:
+    begin
+      if AValue.AsString.IsEmpty then
+        Exit(nil);
+    end;
+  end;
 
   Result := TJSONString.Create(AValue.AsString);
 end;
 
 function TNeonSerializerJSON.WriteVariant(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
+  case ANeonObject.NeonInclude.Value of
+    Include.NotNull:
+    begin
+      if VarIsNull(AValue.AsVariant) then
+        Exit(nil);
+    end;
+    Include.NotEmpty:
+    begin
+      if VarIsEmpty(AValue.AsVariant) then
+        Exit(nil);
+    end;
+  end;
+
   Result := TJSONString.Create(AValue.AsVariant);
 end;
 
@@ -769,8 +847,6 @@ begin
   inherited Create(AConfig);
   FOperation := TNeonOperation.Deserialize;
 end;
-
-{ TNeonDeserializerJSON }
 
 function TNeonDeserializerJSON.ReadArray(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
 var
