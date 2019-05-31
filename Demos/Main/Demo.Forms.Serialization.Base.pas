@@ -126,8 +126,8 @@ begin
   end;
 end;
 
-function TfrmSerializationBase.DeserializeValueTo<T>(AValue: T; AWhere:
-    TStrings; AConfig: INeonConfiguration): T;
+function TfrmSerializationBase.DeserializeValueTo<T>(AValue: T; AWhere: TStrings;
+  AConfig: INeonConfiguration): T;
 var
   LJSON: TJSONValue;
   LValue: TValue;
@@ -150,8 +150,6 @@ begin
   finally
     LJSON.Free;
   end;
-
-  SerializeValueFrom<T>(LValue, AWhere, AConfig);
 end;
 
 procedure TfrmSerializationBase.Log(const ALog: string; AWhere: TStrings);
@@ -211,8 +209,6 @@ begin
   finally
     LJSON.Free;
   end;
-
-  SerializeValueFrom<T>(TValue.From<T>(Result), AWhere, AConfig);
 end;
 
 end.

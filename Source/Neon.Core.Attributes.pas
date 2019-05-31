@@ -42,12 +42,26 @@ type
   end;
 
   /// <summary>
-  ///   The attribute [NeonProperty]  is used to indicate the property name in JSON.
+  ///   The attribute [NeonProperty] is used to indicate the property name in JSON.
   /// </summary>
   /// <remarks>
   ///   Read + Write Attribute
   /// </remarks>
   NeonPropertyAttribute = class(NeonNamedAttribute);
+
+  /// <summary>
+  ///   The attribute [NeonEnum] is used to indicate the names of an enum
+  /// </summary>
+  /// <remarks>
+  ///   Read + Write Attribute
+  /// </remarks>
+  NeonEnumNamesAttribute = class(TCustomAttribute)
+  private
+    FNames: TArray<string>;
+  public
+    constructor Create(const ANames: string);
+    property Names: TArray<string> read FNames write FNames;
+  end;
 
   /// <summary>
   ///   The Neon attribute [NeonIgnore] is used to tell Neon to ignore a certain property (field)
@@ -248,6 +262,13 @@ begin
   FIncludeValue.Present := True;
   FIncludeValue.Value := AIncludeValue;
   FIncludeValue.IncludeFunction := AIncludeFunction;
+end;
+
+{ NeonEnumNamesAttribute }
+
+constructor NeonEnumNamesAttribute.Create(const ANames: string);
+begin
+  FNames := ANames.Split([',']);
 end;
 
 end.

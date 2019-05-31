@@ -161,6 +161,7 @@ inherited frmSerializationSimple: TfrmSerializationSimple
     Top = 248
     Width = 131
     Height = 25
+    Anchors = [akTop, akRight]
     Caption = 'Types Class'
     TabOrder = 20
     OnClick = btnDesTypeClassClick

@@ -167,23 +167,30 @@ type
     FNeonVisibility: TNeonVisibility;
     FNeonIgnore: Boolean;
     FNeonProperty: string;
+    FNeonEnumNames: TArray<string>;
     FNeonSerializerName: string;
     FNeonSerializerClass: TClass;
+  private
+    FTypeAttributes: TArray<TCustomAttribute>;
   protected
-    procedure ParseAttributes; virtual;
+    procedure InternalParseAttributes(const AAttr: TArray<TCustomAttribute>); virtual;
     procedure ProcessAttribute(AAttribute: TCustomAttribute); virtual;
 
     function AsRttiType: TRttiType;
   public
     constructor Create(ARttiObject: TRttiObject; AOperation: TNeonOperation);
   public
+    procedure ParseAttributes; virtual;
+
     property Attributes: TArray<TCustomAttribute> read FAttributes write FAttributes;
+    property TypeAttributes: TArray<TCustomAttribute> read FTypeAttributes write FTypeAttributes;
     // Neon-based properties
     property NeonIgnore: Boolean read FNeonIgnore write FNeonIgnore;
     property NeonInclude: TIncludeValue read FNeonInclude write FNeonInclude;
     property NeonSerializerName: string read FNeonSerializerName write FNeonSerializerName;
     property NeonSerializerClass: TClass read FNeonSerializerClass write FNeonSerializerClass;
     property NeonProperty: string read FNeonProperty write FNeonProperty;
+    property NeonEnumNames: TArray<string> read FNeonEnumNames write FNeonEnumNames;
     property NeonMembers: TNeonMembers read FNeonMembers write FNeonMembers;
     property NeonVisibility: TNeonVisibility read FNeonVisibility write FNeonVisibility;
   end;
@@ -200,6 +207,7 @@ type
   TNeonRttiMember = class(TNeonRttiObject)
   private
     FMemberType: TNeonMemberType;
+    FMemberRttiType: TRttiType;
     FMember: TRttiMember;
     FParent: TNeonRttiType;
     FSerializable: Boolean;
@@ -517,10 +525,17 @@ begin
   FParent := AParent;
 
   if FMember is TRttiProperty then
-    FMemberType := TNeonMemberType.Prop
+  begin
+    FMemberType := TNeonMemberType.Prop;
+    FMemberRttiType := (FMember as TRttiProperty).PropertyType;
+  end
   else if FMember is TRttiField then
+  begin
     FMemberType := TNeonMemberType.Field;
+    FMemberRttiType := (FMember as TRttiField).FieldType;
+  end;
 
+  FTypeAttributes := FMemberRttiType.GetAttributes;
   ParseAttributes;
 end;
 
@@ -869,11 +884,11 @@ begin
   FAttributes := FRttiObject.GetAttributes;
 end;
 
-procedure TNeonRttiObject.ParseAttributes;
+procedure TNeonRttiObject.InternalParseAttributes(const AAttr: TArray<TCustomAttribute>);
 var
   LAttribute: TCustomAttribute;
 begin
-  for LAttribute in FAttributes do
+  for LAttribute in AAttr do
   begin
     if LAttribute is NeonIncludeAttribute then
       FNeonInclude := (LAttribute as NeonIncludeAttribute).IncludeValue
@@ -886,6 +901,8 @@ begin
       FNeonIgnore := True
     else if LAttribute is NeonPropertyAttribute then
       FNeonProperty := (LAttribute as NeonPropertyAttribute).Value
+    else if LAttribute is NeonEnumNamesAttribute then
+      FNeonEnumNames := (LAttribute as NeonEnumNamesAttribute).Names
     else if LAttribute is NeonVisibilityAttribute then
       FNeonVisibility := (LAttribute as NeonVisibilityAttribute).Value
     else if LAttribute is NeonMembersAttribute then
@@ -894,6 +911,14 @@ begin
     // Further attribute processing
     ProcessAttribute(LAttribute);
   end;
+end;
+
+procedure TNeonRttiObject.ParseAttributes;
+begin
+  if Length(FTypeAttributes) > 0 then
+    InternalParseAttributes(FTypeAttributes);
+  if Length(FAttributes) > 0 then
+    InternalParseAttributes(FAttributes);
 end;
 
 procedure TNeonRttiObject.ProcessAttribute(AAttribute: TCustomAttribute);

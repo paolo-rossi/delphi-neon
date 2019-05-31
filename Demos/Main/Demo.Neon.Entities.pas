@@ -31,8 +31,13 @@ uses
   Neon.Core.Attributes;
 
 {$M+}
+{$SCOPEDENUMS ON}
 
 type
+
+  [NeonEnumNames('Low Speed, Medium Speed, High Speed')]
+  TEnumSpeed = (Low, Medium, High);
+
   // Sample
   TVector3f = record
     X, Y, Z: Double;
@@ -102,13 +107,13 @@ type
 
   TIntArray = TArray<Integer>;
 
-  {$SCOPEDENUMS ON}
   TMyEnum = (First, Second, Third, Fourth);
 
   TMySet = set of TMyEnum;
 
   TMyRecord = record
   public
+    Speed: TEnumSpeed;
     One: string;
     Two: Integer;
 
