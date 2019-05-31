@@ -211,12 +211,12 @@ end;
 
 procedure TfrmSerializationComplex.btnSerDictionaryClick(Sender: TObject);
 var
-  LMap: TObjectDictionary<string, TNote>;
+  LMap: TObjectDictionary<TEnumSpeed, TNote>;
 begin
-  LMap := TObjectDictionary<string, TNote>.Create([doOwnsValues]);
+  LMap := TObjectDictionary<TEnumSpeed, TNote>.Create([doOwnsValues]);
   try
-    LMap.Add('uno', TNote.Create(Now, 'Lorem ipsum dolor sit amet'));
-    LMap.Add('due', TNote.Create(Now + 0.2, 'Fusce in libero posuere'));
+    LMap.Add(TEnumSpeed.Medium, TNote.Create(Now, 'Lorem ipsum dolor sit amet'));
+    LMap.Add(TEnumSpeed.High, TNote.Create(Now + 0.2, 'Fusce in libero posuere'));
     SerializeObject(LMap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
     LMap.Free;

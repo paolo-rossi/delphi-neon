@@ -445,6 +445,7 @@ begin
   LRttiType := TRttiUtils.Context.GetType(AValue.TypeInfo);
 
   LNeonObject := TNeonRttiObject.Create(LRttiType, FOperation);
+  LNeonObject.ParseAttributes;
   try
     Result := WriteDataMember(AValue, LNeonObject);
   finally
@@ -732,9 +733,9 @@ end;
 function TNeonSerializerJSON.WriteEnumerableMap(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LObject: TObject;
-  LJSONName: string;
-  LKeyValue, LValValue: TValue;
+  LJSONName: TJSONValue;
   LJSONValue: TJSONValue;
+  LKeyValue, LValValue: TValue;
   LMap: IDynamicMap;
 begin
   LObject := AValue.AsObject;
@@ -766,20 +767,32 @@ begin
     tkChar, tkWChar,
     tkString, tkLString,
     tkWString, tkUString: ;
+    tkEnumeration: ;
   else
     Exit(TJSONNull.Create);
   end;
 
   Result := TJSONObject.Create;
-  while LMap.MoveNext do
-  begin
-    LKeyValue := LMap.CurrentKey;
-    LValValue := LMap.CurrentValue;
+  try
+    while LMap.MoveNext do
+    begin
+      LKeyValue := LMap.CurrentKey;
+      LValValue := LMap.CurrentValue;
 
-    LJSONName := LKeyValue.AsString;
-    LJSONValue := WriteDataMember(LValValue);
+      LJSONName := WriteDataMember(LKeyValue);
+      LJSONValue := WriteDataMember(LValValue);
 
-    (Result as TJSONObject).AddPair(LJSONName, LJSONValue);
+      if LJSONName is TJSONString then
+        (Result as TJSONObject).AddPair(LJSONName as TJSONString, LJSONValue)
+      else
+        raise Exception.Create('Dictionary [Key]: type not supported');
+    end;
+  except
+    on E: Exception do
+    begin
+      FErrors.Add(E.Message);
+      FreeAndNil(Result);
+    end;
   end;
 end;
 
@@ -993,7 +1006,6 @@ end;
 function TNeonDeserializerJSON.ReadDataMember(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 var
   LCustom: TCustomSerializer;
-  LParam: TNeonDeserializerParam;
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.Empty);
@@ -1095,7 +1107,6 @@ end;
 
 function TNeonDeserializerJSON.ReadEnum(const AParam: TNeonDeserializerParam): TValue;
 var
-  LAttributes: TArray<TCustomAttribute>;
   LIndex, LOrdinal: Integer;
 begin
   if AParam.RttiType.Handle = System.TypeInfo(Boolean) then

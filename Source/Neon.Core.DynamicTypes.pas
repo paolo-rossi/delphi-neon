@@ -91,8 +91,8 @@ type
     constructor Create(AInstance, AEnumInstance: TObject; AItemType: TRttiType;
       AAddMethod, AClearMethod, AMoveNextMethod: TRttiMethod;
       ACurrentProperty, ACountProperty: TRttiProperty);
-    destructor Destroy; override;
   public
+    destructor Destroy; override;
     class function GuessType(AInstance: TObject): IDynamicList;
   public
     function NewItem: TValue;
