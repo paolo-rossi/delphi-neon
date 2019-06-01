@@ -63,6 +63,10 @@ type
     function CurrentKey: TValue;
     function CurrentValue: TValue;
     function MoveNext: Boolean;
+    // Key-related functions
+    function KeyIsString: Boolean;
+    function KeyToString(const AKey: TValue): string;
+    procedure KeyFromString(const AKey: TValue; const AStringVal: string);
   end;
 
   TDynamicStream = class(TInterfacedObject, IDynamicStream)
@@ -131,10 +135,12 @@ type
     FKeyEnum: TDynamicMap.TEnumerator;
     FValueEnum: TDynamicMap.TEnumerator;
     FCountProp: TRttiProperty;
+    FToStringMethod: TRttiMethod;
+    FFromStringMethod: TRttiMethod;
 
     constructor Create(AInstance: TObject; AKeyType, AValueType: TRttiType;
       AAddMethod, AClearMethod: TRttiMethod; ACountProp: TRttiProperty;
-      AKeyEnum, AValueEnum: TDynamicMap.TEnumerator);
+      AKeyEnum, AValueEnum: TDynamicMap.TEnumerator; AToStringMethod, AFromStringMethod: TRttiMethod);
   public
     class function GuessType(AInstance: TObject): IDynamicMap;
     destructor Destroy; override;
@@ -150,6 +156,10 @@ type
     function CurrentKey: TValue;
     function CurrentValue: TValue;
     function MoveNext: Boolean;
+    // Key-related functions
+    function KeyIsString: Boolean;
+    function KeyToString(const AKey: TValue): string;
+    procedure KeyFromString(const AKey: TValue; const AStringVal: string);
   end;
 
 implementation
@@ -339,7 +349,7 @@ end;
 
 constructor TDynamicMap.Create(AInstance: TObject; AKeyType, AValueType: TRttiType;
   AAddMethod, AClearMethod: TRttiMethod; ACountProp: TRttiProperty;
-  AKeyEnum, AValueEnum: TDynamicMap.TEnumerator);
+  AKeyEnum, AValueEnum: TDynamicMap.TEnumerator; AToStringMethod, AFromStringMethod: TRttiMethod);
 begin
   FInstance := AInstance;
   FKeyType := AKeyType;
@@ -349,6 +359,8 @@ begin
   FKeyEnum := AKeyEnum;
   FValueEnum := AValueEnum;
   FCountProp := ACountProp;
+  FToStringMethod := AToStringMethod;
+  FFromStringMethod := AFromStringMethod;
 end;
 
 function TDynamicMap.CurrentKey: TValue;
@@ -368,6 +380,12 @@ begin
   inherited;
 end;
 
+procedure TDynamicMap.KeyFromString(const AKey: TValue; const AStringVal: string);
+begin
+  if Assigned(FFromStringMethod) then
+    FFromStringMethod.Invoke(AKey.AsObject, [AStringVal]);
+end;
+
 function TDynamicMap.GetKeyType: TRttiType;
 begin
   Result := FKeyType;
@@ -385,6 +403,7 @@ var
   LKeyProp, LValProp: TRttiProperty;
   LCountProp: TRttiProperty;
   LAddMethod, LClearMethod: TRttiMethod;
+  LToStringMethod, LFromStringMethod: TRttiMethod;
 
   LKeyEnumMethod, LValEnumMethod: TRttiMethod;
   LKeyEnumObject, LValEnumObject: TObject;
@@ -428,6 +447,15 @@ begin
   if not Assigned(LCountProp) then
     Exit;
 
+  // Optional methods (on Key object)
+  case LKeyType.TypeKind of
+    tkClass{, tkRecord, tkInterface}:
+    begin
+      LToStringMethod := LKeyType.GetMethod('ToString');
+      LFromStringMethod := LKeyType.GetMethod('FromString');
+    end;
+  end;
+
   Result := TDynamicMap.Create(
     AInstance,
     LKeyType,
@@ -436,7 +464,9 @@ begin
     LClearMethod,
     LCountProp,
     LKeyEnum,
-    LValEnum
+    LValEnum,
+    LToStringMethod,
+    LFromStringMethod
   );
 end;
 
@@ -453,6 +483,19 @@ end;
 function TDynamicMap.NewValue: TValue;
 begin
   Result := TRttiUtils.CreateNewValue(FValueType);
+end;
+
+function TDynamicMap.KeyIsString: Boolean;
+begin
+  Result := Assigned(FToStringMethod) and Assigned(FFromStringMethod);
+end;
+
+function TDynamicMap.KeyToString(const AKey: TValue): string;
+begin
+  if Assigned(FToStringMethod) then
+    Result := FToStringMethod.Invoke(AKey.AsObject, []).AsString
+  else
+    Result := '';
 end;
 
 { TDynamicMap.TEnumerator }

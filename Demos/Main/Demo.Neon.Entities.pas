@@ -118,6 +118,7 @@ type
     Two: Integer;
 
     function ToString: string;
+    procedure FromString(const AValue: string);
   end;
 
   TAddress = class
@@ -126,9 +127,13 @@ type
     FCountry: string;
   public
     Rec: TMyRecord;
+    constructor Create(const ACity, ACountry: string);
   published
     property City: string read FCity write FCity;
     property Country: string read FCountry write FCountry;
+
+    function ToString: string;
+    procedure FromString(const AValue: string);
   end;
 
   TAddresses = TArray<TAddress>;
@@ -306,9 +311,7 @@ procedure TPerson.AddAddress(const ACity, ACountry: string);
 var
   LAddress: TAddress;
 begin
-  LAddress := TAddress.Create;
-  LAddress.City := ACity;
-  LAddress.Country:= ACountry;
+  LAddress := TAddress.Create(ACity, ACountry);
   LAddress.Rec.One := 'Qwerty';
   LAddress.Rec.Two := 12;
 
@@ -342,9 +345,7 @@ end;
 
 function TAddressBook.Add(ACity, ACountry: string): TAddress;
 begin
-  Result := TAddress.Create;
-  Result.City := ACity;
-  Result.Country := ACountry;
+  Result := TAddress.Create(ACity, ACountry);
   FAddressList.Add(Result);
 end;
 
@@ -369,9 +370,15 @@ end;
 
 { TMyRecord }
 
+procedure TMyRecord.FromString(const AValue: string);
+begin
+  One := AValue;
+  Speed := TEnumSpeed.High;
+end;
+
 function TMyRecord.ToString: string;
 begin
-  Result := One + '|' + Two.ToString;
+  Result := One + '-' + Two.ToString;
 end;
 
 { TStreamableSample }
@@ -523,6 +530,25 @@ begin
 
   FPropBoolean := FPropInteger > 4000;
   FPropDate := IfThen(FPropEnum = tkInteger, Random * 50000, 0);
+end;
+
+{ TAddress }
+
+constructor TAddress.Create(const ACity, ACountry: string);
+begin
+  FCity := ACity;
+  FCountry := ACountry;
+end;
+
+procedure TAddress.FromString(const AValue: string);
+begin
+  FCity := AValue;
+  FCountry := AValue;
+end;
+
+function TAddress.ToString: string;
+begin
+  Result := 'Key-' + FCity;
 end;
 
 initialization

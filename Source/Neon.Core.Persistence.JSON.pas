@@ -1,4 +1,4 @@
-  {******************************************************************************}
+{******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
 {  Copyright (c) 2018-2019 Paolo Rossi                                         }
@@ -733,6 +733,7 @@ end;
 function TNeonSerializerJSON.WriteEnumerableMap(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LObject: TObject;
+  LName: string;
   LJSONName: TJSONValue;
   LJSONValue: TJSONValue;
   LKeyValue, LValValue: TValue;
@@ -763,15 +764,6 @@ begin
     Include.NotDefault: ;
   end;
 
-  case LMap.GetKeyType.TypeKind  of
-    tkChar, tkWChar,
-    tkString, tkLString,
-    tkWString, tkUString: ;
-    tkEnumeration: ;
-  else
-    Exit(TJSONNull.Create);
-  end;
-
   Result := TJSONObject.Create;
   try
     while LMap.MoveNext do
@@ -779,13 +771,22 @@ begin
       LKeyValue := LMap.CurrentKey;
       LValValue := LMap.CurrentValue;
 
-      LJSONName := WriteDataMember(LKeyValue);
       LJSONValue := WriteDataMember(LValValue);
+      try
+        LJSONName := WriteDataMember(LKeyValue);
 
-      if LJSONName is TJSONString then
-        (Result as TJSONObject).AddPair(LJSONName as TJSONString, LJSONValue)
-      else
-        raise Exception.Create('Dictionary [Key]: type not supported');
+        if LJSONName is TJSONString then
+          LName := (LJSONName as TJSONString).Value
+        else if LMap.KeyIsString then
+          LName := LMap.KeyToString(LKeyValue);
+
+        (Result as TJSONObject).AddPair(LName, LJSONValue);
+
+        if LName.IsEmpty then
+          raise Exception.Create('Dictionary [Key]: type not supported');
+      finally
+        LJSONName.Free;
+      end;
     end;
   except
     on E: Exception do
@@ -1193,7 +1194,10 @@ begin
       begin
         LKey := LMap.NewKey;
         LParamKey.JSONValue := LEnum.Current.JsonString;
-        LKey := ReadDataMember(LParamKey, LKey);
+        if LParamKey.RttiType.TypeKind = tkClass then
+          LMap.KeyFromString(LKey, LEnum.Current.JsonString.Value)
+        else
+          ReadDataMember(LParamKey, LKey);
 
         LValue := LMap.NewValue;
         LParamValue.JSONValue := LEnum.Current.JsonValue;

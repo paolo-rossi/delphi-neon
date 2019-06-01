@@ -96,9 +96,9 @@ end;
 
 procedure TfrmSerializationComplex.btnDesDictionaryClick(Sender: TObject);
 var
-  LMap: TDictionary<string, TNote>;
+  LMap: TObjectDictionary<TAddress, TNote>;
 begin
-  LMap := TObjectDictionary<string, TNote>.Create([doOwnsValues]);
+  LMap := TObjectDictionary<TAddress, TNote>.Create([doOwnsKeys, doOwnsValues]);
   try
     DeserializeObject(LMap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
     SerializeObject(LMap, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
@@ -211,12 +211,13 @@ end;
 
 procedure TfrmSerializationComplex.btnSerDictionaryClick(Sender: TObject);
 var
-  LMap: TObjectDictionary<TEnumSpeed, TNote>;
+  LMap: TObjectDictionary<TAddress, TNote>;
+  LAddr1, LLAddr2: TAddress;
 begin
-  LMap := TObjectDictionary<TEnumSpeed, TNote>.Create([doOwnsValues]);
+  LMap := TObjectDictionary<TAddress, TNote>.Create([doOwnsKeys, doOwnsValues]);
   try
-    LMap.Add(TEnumSpeed.Medium, TNote.Create(Now, 'Lorem ipsum dolor sit amet'));
-    LMap.Add(TEnumSpeed.High, TNote.Create(Now + 0.2, 'Fusce in libero posuere'));
+    LMap.Add(TAddress.Create('Piacenza', 'Italy'), TNote.Create(Now, 'Lorem ipsum dolor sit amet'));
+    LMap.Add(TAddress.Create('Dublin', 'Ireland'), TNote.Create(Now + 0.2, 'Fusce in libero posuere'));
     SerializeObject(LMap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
     LMap.Free;
