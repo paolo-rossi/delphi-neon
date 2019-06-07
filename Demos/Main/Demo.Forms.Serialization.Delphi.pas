@@ -92,8 +92,14 @@ begin
 end;
 
 procedure TfrmSerializationDelphi.btnSerImageClick(Sender: TObject);
+var
+  LFileName: string;
 begin
-  SerializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  LFileName := ExtractFilePath(Application.ExeName) + '..\..\neon-logo-600.bmp';
+  frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
+  SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  frmDetails.imgNeon.Picture.Bitmap.SetSize(0,0);
+  ShowMessage('Click "Show details" button. I''ve clear the picture');
 end;
 
 procedure TfrmSerializationDelphi.btnSerStringListClick(Sender: TObject);
@@ -113,7 +119,8 @@ end;
 
 procedure TfrmSerializationDelphi.btnDesImageClick(Sender: TObject);
 begin
-  DeserializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  DeserializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  ShowMessage('Click "Show details" button. I''ve deserialized the picture');
 end;
 
 procedure TfrmSerializationDelphi.btnShowDetailsClick(Sender: TObject);

@@ -257,11 +257,20 @@ type
     FPoint: TPoint3D;
     FVector: TVector3D;
   public
-    procedure DefaultValues;
+    procedure DefaultValues; virtual;
   public
     property GUID: TGUID read FGUID write FGUID;
     property Point: TPoint3D read FPoint write FPoint;
     property Vector: TVector3D read FVector write FVector;
+  end;
+
+  TMyDerivedClass = class(TMyClass)
+  private
+    FPropertyTest: string;
+  public
+    FieldTest: string;
+    property PropertyTest: string read FPropertyTest write FPropertyTest;
+    procedure DefaultValues; override;
   end;
 
   TTypeClass = class
@@ -549,6 +558,16 @@ end;
 function TAddress.ToString: string;
 begin
   Result := 'Key-' + FCity;
+end;
+
+
+{ TMyDerivedClass }
+
+procedure TMyDerivedClass.DefaultValues;
+begin
+  inherited;
+  FPropertyTest := 'property added';
+  FieldTest := 'my field: hello world!';
 end;
 
 initialization

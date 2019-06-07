@@ -130,30 +130,28 @@ object frameConfiguration: TframeConfiguration
     ParentShowHint = False
     ShowHint = True
     TabOrder = 2
-    object rbMemberStandard: TRadioButton
+    object chkMemberStandard: TCheckBox
       Left = 7
       Top = 16
-      Width = 81
+      Width = 66
       Height = 17
       Caption = 'Standard'
       Checked = True
-      ParentShowHint = False
-      ShowHint = False
+      State = cbChecked
       TabOrder = 0
-      TabStop = True
     end
-    object rbMemberFields: TRadioButton
+    object chkMemberFields: TCheckBox
       Left = 83
       Top = 16
-      Width = 49
+      Width = 50
       Height = 17
-      Caption = 'Fields'
+      Caption = 'Field'
       TabOrder = 1
     end
-    object rbMemberProperties: TRadioButton
+    object chkMemberProperties: TCheckBox
       Left = 139
       Top = 16
-      Width = 74
+      Width = 68
       Height = 17
       Caption = 'Properties'
       TabOrder = 2
