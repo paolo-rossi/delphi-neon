@@ -94,9 +94,9 @@ function TPoint3DSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
 var
   LVal: TPoint3D;
 begin
-  LVal.X := AValue.GetValue<Integer>('X');
-  LVal.Y := AValue.GetValue<Integer>('Y');
-  LVal.Z := AValue.GetValue<Integer>('Z');
+  LVal.X := AValue.GetValue<Double>('X');
+  LVal.Y := AValue.GetValue<Double>('Y');
+  LVal.Z := AValue.GetValue<Double>('Z');
 
   Result := TValue.From<TPoint3D>(LVal);
 end;
