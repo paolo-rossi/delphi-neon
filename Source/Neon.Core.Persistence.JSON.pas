@@ -771,9 +771,9 @@ begin
       LKeyValue := LMap.CurrentKey;
       LValValue := LMap.CurrentValue;
 
-      LJSONValue := WriteDataMember(LValValue);
+      LJSONName := WriteDataMember(LKeyValue);
       try
-        LJSONName := WriteDataMember(LKeyValue);
+        LJSONValue := WriteDataMember(LValValue);
 
         if LJSONName is TJSONString then
           LName := (LJSONName as TJSONString).Value

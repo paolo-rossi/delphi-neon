@@ -447,6 +447,9 @@ begin
   if not Assigned(LCountProp) then
     Exit;
 
+  LToStringMethod := nil;
+  LFromStringMethod := nil;
+
   // Optional methods (on Key object)
   case LKeyType.TypeKind of
     tkClass{, tkRecord, tkInterface}:
