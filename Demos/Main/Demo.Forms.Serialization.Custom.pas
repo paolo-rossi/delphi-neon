@@ -136,7 +136,7 @@ procedure TfrmSerializationCustom.btnSerMyClassClick(Sender: TObject);
 var
   LClass: TMyClass;
 begin
-  LClass := TMyClass.Create;
+  LClass := TMyDerivedClass.Create;
   try
     LClass.DefaultValues;
     SerializeObject(LClass, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
@@ -149,7 +149,8 @@ procedure TfrmSerializationCustom.btnDesMyClassClick(Sender: TObject);
 var
   LSimple: TMyClass;
 begin
-  LSimple := TMyClass.Create;
+	// Instantiating derived class
+  LSimple := TMyDerivedClass.Create;
   try
     DeserializeObject(LSimple, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
     SerializeObject(LSimple, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);

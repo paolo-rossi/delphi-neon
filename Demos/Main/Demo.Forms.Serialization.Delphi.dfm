@@ -57,7 +57,6 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
     Height = 25
     Anchors = [akTop, akRight]
     Caption = 'Image'
-    Enabled = False
     TabOrder = 8
     OnClick = btnDesImageClick
   end

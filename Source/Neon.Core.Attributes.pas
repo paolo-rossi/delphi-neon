@@ -147,12 +147,12 @@ type
   /// <remarks>
   ///   Read + Write Attribute
   /// </remarks>
-  NeonMembersAttribute = class(NeonAttribute)
+  NeonMembersSetAttribute = class(NeonAttribute)
   private
-    FValue: TNeonMembers;
+    FValue: TNeonMembersSet;
   public
-    constructor Create(const AValue: TNeonMembers);
-    property Value: TNeonMembers read FValue write FValue;
+    constructor Create(const AValue: TNeonMembersSet);
+    property Value: TNeonMembersSet read FValue write FValue;
   end;
 
   /// <summary>
@@ -233,7 +233,7 @@ end;
 
 { NeonMembersTypeAttribute }
 
-constructor NeonMembersAttribute.Create(const AValue: TNeonMembers);
+constructor NeonMembersSetAttribute.Create(const AValue: TNeonMembersSet);
 begin
   FValue := AValue;
 end;

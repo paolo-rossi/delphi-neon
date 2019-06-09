@@ -38,7 +38,7 @@ type
 
   INeonConfiguration = interface
   ['{F82AB790-1C65-4501-915C-0289EFD9D8CC}']
-    function SetMembers(AValue: TNeonMembers): INeonConfiguration;
+    function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
@@ -120,7 +120,7 @@ type
   TNeonConfiguration = class sealed(TInterfacedObject, INeonConfiguration)
   private
     FVisibility: TNeonVisibility;
-    FMembers: TNeonMembers;
+    FMembers: TNeonMembersSet;
     FMemberCase: TNeonCase;
     FMemberCustomCase: TCaseFunc;
     FIgnoreFieldPrefix: Boolean;
@@ -136,7 +136,7 @@ type
     class function Snake: INeonConfiguration; static;
     class function Camel: INeonConfiguration; static;
 
-    function SetMembers(AValue: TNeonMembers): INeonConfiguration;
+    function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
@@ -148,7 +148,7 @@ type
     function GetPrettyPrint: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
 
-    property Members: TNeonMembers read FMembers write FMembers;
+    property Members: TNeonMembersSet read FMembers write FMembers;
     property MemberCase: TNeonCase read FMemberCase write FMemberCase;
     property MemberCustomCase: TCaseFunc read FMemberCustomCase write FMemberCustomCase;
     property Visibility: TNeonVisibility read FVisibility write FVisibility;
@@ -163,7 +163,7 @@ type
     FRttiObject: TRttiObject;
     FNeonInclude: TIncludeValue;
     FAttributes: TArray<TCustomAttribute>;
-    FNeonMembers: TNeonMembers;
+    FNeonMembers: TNeonMembersSet;
     FNeonVisibility: TNeonVisibility;
     FNeonIgnore: Boolean;
     FNeonProperty: string;
@@ -191,7 +191,7 @@ type
     property NeonSerializerClass: TClass read FNeonSerializerClass write FNeonSerializerClass;
     property NeonProperty: string read FNeonProperty write FNeonProperty;
     property NeonEnumNames: TArray<string> read FNeonEnumNames write FNeonEnumNames;
-    property NeonMembers: TNeonMembers read FNeonMembers write FNeonMembers;
+    property NeonMembers: TNeonMembersSet read FNeonMembers write FNeonMembers;
     property NeonVisibility: TNeonVisibility read FNeonVisibility write FNeonVisibility;
   end;
 
@@ -374,30 +374,28 @@ function TNeonBase.GetTypeMembers(AType: TRttiType): TArray<TRttiMember>;
 begin
   SetLength(Result, 0);
 
-  case FConfig.Members of
-    TNeonMembers.Standard:
-    begin
-      if AType.IsRecord then
-        Result := TArray<TRttiMember>(AType.AsRecord.GetFields)
-      else if AType.IsInstance then
-        Result := TArray<TRttiMember>(AType.AsInstance.GetProperties);
-    end;
+  if TNeonMembers.Standard in FConfig.Members then
+  begin
+    if AType.IsRecord then
+      Result := TArray<TRttiMember>(AType.AsRecord.GetFields)
+    else if AType.IsInstance then
+      Result := TArray<TRttiMember>(AType.AsInstance.GetProperties);
+  end;
 
-    TNeonMembers.Properties:
-    begin
-      if AType.IsRecord then
-        Result := TArray<TRttiMember>(AType.AsRecord.GetProperties)
-      else if AType.IsInstance then
-        Result := TArray<TRttiMember>(AType.AsInstance.GetProperties);
-    end;
+  if TNeonMembers.Properties in FConfig.Members then
+  begin
+    if AType.IsRecord then
+      Result := TArray<TRttiMember>(AType.AsRecord.GetProperties)
+    else if AType.IsInstance then
+      Result := TArray<TRttiMember>(AType.AsInstance.GetProperties);
+  end;
 
-    TNeonMembers.Fields:
-    begin
-      if AType.IsRecord then
-        Result := TArray<TRttiMember>(AType.AsRecord.GetFields)
-      else if AType.IsInstance then
-        Result := TArray<TRttiMember>(AType.AsInstance.GetFields);
-    end;
+  if TNeonMembers.Fields in FConfig.Members then
+  begin
+    if AType.IsRecord then
+      Result := TArray<TRttiMember>(AType.AsRecord.GetFields)
+    else if AType.IsInstance then
+      Result := TArray<TRttiMember>(AType.AsInstance.GetFields);
   end;
 end;
 
@@ -420,7 +418,7 @@ constructor TNeonConfiguration.Create;
 begin
   FSerializers := TNeonSerializerRegistry.Create;
   SetMemberCase(TNeonCase.PascalCase);
-  SetMembers(TNeonMembers.Standard);
+  SetMembers([TNeonMembers.Standard]);
   SetIgnoreFieldPrefix(False);
   SetVisibility([mvPublic, mvPublished]);
   SetUseUTCDate(True);
@@ -474,7 +472,7 @@ begin
   Result.SetMemberCase(TNeonCase.SnakeCase);
 end;
 
-function TNeonConfiguration.SetMembers(AValue: TNeonMembers): INeonConfiguration;
+function TNeonConfiguration.SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
 begin
   FMembers := AValue;
   Result := Self;
@@ -820,30 +818,30 @@ end;
 function TNeonRttiMembers.MatchesMemberChoice(AMemberType: TNeonMemberType): Boolean;
 var
   LRttiType: TRttiType;
-  LMemberChoice: TNeonMembers;
+  LMemberChoice: TNeonMembersSet;
 begin
   Result := False;
-  if FParent.NeonMembers = TNeonMembers.Unknown then
+  if TNeonMembers.Unknown in FParent.NeonMembers then
     LMemberChoice := FConfig.Members
   else
     LMemberChoice := FParent.NeonMembers;
 
-  if LMemberChoice = TNeonMembers.Standard then
+  if TNeonMembers.Standard in LMemberChoice then
   begin
     LRttiType := FParent.AsRttiType;
     if Assigned(LRttiType) then
     begin
       if LRttiType.IsRecord then
-        LMemberChoice := TNeonMembers.Fields;
+        LMemberChoice := LMemberChoice + [TNeonMembers.Fields];
       if LRttiType.IsInstance then
-        LMemberChoice := TNeonMembers.Properties;
+        LMemberChoice := LMemberChoice + [TNeonMembers.Properties];
     end;
   end;
 
   case AMemberType of
     //TNeonMemberType.Unknown: Result := False;
-    TNeonMemberType.Prop   :   Result := TNeonMembers.Properties = LMemberChoice;
-    TNeonMemberType.Field  :   Result := TNeonMembers.Fields = LMemberChoice;
+    TNeonMemberType.Prop   :   Result := TNeonMembers.Properties in LMemberChoice;
+    TNeonMemberType.Field  :   Result := TNeonMembers.Fields in LMemberChoice;
     //TNeonMemberType.Indexed: Result := False;
   end;
 end;
@@ -882,6 +880,7 @@ begin
   FRttiObject := ARttiObject;
   FOperation := AOperation;
   FAttributes := FRttiObject.GetAttributes;
+  FNeonMembers := [TNeonMembers.Unknown];
 end;
 
 procedure TNeonRttiObject.InternalParseAttributes(const AAttr: TArray<TCustomAttribute>);
@@ -905,8 +904,8 @@ begin
       FNeonEnumNames := (LAttribute as NeonEnumNamesAttribute).Names
     else if LAttribute is NeonVisibilityAttribute then
       FNeonVisibility := (LAttribute as NeonVisibilityAttribute).Value
-    else if LAttribute is NeonMembersAttribute then
-      FNeonMembers := (LAttribute as NeonMembersAttribute).Value;
+    else if LAttribute is NeonMembersSetAttribute then
+      FNeonMembers := (LAttribute as NeonMembersSetAttribute).Value;
 
     // Further attribute processing
     ProcessAttribute(LAttribute);

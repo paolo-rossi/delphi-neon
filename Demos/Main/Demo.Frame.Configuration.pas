@@ -35,9 +35,6 @@ uses
 type
   TframeConfiguration = class(TFrame)
     grpType: TGroupBox;
-    rbMemberStandard: TRadioButton;
-    rbMemberFields: TRadioButton;
-    rbMemberProperties: TRadioButton;
     grpCase: TGroupBox;
     rbCasePascal: TRadioButton;
     rbCaseCamel: TRadioButton;
@@ -55,6 +52,9 @@ type
     chkUseUTCDate: TCheckBox;
     chkPrettyPrinting: TCheckBox;
     chkIgnorePrefix: TCheckBox;
+    chkMemberStandard: TCheckBox;
+    chkMemberFields: TCheckBox;
+    chkMemberProperties: TCheckBox;
   private
     FCustomCaseAlgo: TCaseFunc;
   public
@@ -72,8 +72,10 @@ uses
 function TframeConfiguration.BuildSerializerConfig: INeonConfiguration;
 var
   LVis: TNeonVisibility;
+  LMembers: TNeonMembersSet;
 begin
   LVis := [];
+  LMembers := [TNeonMembers.Standard];
   Result := TNeonConfiguration.Default;
 
   // Case settings
@@ -92,10 +94,11 @@ begin
       .SetMemberCustomCase(FCustomCaseAlgo);
 
   // Member type settings
-  if rbMemberFields.Checked then
-    Result.SetMembers(TNeonMembers.Fields);
-  if rbMemberProperties.Checked then
-    Result.SetMembers(TNeonMembers.Properties);
+  if chkMemberFields.Checked then
+    LMembers := LMembers + [TNeonMembers.Fields];
+  if chkMemberProperties.Checked then
+    LMembers := LMembers + [TNeonMembers.Properties];
+  Result.SetMembers(LMembers);
 
   // F Prefix setting
   Result.SetIgnoreFieldPrefix(chkIgnorePrefix.Checked);
