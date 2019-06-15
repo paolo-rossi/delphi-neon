@@ -821,7 +821,7 @@ var
   LMemberChoice: TNeonMembersSet;
 begin
   Result := False;
-  if TNeonMembers.Unknown in FParent.NeonMembers then
+  if FParent.NeonMembers = [] then
     LMemberChoice := FConfig.Members
   else
     LMemberChoice := FParent.NeonMembers;
@@ -880,7 +880,7 @@ begin
   FRttiObject := ARttiObject;
   FOperation := AOperation;
   FAttributes := FRttiObject.GetAttributes;
-  FNeonMembers := [TNeonMembers.Unknown];
+  FNeonMembers := [];
 end;
 
 procedure TNeonRttiObject.InternalParseAttributes(const AAttr: TArray<TCustomAttribute>);

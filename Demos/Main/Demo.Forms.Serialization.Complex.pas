@@ -212,7 +212,6 @@ end;
 procedure TfrmSerializationComplex.btnSerDictionaryClick(Sender: TObject);
 var
   LMap: TObjectDictionary<TAddress, TNote>;
-  LAddr1, LLAddr2: TAddress;
 begin
   LMap := TObjectDictionary<TAddress, TNote>.Create([doOwnsKeys, doOwnsValues]);
   try

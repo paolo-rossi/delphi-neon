@@ -49,8 +49,7 @@ type
     frmConfiguration: TframeConfiguration;
     procedure FormCreate(Sender: TObject);
   private
-    procedure CreateTab(const ACaption: string; AColor: TColor; AClass:
-        TfrmSerializationClass);
+    procedure CreateTab(const ACaption: string; AColor: TColor; AClass: TfrmSerializationClass);
   public
   end;
 

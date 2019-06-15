@@ -3,7 +3,8 @@ unit Neon.Tests.Serializer;
 interface
 
 uses
-  DUnitX.TestFramework;
+  DUnitX.TestFramework,
+  Neon.Tests.Utils;
 
 type
 
@@ -14,15 +15,15 @@ type
     procedure Setup;
     [TearDown]
     procedure TearDown;
-    // Sample Methods
-    // Simple single Test
+
     [Test]
-    procedure TestInteger;
-    // Test with TestCase Attribute to supply parameters.
+    [TestCase('TestInteger', '42')]
+    procedure TestInteger(const AValue: Integer);
+
     [Test]
-    [TestCase('TestA','1,2')]
-    [TestCase('TestB','3,4')]
-    procedure Test2(const AValue1 : Integer;const AValue2 : Integer);
+    [TestCase('TestString', 'Lorem "Ipsum" \n \\ {}')]
+    procedure TestString(const AValue: string);
+
   end;
 
 implementation
@@ -35,14 +36,23 @@ procedure TTestSerializer.TearDown;
 begin
 end;
 
-procedure TTestSerializer.TestInteger;
+procedure TTestSerializer.TestInteger(const AValue: Integer);
+var
+  LJSON: string;
 begin
+  LJSON := TTestUtils.SerializeValueFrom<Integer>(AValue);
+  Assert.AreEqual('42', LJSON);
 end;
 
-procedure TTestSerializer.Test2(const AValue1 : Integer;const AValue2 : Integer);
+procedure TTestSerializer.TestString(const AValue: string);
+var
+  LJSON: string;
 begin
+  LJSON := TTestUtils.SerializeValueFrom<string>(AValue);
+  Assert.AreEqual('"Lorem \"Ipsum\" \\n \\\\ {}"', LJSON);
 end;
 
 initialization
   TDUnitX.RegisterTestFixture(TTestSerializer);
+
 end.

@@ -42,9 +42,9 @@ type
     procedure btnSerSimpleStringClick(Sender: TObject);
     procedure btnDesTypeClassClick(Sender: TObject);
   private
-   procedure SerializeSimple<T>(AValue: T);
-   procedure DeserializeSimple<T>; overload;
-   procedure DeserializeSimple<T>(AValue: T); overload;
+    procedure SerializeSimple<T>(AValue: T);
+    procedure DeserializeSimple<T>; overload;
+    procedure DeserializeSimple<T>(AValue: T); overload;
   public
     { Public declarations }
   end;

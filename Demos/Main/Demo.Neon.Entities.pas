@@ -132,7 +132,7 @@ type
     property City: string read FCity write FCity;
     property Country: string read FCountry write FCountry;
 
-    function ToString: string;
+    function ToString: string; override;
     procedure FromString(const AValue: string);
   end;
 

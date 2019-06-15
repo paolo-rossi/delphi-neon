@@ -1,5 +1,4 @@
 program Neon.Tests.Framework;
-
 {$IFNDEF TESTINSIGHT}
 {$APPTYPE CONSOLE}
 {$ENDIF}{$STRONGLINKTYPES ON}
@@ -11,7 +10,8 @@ uses
   DUnitX.Loggers.Console,
   DUnitX.Loggers.Xml.NUnit,
   DUnitX.TestFramework,
-  Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas';
+  Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas',
+  Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas';
 
 var
   runner : ITestRunner;

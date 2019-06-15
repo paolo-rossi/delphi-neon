@@ -34,7 +34,7 @@ type
 type
   TNeonCase = (LowerCase, UpperCase, PascalCase, CamelCase, SnakeCase, CustomCase);
   TNeonMemberType = (Unknown, Prop, Field, Indexed);
-  TNeonMembers = (Unknown, Standard, Fields, Properties);
+  TNeonMembers = (Standard, Fields, Properties);
   TNeonMembersSet = set of TNeonMembers;
   TNeonVisibility = set of TMemberVisibility;
   TNeonIncludeOption = (Default, Include, Exclude);
