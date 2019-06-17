@@ -42,18 +42,22 @@ type
     btnDesMyClass: TButton;
     btnSerParameter: TButton;
     btnSerFont: TButton;
-    btnCaseClass: TButton;
+    btnSerCaseClass: TButton;
     btnDesCaseClass: TButton;
     btnDesParameter: TButton;
     btnDesFont: TButton;
-    procedure btnCaseClassClick(Sender: TObject);
+    btnSerNullables: TButton;
+    btnDesNullables: TButton;
+    procedure btnSerCaseClassClick(Sender: TObject);
     procedure btnDesCaseClassClick(Sender: TObject);
     procedure btnDesFontClick(Sender: TObject);
     procedure btnSerFontClick(Sender: TObject);
     procedure btnSerParameterClick(Sender: TObject);
     procedure btnSerMyClassClick(Sender: TObject);
     procedure btnDesMyClassClick(Sender: TObject);
+    procedure btnDesNullablesClick(Sender: TObject);
     procedure btnDesParameterClick(Sender: TObject);
+    procedure btnSerNullablesClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -72,7 +76,7 @@ uses
 
 {$R *.dfm}
 
-procedure TfrmSerializationCustom.btnCaseClassClick(Sender: TObject);
+procedure TfrmSerializationCustom.btnSerCaseClassClick(Sender: TObject);
 var
   LVal: TCaseClass;
 begin
@@ -134,14 +138,14 @@ end;
 
 procedure TfrmSerializationCustom.btnSerMyClassClick(Sender: TObject);
 var
-  LClass: TMyClass;
+  LObj: TMyClass;
 begin
-  LClass := TMyDerivedClass.Create;
+  LObj := TMyDerivedClass.Create;
   try
-    LClass.DefaultValues;
-    SerializeObject(LClass, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    LObj.DefaultValues;
+    SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
-    LClass.Free;
+    LObj.Free;
   end;
 end;
 
@@ -159,6 +163,19 @@ begin
   end;
 end;
 
+procedure TfrmSerializationCustom.btnDesNullablesClick(Sender: TObject);
+var
+  LObj: TClassOfNullables;
+begin
+  LObj := TClassOfNullables.Create;
+  try
+    DeserializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  finally
+    LObj.Free;
+  end;
+end;
+
 procedure TfrmSerializationCustom.btnDesParameterClick(Sender: TObject);
 var
   LVal: TParameterContainer;
@@ -169,6 +186,22 @@ begin
     SerializeObject(LVal, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
     LVal.Free;
+  end;
+end;
+
+procedure TfrmSerializationCustom.btnSerNullablesClick(Sender: TObject);
+var
+  LObj: TClassOfNullables;
+begin
+  LObj := TClassOfNullables.Create;
+  try
+    LObj.Name := 'Paolo';
+    //LObj.Age := 50;
+    LObj.Speed := TEnumSpeed.Medium;
+
+    SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  finally
+    LObj.Free;
   end;
 end;
 

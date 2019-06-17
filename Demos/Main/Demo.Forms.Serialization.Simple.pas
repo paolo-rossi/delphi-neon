@@ -155,7 +155,7 @@ end;
 
 procedure TfrmSerializationSimple.btnSerSimpleStringClick(Sender: TObject);
 begin
-  SerializeSimple<string>('Paolo Rossi');
+  SerializeSimple<string>('Lorem "Ipsum" \n \\ {}');
 end;
 
 procedure TfrmSerializationSimple.btnDesTypeClassClick(Sender: TObject);

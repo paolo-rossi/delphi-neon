@@ -160,6 +160,15 @@ type
     /// </remarks>
     function WriteStreamable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
     function IsStreamable(const AValue: TValue): Boolean;
+
+    /// <summary>
+    ///   Writer for "Nullable" records
+    /// </summary>
+    /// <remarks>
+    ///   Record must have HasValue and GetValue methods
+    /// </remarks>
+    function WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+    function IsNullable(const AValue: TValue): Boolean;
   protected
     /// <summary>
     ///   Function to be called by a custom serializer method (ISerializeContext)
@@ -214,11 +223,12 @@ type
     function ReadRecord(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
     function ReadDataSet(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
     function ReadStream(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
-    
+
 	// Dynamic types
     function ReadStreamable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
     function ReadEnumerable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
     function ReadEnumerableMap(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
+    function ReadNullable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
   private
     function ReadDataMember(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue; overload;
     function ReadDataMember(const AParam: TNeonDeserializerParam; const AData: TValue): TValue; overload;
@@ -373,6 +383,11 @@ end;
 function TNeonSerializerJSON.IsEnumerableMap(const AValue: TValue): Boolean;
 begin
   Result := Assigned(TDynamicMap.GuessType(AValue.AsObject));
+end;
+
+function TNeonSerializerJSON.IsNullable(const AValue: TValue): Boolean;
+begin
+  Result := Assigned(TDynamicNullable.GuessType(AValue));
 end;
 
 function TNeonSerializerJSON.IsStreamable(const AValue: TValue): Boolean;
@@ -547,9 +562,10 @@ begin
 
     tkRecord:
     begin
-      Result := WriteRecord(AValue, ANeonObject);
-      if not Assigned(Result) then
-        Result := TJSONObject.Create;
+      if IsNullable(AValue) then
+        Result := WriteNullable(AValue, ANeonObject)
+      else
+        Result := WriteRecord(AValue, ANeonObject);
     end;
 
     tkInterface:
@@ -674,6 +690,18 @@ begin
   finally
     LMembers.Free;
   end;
+end;
+
+function TNeonSerializerJSON.WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+var
+  LNullable: IDynamicNullable;
+begin
+  Result := nil;
+
+  LNullable := TDynamicNullable.GuessType(AValue);
+
+  if Assigned(LNullable) and LNullable.HasValue then
+    Result := WriteDataMember(LNullable.GetValue);
 end;
 
 function TNeonSerializerJSON.WriteObject(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -997,6 +1025,7 @@ begin
   LParam.JSONValue := AJSONValue;
   LParam.RttiType := AType;
   LParam.NeonObject := TNeonRttiObject.Create(AType, FOperation);
+  LParam.NeonObject.ParseAttributes;
   try
     Result := ReadDataMember(LParam, AData);
   finally
@@ -1058,7 +1087,13 @@ begin
       end;
     end;
     tkInterface:   Result := ReadInterface(AParam, AData);
-    tkRecord:      Result := ReadRecord(AParam, AData);
+    tkRecord:
+    begin
+      if ReadNullable(AParam, AData) then
+        Result := AData
+      else
+       Result := ReadRecord(AParam, AData);
+    end;
 
     // Not supported (yet)
     {
@@ -1288,6 +1323,23 @@ begin
     end;
   finally
     LMembers.Free;
+  end;
+end;
+
+function TNeonDeserializerJSON.ReadNullable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
+var
+  LNullable: IDynamicNullable;
+  LValue: TValue;
+  LValueType: TRttiType;
+begin
+  Result := False;
+  LNullable := TDynamicNullable.GuessType(AData);
+  if Assigned(LNullable) then
+  begin
+    Result := True;
+    LValueType := TRttiUtils.Context.GetType(LNullable.GetValueType);
+    LValue := JSONToTValue(AParam.JSONValue, LValueType);
+    LNullable.SetValue(LValue);
   end;
 end;
 

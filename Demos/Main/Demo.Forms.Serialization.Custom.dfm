@@ -39,14 +39,14 @@ inherited frmSerializationCustom: TfrmSerializationCustom
     TabOrder = 3
     OnClick = btnSerFontClick
   end
-  object btnCaseClass: TButton [4]
+  object btnSerCaseClass: TButton [4]
     Left = 3
     Top = 125
     Width = 131
     Height = 25
     Caption = 'TCaseClass'
     TabOrder = 4
-    OnClick = btnCaseClassClick
+    OnClick = btnSerCaseClassClick
   end
   object btnDesCaseClass: TButton [5]
     Left = 485
@@ -92,5 +92,24 @@ inherited frmSerializationCustom: TfrmSerializationCustom
   end
   inherited memoLog: TMemo
     TabOrder = 8
+  end
+  object btnSerNullables: TButton
+    Left = 3
+    Top = 188
+    Width = 131
+    Height = 25
+    Caption = 'Nullables'
+    TabOrder = 13
+    OnClick = btnSerNullablesClick
+  end
+  object btnDesNullables: TButton
+    Left = 485
+    Top = 188
+    Width = 131
+    Height = 25
+    Anchors = [akTop, akRight]
+    Caption = 'Nullables'
+    TabOrder = 14
+    OnClick = btnDesNullablesClick
   end
 end

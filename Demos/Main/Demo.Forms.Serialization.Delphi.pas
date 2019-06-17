@@ -26,7 +26,9 @@ interface
 uses
   Winapi.Windows, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Data.DB,
-  Demo.Forms.Serialization.Base;
+
+  Demo.Forms.Serialization.Base,
+  Neon.Core.Attributes;
 
 type
   TfrmSerializationDelphi = class(TfrmSerializationBase)

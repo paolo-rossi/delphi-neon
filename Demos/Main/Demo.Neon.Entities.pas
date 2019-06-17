@@ -28,6 +28,7 @@ uses
   System.Math, System.Math.Vectors, System.Types, system.JSON, Vcl.Graphics,
 
   Neon.Core.Types,
+  Neon.Core.Nullables,
   Neon.Core.Attributes;
 
 {$M+}
@@ -35,7 +36,7 @@ uses
 
 type
 
-  [NeonEnumNames('Low Speed, Medium Speed, High Speed')]
+  [NeonEnumNames('Low Speed,Medium Speed,High Speed')]
   TEnumSpeed = (Low, Medium, High);
 
   // Sample
@@ -310,6 +311,20 @@ type
     [NeonInclude(Include.NotEmpty)]
     property PropEnum: TTypeKind read FPropEnum write FPropEnum;
   end;
+
+
+  TClassOfNullables = class
+  private
+    FName: NullString;
+    FAge: NullInteger;
+    FSpeed: Nullable<TEnumSpeed>;
+  public
+    property Name: NullString read FName write FName;
+    //[NeonInclude(Include.NotEmpty)]
+    property Age: NullInteger read FAge write FAge;
+    property Speed: Nullable<TEnumSpeed> read FSpeed write FSpeed;
+  end;
+
 
 
 implementation

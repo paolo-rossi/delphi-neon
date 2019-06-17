@@ -69,6 +69,14 @@ type
     procedure KeyFromString(const AKey: TValue; const AStringVal: string);
   end;
 
+  IDynamicNullable = interface(IDynamicType)
+  ['{B1F7F5F0-223B-4ADF-9845-40278D57F62C}']
+    function HasValue: Boolean;
+    function GetValue: TValue;
+    function GetValueType: PTypeInfo;
+    procedure SetValue(const AValue: TValue);
+  end;
+
   TDynamicStream = class(TInterfacedObject, IDynamicStream)
   private
     FInstance: TObject;
@@ -161,6 +169,25 @@ type
     function KeyToString(const AKey: TValue): string;
     procedure KeyFromString(const AKey: TValue; const AStringVal: string);
   end;
+
+  TDynamicNullable = class(TInterfacedObject, IDynamicNullable)
+  private
+    FInstance: TValue;
+    FTypeInfoMethod: TRttiMethod;
+    FHasValueMethod: TRttiMethod;
+    FGetValueMethod: TRttiMethod;
+    FSetValueMethod: TRttiMethod;
+    constructor Create(AInstance: TValue; ATypeInfoMethod, AHasValueMethod, AGetValueMethod, ASetValueMethod: TRttiMethod);
+  public
+    class function GuessType(AInstance: TValue): IDynamicNullable;
+
+    // Interface IDynamicNullable
+    function HasValue: Boolean;
+    function GetValue: TValue;
+    function GetValueType: PTypeInfo;
+    procedure SetValue(const AValue: TValue);
+  end;
+
 
 implementation
 
@@ -531,6 +558,71 @@ end;
 function TDynamicMap.TEnumerator.MoveNext: Boolean;
 begin
   Result := FMoveNextMethod.Invoke(FInstance, []).AsBoolean;
+end;
+
+{ TDynamicNullable }
+
+constructor TDynamicNullable.Create(AInstance: TValue; ATypeInfoMethod, AHasValueMethod,
+  AGetValueMethod, ASetValueMethod: TRttiMethod);
+begin
+  FInstance := AInstance;
+  FTypeInfoMethod := ATypeInfoMethod;
+  FHasValueMethod := AHasValueMethod;
+  FGetValueMethod := AGetValueMethod;
+  FSetValueMethod := ASetValueMethod;
+end;
+
+class function TDynamicNullable.GuessType(AInstance: TValue): IDynamicNullable;
+var
+  LType: TRttiType;
+  LTypeInfoMethod, LHasValueMethod: TRttiMethod;
+  LGetValueMethod, LSetValueMethod: TRttiMethod;
+begin
+  if AInstance.IsEmpty then
+    Exit(nil);
+
+  LType := TRttiUtils.Context.GetType(AInstance.TypeInfo);
+
+  if not Assigned(LType) then
+    Exit(nil);
+
+  LTypeInfoMethod := LType.GetMethod('GetValueType');
+  if not Assigned(LTypeInfoMethod) then
+    Exit(nil);
+
+  LHasValueMethod := LType.GetMethod('GetHasValue');
+  if not Assigned(LHasValueMethod) then
+    Exit(nil);
+
+  LGetValueMethod := LType.GetMethod('GetValue');
+  if not Assigned(LGetValueMethod) then
+    Exit(nil);
+
+  LSetValueMethod := LType.GetMethod('SetValue');
+  if not Assigned(LSetValueMethod) then
+    Exit(nil);
+
+  Result := Self.Create(AInstance, LTypeInfoMethod, LHasValueMethod, LGetValueMethod, LSetValueMethod);
+end;
+
+function TDynamicNullable.HasValue: Boolean;
+begin
+  Result := FHasValueMethod.Invoke(FInstance, []).AsBoolean;
+end;
+
+procedure TDynamicNullable.SetValue(const AValue: TValue);
+begin
+  FSetValueMethod.Invoke(FInstance, [AValue]);
+end;
+
+function TDynamicNullable.GetValue: TValue;
+begin
+  Result := FGetValueMethod.Invoke(FInstance, []);
+end;
+
+function TDynamicNullable.GetValueType: PTypeInfo;
+begin
+  Result := FTypeInfoMethod.Invoke(FInstance, []).AsType<PTypeInfo>;
 end;
 
 end.
