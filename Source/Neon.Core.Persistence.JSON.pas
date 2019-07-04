@@ -140,8 +140,8 @@ type
     /// <remarks>
     ///   Objects must have GetEnumerator, Clear, Add methods
     /// </remarks>
-    function WriteEnumerable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
-    function IsEnumerable(const AValue: TValue): Boolean;
+    function WriteEnumerable(const AValue: TValue; ANeonObject: TNeonRttiObject; AList: IDynamicList): TJSONValue;
+    function IsEnumerable(const AValue: TValue; out AList: IDynamicList): Boolean;
 
     /// <summary>
     ///   Writer for "Dictionary" objects (TDictionary, TObjectDictionary)
@@ -149,8 +149,8 @@ type
     /// <remarks>
     ///   Objects must have Keys, Values, GetEnumerator, Clear, Add methods
     /// </remarks>
-    function WriteEnumerableMap(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
-    function IsEnumerableMap(const AValue: TValue): Boolean;
+    function WriteEnumerableMap(const AValue: TValue; ANeonObject: TNeonRttiObject; AMap: IDynamicMap): TJSONValue;
+    function IsEnumerableMap(const AValue: TValue; out AMap: IDynamicMap): Boolean;
 
     /// <summary>
     ///   Writer for "Streamable" objects
@@ -158,8 +158,8 @@ type
     /// <remarks>
     ///   Objects must have LoadFromStream and SaveToStream methods
     /// </remarks>
-    function WriteStreamable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
-    function IsStreamable(const AValue: TValue): Boolean;
+    function WriteStreamable(const AValue: TValue; ANeonObject: TNeonRttiObject; AStream: IDynamicStream): TJSONValue;
+    function IsStreamable(const AValue: TValue; out AStream: IDynamicStream): Boolean;
 
     /// <summary>
     ///   Writer for "Nullable" records
@@ -167,8 +167,8 @@ type
     /// <remarks>
     ///   Record must have HasValue and GetValue methods
     /// </remarks>
-    function WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
-    function IsNullable(const AValue: TValue): Boolean;
+    function WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject; ANullable: IDynamicNullable): TJSONValue;
+    function IsNullable(const AValue: TValue; out ANullable: IDynamicNullable): Boolean;
   protected
     /// <summary>
     ///   Function to be called by a custom serializer method (ISerializeContext)
@@ -375,24 +375,28 @@ begin
   FOperation := TNeonOperation.Serialize;
 end;
 
-function TNeonSerializerJSON.IsEnumerable(const AValue: TValue): Boolean;
+function TNeonSerializerJSON.IsEnumerable(const AValue: TValue; out AList: IDynamicList): Boolean;
 begin
-  Result := Assigned(TDynamicList.GuessType(AValue.AsObject));
+  AList := TDynamicList.GuessType(AValue.AsObject);
+  Result := Assigned(AList);
 end;
 
-function TNeonSerializerJSON.IsEnumerableMap(const AValue: TValue): Boolean;
+function TNeonSerializerJSON.IsEnumerableMap(const AValue: TValue; out AMap: IDynamicMap): Boolean;
 begin
-  Result := Assigned(TDynamicMap.GuessType(AValue.AsObject));
+  AMap := TDynamicMap.GuessType(AValue.AsObject);
+  Result := Assigned(AMap);
 end;
 
-function TNeonSerializerJSON.IsNullable(const AValue: TValue): Boolean;
+function TNeonSerializerJSON.IsNullable(const AValue: TValue; out ANullable: IDynamicNullable): Boolean;
 begin
-  Result := Assigned(TDynamicNullable.GuessType(AValue));
+  ANullable := TDynamicNullable.GuessType(AValue);
+  Result := Assigned(ANullable);
 end;
 
-function TNeonSerializerJSON.IsStreamable(const AValue: TValue): Boolean;
+function TNeonSerializerJSON.IsStreamable(const AValue: TValue; out AStream: IDynamicStream): Boolean;
 begin
-  Result := Assigned(TDynamicStream.GuessType(AValue.AsObject));
+  AStream := TDynamicStream.GuessType(AValue.AsObject);
+  Result := Assigned(AStream);
 end;
 
 function TNeonSerializerJSON.ObjectToJSON(AObject: TObject): TJSONValue;
@@ -471,6 +475,13 @@ end;
 function TNeonSerializerJSON.WriteDataMember(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LCustomSer: TCustomSerializer;
+  LDynamicType: IDynamicType;
+
+
+  LDynamicMap: IDynamicMap absolute LDynamicType;
+  LDynamicList: IDynamicList absolute LDynamicType;
+  LDynamicStream: IDynamicStream absolute LDynamicType;
+  LDynamicNullable: IDynamicNullable absolute LDynamicType;
 begin
   Result := nil;
 
@@ -535,12 +546,12 @@ begin
         Result := WriteDataSet(AValue, ANeonObject)
       else if AValue.AsObject is TStream then
         Result := WriteStream(AValue, ANeonObject)
-      else if IsEnumerableMap(AValue) then
-        Result := WriteEnumerableMap(AValue, ANeonObject)
-      else if IsEnumerable(AValue) then
-        Result := WriteEnumerable(AValue, ANeonObject)
-      else if IsStreamable(AValue) then
-        Result := WriteStreamable(AValue, ANeonObject)
+      else if IsEnumerableMap(AValue, LDynamicMap) then
+        Result := WriteEnumerableMap(AValue, ANeonObject, LDynamicMap)
+      else if IsEnumerable(AValue, LDynamicList) then
+        Result := WriteEnumerable(AValue, ANeonObject, LDynamicList)
+      else if IsStreamable(AValue, LDynamicStream) then
+        Result := WriteStreamable(AValue, ANeonObject, LDynamicStream)
       else
         Result := WriteObject(AValue, ANeonObject);
     end;
@@ -562,8 +573,8 @@ begin
 
     tkRecord:
     begin
-      if IsNullable(AValue) then
-        Result := WriteNullable(AValue, ANeonObject)
+      if IsNullable(AValue, LDynamicNullable) then
+        Result := WriteNullable(AValue, ANeonObject, LDynamicNullable)
       else
         Result := WriteRecord(AValue, ANeonObject);
     end;
@@ -692,16 +703,12 @@ begin
   end;
 end;
 
-function TNeonSerializerJSON.WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
-var
-  LNullable: IDynamicNullable;
+function TNeonSerializerJSON.WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject; ANullable: IDynamicNullable): TJSONValue;
 begin
   Result := nil;
 
-  LNullable := TDynamicNullable.GuessType(AValue);
-
-  if Assigned(LNullable) and LNullable.HasValue then
-    Result := WriteDataMember(LNullable.GetValue);
+  if Assigned(ANullable) and ANullable.HasValue then
+    Result := WriteDataMember(ANullable.GetValue);
 end;
 
 function TNeonSerializerJSON.WriteObject(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -727,66 +734,50 @@ begin
   end;
 end;
 
-function TNeonSerializerJSON.WriteEnumerable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSerializerJSON.WriteEnumerable(const AValue: TValue; ANeonObject: TNeonRttiObject; AList: IDynamicList): TJSONValue;
 var
-  LObject: TObject;
   LJSONValue: TJSONValue;
-  LList: IDynamicList;
 begin
-  LObject := AValue.AsObject;
-  LList := TDynamicList.GuessType(LObject);
   // Is not an Enumerable compatible object
-  if not Assigned(LList) then
+  if not Assigned(AList) then
     Exit(nil);
-
-  if ANeonObject.NeonInclude.Value = Include.NotNull then
-    if not Assigned(LObject) then
-      Exit(nil);
-
-  if not Assigned(LObject) then
-    Exit(TJSONNull.Create);
-
   if ANeonObject.NeonInclude.Value = Include.NotEmpty then
-    if LList.Count = 0 then
+    if AList.Count = 0 then
       Exit(nil);
 
   Result := TJSONArray.Create;
-  while LList.MoveNext do
+  while AList.MoveNext do
   begin
-    LJSONValue := WriteDataMember(LList.Current);
+    LJSONValue := WriteDataMember(AList.Current);
     (Result as TJSONArray).AddElement(LJSONValue);
   end;
 end;
 
-function TNeonSerializerJSON.WriteEnumerableMap(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSerializerJSON.WriteEnumerableMap(const AValue: TValue; ANeonObject: TNeonRttiObject; AMap: IDynamicMap): TJSONValue;
 var
-  LObject: TObject;
   LName: string;
   LJSONName: TJSONValue;
   LJSONValue: TJSONValue;
   LKeyValue, LValValue: TValue;
-  LMap: IDynamicMap;
 begin
-  LObject := AValue.AsObject;
-  LMap := TDynamicMap.GuessType(LObject);
   // Is not an EnumerableMap-compatible object
-  if not Assigned(LMap) then
+  if not Assigned(AMap) then
     Exit(nil);
 
   case ANeonObject.NeonInclude.Value of
     Include.Always:
     begin
-      if not Assigned(LObject) then
+      if not Assigned(AMap) then
         Exit(TJSONNull.Create);
     end;
     Include.NotNull:
     begin
-      if not Assigned(LObject) then
+      if not Assigned(AMap) then
         Exit(nil);
     end;
     Include.NotEmpty:
     begin
-      if LMap.Count = 0 then
+      if AMap.Count = 0 then
         Exit(nil);
     end;
     Include.NotDefault: ;
@@ -794,10 +785,10 @@ begin
 
   Result := TJSONObject.Create;
   try
-    while LMap.MoveNext do
+    while AMap.MoveNext do
     begin
-      LKeyValue := LMap.CurrentKey;
-      LValValue := LMap.CurrentValue;
+      LKeyValue := AMap.CurrentKey;
+      LValValue := AMap.CurrentValue;
 
       LJSONName := WriteDataMember(LKeyValue);
       try
@@ -805,8 +796,8 @@ begin
 
         if LJSONName is TJSONString then
           LName := (LJSONName as TJSONString).Value
-        else if LMap.KeyIsString then
-          LName := LMap.KeyToString(LKeyValue);
+        else if AMap.KeyIsString then
+          LName := AMap.KeyToString(LKeyValue);
 
         (Result as TJSONObject).AddPair(LName, LJSONValue);
 
@@ -880,25 +871,18 @@ begin
   Result := TJSONString.Create(LBase64);
 end;
 
-function TNeonSerializerJSON.WriteStreamable(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSerializerJSON.WriteStreamable(const AValue: TValue; ANeonObject: TNeonRttiObject; AStream: IDynamicStream): TJSONValue;
 var
-  LObject: TObject;
   LBinaryStream: TMemoryStream;
   LBase64: string;
-  LStreamable: IDynamicStream;
 begin
   Result := nil;
-  LObject := AValue.AsObject;
-  if not Assigned(LObject) then
-    Exit(TJSONNull.Create);
 
-  LStreamable := TDynamicStream.GuessType(LObject);
-
-  if Assigned(LStreamable) then
+  if Assigned(AStream) then
   begin
     LBinaryStream := TMemoryStream.Create;
     try
-      LStreamable.SaveToStream(LBinaryStream);
+      AStream.SaveToStream(LBinaryStream);
       LBinaryStream.Position := soFromBeginning;
       LBase64 := TBase64.Encode(LBinaryStream);
       if IsOriginalInstance(AValue) then
