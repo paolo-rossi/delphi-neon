@@ -136,6 +136,8 @@ type
     class function RecordToXML(const ADataSet: TDataSet; const ARootPath: string; AConfig: TNeonConfiguration): string; static;
     class function RecordToCSV(const ADataSet: TDataSet; AConfig: TNeonConfiguration): string; static;
   public
+    class function RecordToJSONSchema(const ADataSet: TDataSet; AConfig: TNeonConfiguration): TJSONObject; static;
+
     class function RecordToJSONObject(const ADataSet: TDataSet; AConfig: TNeonConfiguration): TJSONObject; static;
     class function DataSetToJSONArray(const ADataSet: TDataSet; AConfig: TNeonConfiguration): TJSONArray; overload; static;
     class function DataSetToJSONArray(const ADataSet: TDataSet; const AAcceptFunc: TFunc<Boolean>; AConfig: TNeonConfiguration): TJSONArray; overload; static;
@@ -343,6 +345,159 @@ begin
 //        ftTimeStampOffset: ;
 //        ftObject: ;
       TFieldType.ftSingle:        Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
+    end;
+  end;
+end;
+
+class function TDataSetUtils.RecordToJSONSchema(const ADataSet: TDataSet; AConfig: TNeonConfiguration): TJSONObject;
+var
+  LField: TField;
+  LPairName: string;
+  LJSONField: TJSONObject;
+begin
+  Result := TJSONObject.Create;
+
+  if not Assigned(ADataSet) then
+    Exit;
+
+  if not ADataSet.Active then
+    ADataSet.Open;
+
+  for LField in ADataSet.Fields do
+  begin
+    LPairName := LField.FieldName;
+
+    if LPairName.Contains('.') then
+      Continue;
+
+    LJSONField := TJSONObject.Create;
+    Result.AddPair(LPairName, LJSONField);
+
+    case LField.DataType of
+      TFieldType.ftString:
+      begin
+        LJSONField.AddPair('type', 'string');
+      end;
+
+      TFieldType.ftSmallint,
+      TFieldType.ftInteger,
+      TFieldType.ftWord,
+      TFieldType.ftLongWord,
+      TFieldType.ftShortint,
+      TFieldType.ftByte:
+      begin
+        LJSONField.AddPair('type', 'integer').AddPair('format', 'int32');
+      end;
+
+      TFieldType.ftBoolean:
+      begin
+        LJSONField.AddPair('type', 'boolean');
+      end;
+
+      TFieldType.ftFloat,
+      TFieldType.ftSingle:
+      begin
+        LJSONField.AddPair('type', 'number').AddPair('format', 'float');
+      end;
+
+      TFieldType.ftCurrency,
+      TFieldType.ftExtended:
+      begin
+        LJSONField.AddPair('type', 'number').AddPair('format', 'double');
+      end;
+
+      TFieldType.ftBCD:
+      begin
+        LJSONField.AddPair('type', 'number').AddPair('format', 'double');
+      end;
+
+      TFieldType.ftDate:
+      begin
+        LJSONField.AddPair('type', 'string').AddPair('format', 'date');
+      end;
+
+      TFieldType.ftTime:
+      begin
+        LJSONField.AddPair('type', 'string').AddPair('format', 'date-time');
+      end;
+
+      TFieldType.ftDateTime:
+      begin
+        LJSONField.AddPair('type', 'string').AddPair('format', 'date-time');
+      end;
+
+//        ftBytes: ;
+//        ftVarBytes: ;
+
+      TFieldType.ftAutoInc:
+      begin
+        LJSONField.AddPair('type', 'integer').AddPair('format', 'int32');
+      end;
+
+      //        ftBlob: ;
+
+      TFieldType.ftMemo,
+      TFieldType.ftWideMemo:
+      begin
+        LJSONField.AddPair('type', 'string');
+      end;
+
+//        ftGraphic: ;
+//        ftFmtMemo: ;
+//        ftParadoxOle: ;
+//        ftDBaseOle: ;
+//        ftTypedBinary: ;
+//        ftCursor: ;
+      TFieldType.ftFixedChar,
+      TFieldType.ftFixedWideChar,
+      TFieldType.ftWideString:
+      begin
+        LJSONField.AddPair('type', 'string');
+      end;
+
+      TFieldType.ftLargeint:
+      begin
+        LJSONField.AddPair('type', 'integer').AddPair('format', 'int64');
+      end;
+
+//        ftADT: ;
+//        ftArray: ;
+//        ftReference: ;
+//        ftDataSet: ;
+//        ftOraBlob: ;
+//        ftOraClob: ;
+
+      TFieldType.ftVariant:
+      begin
+        LJSONField.AddPair('type', 'string');
+      end;
+
+//        ftInterface: ;
+//        ftIDispatch: ;
+
+      TFieldType.ftGuid:
+      begin
+        LJSONField.AddPair('type', 'string');
+      end;
+
+      TFieldType.ftTimeStamp:
+      begin
+        LJSONField.AddPair('type', 'string').AddPair('format', 'date-time');
+      end;
+
+      TFieldType.ftFMTBcd:
+      begin
+        LJSONField.AddPair('type', 'number').AddPair('format', 'double');
+      end;
+
+
+//        ftOraTimeStamp: ;
+//        ftOraInterval: ;
+//        ftConnection: ;
+//        ftParams: ;
+//        ftStream: ;
+//        ftTimeStampOffset: ;
+//        ftObject: ;
     end;
   end;
 end;

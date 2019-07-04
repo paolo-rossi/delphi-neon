@@ -112,9 +112,11 @@
             <Form>frmSerializationDelphi</Form>
             <FormType>dfm</FormType>
         </DCCReference>
+        <DCCReference Include="Demo.Forms.Serialization.Schema.pas">
+            <Form>frmSerializationSchema</Form>
+        </DCCReference>
         <DCCReference Include="Demo.Forms.Details.pas">
             <Form>frmDetails</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_2</Key>

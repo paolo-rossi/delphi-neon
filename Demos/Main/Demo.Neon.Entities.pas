@@ -252,6 +252,17 @@ type
     property Prop5: TVector3D read FProp5 write FProp5;
   end;
 
+  TClassSubClass = class
+  private
+    FName: string;
+    FDate: TDateTime;
+    FNote: TNote;
+  public
+    property Name: string read FName write FName;
+    property Date: TDateTime read FDate write FDate;
+    //property Note: TNote read FNote write FNote;
+  end;
+
   TMyClass = class
   private
     FGUID: TGUID;

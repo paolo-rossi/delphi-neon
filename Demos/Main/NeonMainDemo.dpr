@@ -32,6 +32,7 @@ uses
   Demo.Forms.Serialization.Simple in 'Demo.Forms.Serialization.Simple.pas' {frmSerializationSimple},
   Demo.Forms.Serialization.Complex in 'Demo.Forms.Serialization.Complex.pas' {frmSerializationComplex},
   Demo.Forms.Serialization.Delphi in 'Demo.Forms.Serialization.Delphi.pas' {frmSerializationDelphi},
+  Demo.Forms.Serialization.Schema in 'Demo.Forms.Serialization.Schema.pas' {frmSerializationSchema},
   Demo.Forms.Details in 'Demo.Forms.Details.pas' {frmDetails};
 
 {$R *.res}

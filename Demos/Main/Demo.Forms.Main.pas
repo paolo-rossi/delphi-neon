@@ -64,7 +64,8 @@ uses
   System.Generics.Collections, Vcl.Graphics,
 
   Demo.Forms.Serialization.Custom, Demo.Forms.Serialization.Delphi,
-  Demo.Forms.Serialization.Simple, Demo.Forms.Serialization.Complex;
+  Demo.Forms.Serialization.Simple, Demo.Forms.Serialization.Complex,
+  Demo.Forms.Serialization.Schema;
 
 { TMainForm }
 
@@ -92,6 +93,7 @@ begin
   CreateTab('Complex Types', clNavy, TfrmSerializationComplex);
   CreateTab('Delphi Types', clOlive, TfrmSerializationDelphi);
   CreateTab('Custom Types', clMaroon, TfrmSerializationCustom);
+  CreateTab('JSON Schema', clWebTan, TfrmSerializationSchema);
 end;
 
 initialization
