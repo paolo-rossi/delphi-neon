@@ -260,7 +260,7 @@ type
   public
     property Name: string read FName write FName;
     property Date: TDateTime read FDate write FDate;
-    //property Note: TNote read FNote write FNote;
+    property Note: TNote read FNote write FNote;
   end;
 
   TMyClass = class

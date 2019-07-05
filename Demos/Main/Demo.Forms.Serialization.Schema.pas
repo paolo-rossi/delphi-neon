@@ -38,19 +38,13 @@ uses
 
 procedure TfrmSerializationSchema.btnSchemaCaseClassClick(Sender: TObject);
 var
-  LSchema: TNeonSchemaGenerator;
-  LJSON: TJSONValue;
+  LJSON: TJSONObject;
 begin
-  LSchema := TNeonSchemaGenerator.Create(TNeonConfiguration.Default);
+  LJSON := TNeonSchemaGenerator.ClassToJSONSchema(TCaseClass);
   try
-    LJSON := LSchema.ClassToJSONSchema(TCaseClass);
-    try
-      memoSerialize.Lines.Text := TNeon.Print(LJSON, True);
-    finally
-      LJSON.Free;
-    end;
+    memoSerialize.Lines.Text := TNeon.Print(LJSON, True);
   finally
-    LSchema.Free;
+    LJSON.Free;
   end;
 end;
 

@@ -44,44 +44,44 @@ type
     /// <summary>
     ///   Writer for members of objects and records
     /// </summary>
-    procedure WriteMembers(AType: TRttiType; AResult: TJSONValue);
+    procedure WriteMembers(AType: TRttiType; AResult: TJSONObject);
   private
     /// <summary>
     ///   Writer for string types
     /// </summary>
-    function WriteString(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteString(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for Boolean types
     /// </summary>
-    function WriteBoolean(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteBoolean(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for enums types <br />
     /// </summary>
-    function WriteEnum(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteEnum(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for Integer types <br />
     /// </summary>
-    function WriteInteger(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteInteger(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for Integer types <br />
     /// </summary>
-    function WriteInt64(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteInt64(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for float types
     /// </summary>
-    function WriteFloat(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
-    function WriteDouble(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteFloat(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+    function WriteDouble(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for TDate* types
     /// </summary>
-    function WriteDate(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
-    function WriteDateTime(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteDate(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+    function WriteDateTime(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for Variant types
@@ -89,13 +89,13 @@ type
     /// <remarks>
     ///   The variant will be written as string
     /// </remarks>
-    function WriteVariant(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteVariant(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for static and dynamic arrays
     /// </summary>
-    function WriteArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
-    function WriteDynArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+    function WriteDynArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for the set type
@@ -104,7 +104,7 @@ type
     ///   The output is a string with the values comma separated and enclosed by square brackets
     /// </remarks>
     /// <returns>[First,Second,Third]</returns>
-    function WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for a record type
@@ -112,12 +112,12 @@ type
     /// <remarks>
     ///   For records the engine serialize the fields by default
     /// </remarks>
-    function WriteRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for a standard TObject (descendants)  type (no list, stream or streamable)
     /// </summary>
-    function WriteObject(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteObject(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for an Interface type
@@ -125,17 +125,17 @@ type
     /// <remarks>
     ///   The object that implements the interface is serialized
     /// </remarks>
-    function WriteInterface(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteInterface(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for TStream (descendants) objects
     /// </summary>
-    function WriteStream(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteStream(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for TDataSet (descendants) objects
     /// </summary>
-    function WriteDataSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+    function WriteDataSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for "Enumerable" objects (Lists, Generic Lists, TStrings, etc...)
@@ -143,7 +143,7 @@ type
     /// <remarks>
     ///   Objects must have GetEnumerator, Clear, Add methods
     /// </remarks>
-    function WriteEnumerable(AType: TRttiType; ANeonObject: TNeonRttiObject; AList: INeonTypeInfoList): TJSONValue;
+    function WriteEnumerable(AType: TRttiType; ANeonObject: TNeonRttiObject; AList: INeonTypeInfoList): TJSONObject;
     function IsEnumerable(AType: TRttiType; out AList: INeonTypeInfoList): Boolean;
 
     /// <summary>
@@ -152,7 +152,7 @@ type
     /// <remarks>
     ///   Objects must have Keys, Values, GetEnumerator, Clear, Add methods
     /// </remarks>
-    function WriteEnumerableMap(AType: TRttiType; ANeonObject: TNeonRttiObject; AMap: INeonTypeInfoMap): TJSONValue;
+    function WriteEnumerableMap(AType: TRttiType; ANeonObject: TNeonRttiObject; AMap: INeonTypeInfoMap): TJSONObject;
     function IsEnumerableMap(AType: TRttiType; out AMap: INeonTypeInfoMap): Boolean;
 
     /// <summary>
@@ -161,7 +161,7 @@ type
     /// <remarks>
     ///   Objects must have LoadFromStream and SaveToStream methods
     /// </remarks>
-    function WriteStreamable(AType: TRttiType; ANeonObject: TNeonRttiObject; AStream: INeonTypeInfoStream): TJSONValue;
+    function WriteStreamable(AType: TRttiType; ANeonObject: TNeonRttiObject; AStream: INeonTypeInfoStream): TJSONObject;
     function IsStreamable(AType: TRttiType; out AStream: INeonTypeInfoStream): Boolean;
 
     /// <summary>
@@ -170,30 +170,32 @@ type
     /// <remarks>
     ///   Record must have HasValue and GetValue methods
     /// </remarks>
-    function WriteNullable(AType: TRttiType; ANeonObject: TNeonRttiObject; ANullable: INeonTypeInfoNullable): TJSONValue;
+    function WriteNullable(AType: TRttiType; ANeonObject: TNeonRttiObject; ANullable: INeonTypeInfoNullable): TJSONObject;
     function IsNullable(AType: TRttiType; out ANullable: INeonTypeInfoNullable): Boolean;
   protected
     /// <summary>
     ///   Function to be called by a custom serializer method (ISerializeContext)
     /// </summary>
-    function WriteDataMember(AType: TRttiType): TJSONValue; overload;
+    function WriteDataMember(AType: TRttiType): TJSONObject; overload;
 
     /// <summary>
     ///   This method chooses the right Writer based on the Kind of the AValue parameter
     /// </summary>
-    function WriteDataMember(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue; overload;
+    function WriteDataMember(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; overload;
   public
     constructor Create(const AConfig: INeonConfiguration);
 
     /// <summary>
     ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType
     /// </summary>
-    function TypeToJSONSchema(AType: TRttiType): TJSONValue;
+    class function TypeToJSONSchema(AType: TRttiType): TJSONObject; overload;
+    class function TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration): TJSONObject; overload;
 
     /// <summary>
     ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType
     /// </summary>
-    function ClassToJSONSchema(AClass: TClass): TJSONValue;
+    class function ClassToJSONSchema(AClass: TClass): TJSONObject; overload;
+    class function ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration): TJSONObject; overload;
   end;
 
 implementation
@@ -203,9 +205,14 @@ uses
 
 { TNeonSchemaGenerator }
 
-function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass): TJSONValue;
+class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass): TJSONObject;
 begin
-  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass));
+  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), TNeonConfiguration.Default);
+end;
+
+class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration): TJSONObject;
+begin
+  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), AConfig);
 end;
 
 constructor TNeonSchemaGenerator.Create(const AConfig: INeonConfiguration);
@@ -238,14 +245,26 @@ begin
   Result := Assigned(AStream);
 end;
 
-function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType): TJSONValue;
+class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration): TJSONObject;
+var
+  LGenerator: TNeonSchemaGenerator;
 begin
-  Result := WriteDataMember(AType);
+  LGenerator := TNeonSchemaGenerator.Create(AConfig);
+  try
+    Result := LGenerator.WriteDataMember(AType);
+  finally
+    LGenerator.Free;
+  end;
 end;
 
-function TNeonSchemaGenerator.WriteArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType): TJSONObject;
+begin
+  Result := TypeToJSONSchema(AType, TNeonConfiguration.Default);
+end;
+
+function TNeonSchemaGenerator.WriteArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 var
-  LItems: TJSONValue;
+  LItems: TJSONObject;
 begin
   LItems := WriteDataMember((AType as TRttiArrayType).ElementType);
   Result := TJSONObject.Create
@@ -253,13 +272,13 @@ begin
     .AddPair('items', LItems)
 end;
 
-function TNeonSchemaGenerator.WriteBoolean(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteBoolean(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'boolean');
 end;
 
-function TNeonSchemaGenerator.WriteDataMember(AType: TRttiType): TJSONValue;
+function TNeonSchemaGenerator.WriteDataMember(AType: TRttiType): TJSONObject;
 var
   LNeonObject: TNeonRttiObject;
 begin
@@ -272,7 +291,7 @@ begin
   end;
 end;
 
-function TNeonSchemaGenerator.WriteDataMember(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteDataMember(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 var
   LNeonTypeInfo: INeonTypeInfo;
 
@@ -328,14 +347,11 @@ begin
 
     tkClass:
     begin
-      {
-      if AType.AsObject is TDataSet then
+      if AType.IsInstance and AType.AsInstance.MetaclassType.InheritsFrom(TDataSet) then
         Result := WriteDataSet(AType, ANeonObject)
-      else if AType.AsObject is TStream then
+      else if AType.IsInstance and AType.AsInstance.MetaclassType.InheritsFrom(TStream) then
         Result := WriteStream(AType, ANeonObject)
-      else}
-
-      if IsEnumerableMap(AType, LNeonMap) then
+      else if IsEnumerableMap(AType, LNeonMap) then
         Result := WriteEnumerableMap(AType, ANeonObject, LNeonMap)
       else if IsEnumerable(AType, LNeonList) then
         Result := WriteEnumerable(AType, ANeonObject, LNeonList)
@@ -381,7 +397,7 @@ begin
   end;
 end;
 
-function TNeonSchemaGenerator.WriteDataSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteDataSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 var
   LJSONProps: TJSONObject;
 begin
@@ -393,30 +409,30 @@ begin
     .AddPair('properties', LJSONProps);
 end;
 
-function TNeonSchemaGenerator.WriteDate(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteDate(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'string')
     .AddPair('format', 'date');
 end;
 
-function TNeonSchemaGenerator.WriteDateTime(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteDateTime(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'string')
     .AddPair('format', 'date-time');
 end;
 
-function TNeonSchemaGenerator.WriteDouble(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteDouble(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'number')
     .AddPair('format', 'double');
 end;
 
-function TNeonSchemaGenerator.WriteDynArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteDynArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 var
-  LItems: TJSONValue;
+  LItems: TJSONObject;
 begin
   LItems := WriteDataMember((AType as TRttiDynamicArrayType).ElementType);
   Result := TJSONObject.Create
@@ -424,48 +440,41 @@ begin
     .AddPair('items', LItems)
 end;
 
-function TNeonSchemaGenerator.WriteEnum(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteEnum(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'string');
 end;
 
-function TNeonSchemaGenerator.WriteFloat(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteFloat(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'number')
     .AddPair('format', 'float');
 end;
 
-function TNeonSchemaGenerator.WriteInt64(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteInt64(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'integer')
     .AddPair('format', 'int64');
 end;
 
-function TNeonSchemaGenerator.WriteInteger(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteInteger(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'integer')
     .AddPair('format', 'int32');
 end;
 
-function TNeonSchemaGenerator.WriteInterface(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
-var
-  LInterface: IInterface;
-  LObject: TObject;
+function TNeonSchemaGenerator.WriteInterface(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
-{
-  LInterface := AValue.AsInterface;
-  LObject := LInterface as TObject;
-  Result := WriteObject(LObject, ANeonObject);
-}
+  Result := nil;
 end;
 
-procedure TNeonSchemaGenerator.WriteMembers(AType: TRttiType; AResult: TJSONValue);
+procedure TNeonSchemaGenerator.WriteMembers(AType: TRttiType; AResult: TJSONObject);
 var
-  LJSONValue: TJSONValue;
+  LJSONValue: TJSONObject;
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
 begin
@@ -491,7 +500,7 @@ begin
   end;
 end;
 
-function TNeonSchemaGenerator.WriteNullable(AType: TRttiType; ANeonObject: TNeonRttiObject; ANullable: INeonTypeInfoNullable): TJSONValue;
+function TNeonSchemaGenerator.WriteNullable(AType: TRttiType; ANeonObject: TNeonRttiObject; ANullable: INeonTypeInfoNullable): TJSONObject;
 begin
   Result := nil;
 
@@ -499,9 +508,9 @@ begin
     Result := WriteDataMember(ANullable.GetBaseType)
 end;
 
-function TNeonSchemaGenerator.WriteObject(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteObject(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 var
-  LProperties: TJSONValue;
+  LProperties: TJSONObject;
 begin
   LProperties := TJSONObject.Create;
 
@@ -512,9 +521,9 @@ begin
     .AddPair('properties', LProperties);
 end;
 
-function TNeonSchemaGenerator.WriteEnumerable(AType: TRttiType; ANeonObject: TNeonRttiObject; AList: INeonTypeInfoList): TJSONValue;
+function TNeonSchemaGenerator.WriteEnumerable(AType: TRttiType; ANeonObject: TNeonRttiObject; AList: INeonTypeInfoList): TJSONObject;
 var
-  LJSONItems: TJSONValue;
+  LJSONItems: TJSONObject;
 begin
   // Is not an Enumerable compatible object
   if not Assigned(AList) then
@@ -527,9 +536,9 @@ begin
     .AddPair('items', LJSONItems);
 end;
 
-function TNeonSchemaGenerator.WriteEnumerableMap(AType: TRttiType; ANeonObject: TNeonRttiObject; AMap: INeonTypeInfoMap): TJSONValue;
+function TNeonSchemaGenerator.WriteEnumerableMap(AType: TRttiType; ANeonObject: TNeonRttiObject; AMap: INeonTypeInfoMap): TJSONObject;
 var
-  LValueJSON: TJSONValue;
+  LValueJSON: TJSONObject;
 begin
   // Is not an EnumerableMap-compatible object
   if not Assigned(AMap) then
@@ -541,7 +550,7 @@ begin
     .AddPair('additionalProperties', LValueJSON);
 end;
 
-function TNeonSchemaGenerator.WriteRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create;
   try
@@ -551,33 +560,33 @@ begin
   end;
 end;
 
-function TNeonSchemaGenerator.WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'string');
 end;
 
-function TNeonSchemaGenerator.WriteStream(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteStream(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'string')
     .AddPair('format', 'byte');
 end;
 
-function TNeonSchemaGenerator.WriteStreamable(AType: TRttiType; ANeonObject: TNeonRttiObject; AStream: INeonTypeInfoStream): TJSONValue;
+function TNeonSchemaGenerator.WriteStreamable(AType: TRttiType; ANeonObject: TNeonRttiObject; AStream: INeonTypeInfoStream): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'string')
     .AddPair('format', 'byte');
 end;
 
-function TNeonSchemaGenerator.WriteString(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteString(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
     .AddPair('type', 'string');
 end;
 
-function TNeonSchemaGenerator.WriteVariant(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONValue;
+function TNeonSchemaGenerator.WriteVariant(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
 {
   case ANeonObject.NeonInclude.Value of

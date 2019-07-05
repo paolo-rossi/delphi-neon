@@ -974,7 +974,7 @@ end;
 
 function TNeonSerializerRegistry.GetSerializer(AValue: TValue): TCustomSerializer;
 begin
-  //
+  Result := InternalGetSerializer(AValue.TypeInfo);
 end;
 
 function TNeonSerializerRegistry.GetSerializer<T>: TCustomSerializer;
