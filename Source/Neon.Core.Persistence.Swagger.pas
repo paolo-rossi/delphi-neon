@@ -551,13 +551,16 @@ begin
 end;
 
 function TNeonSchemaGenerator.WriteRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+var
+  LProperties: TJSONObject;
 begin
-  Result := TJSONObject.Create;
-  try
-    WriteMembers(AType, Result);
-  except
-    FreeAndNil(Result);
-  end;
+  LProperties := TJSONObject.Create;
+
+  WriteMembers(AType, LProperties);
+
+  Result := TJSONObject.Create
+    .AddPair('type', 'object')
+    .AddPair('properties', LProperties);
 end;
 
 function TNeonSchemaGenerator.WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
