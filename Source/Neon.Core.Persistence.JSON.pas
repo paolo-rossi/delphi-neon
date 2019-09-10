@@ -1216,7 +1216,7 @@ begin
         if LParamKey.RttiType.TypeKind = tkClass then
           LMap.KeyFromString(LKey, LEnum.Current.JsonString.Value)
         else
-          ReadDataMember(LParamKey, LKey);
+          LKey := ReadDataMember(LParamKey, LKey);
 
         LValue := LMap.NewValue;
         LParamValue.JSONValue := LEnum.Current.JsonValue;
@@ -1405,8 +1405,7 @@ begin
   end;
 end;
 
-function TNeonDeserializerJSON.ReadString(const AParam:
-    TNeonDeserializerParam): TValue;
+function TNeonDeserializerJSON.ReadString(const AParam: TNeonDeserializerParam): TValue;
 begin
   case AParam.RttiType.TypeKind of
     // AnsiString
