@@ -1333,7 +1333,11 @@ var
   LPData: Pointer;
 begin
   Result := AData;
+
   LPData := AData.AsObject;
+  if not Assigned(LPData) then
+    Exit;
+
   LJSONObject := AParam.JSONValue as TJSONObject;
 
   if (AParam.RttiType.TypeKind = tkClass) or (AParam.RttiType.TypeKind = tkInterface) then

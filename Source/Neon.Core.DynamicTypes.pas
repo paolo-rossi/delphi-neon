@@ -294,6 +294,10 @@ var
   LCountProp, LCurrentProp: TRttiProperty;
 begin
   Result := nil;
+
+  if not Assigned(AInstance) then
+    Exit;
+
   LListType := TRttiUtils.Context.GetType(AInstance.ClassType);
 
   LMethodGetEnumerator := LListType.GetMethod('GetEnumerator');
@@ -437,6 +441,9 @@ var
   LKeyEnum, LValEnum: TDynamicMap.TEnumerator;
 begin
   Result := nil;
+
+  if not Assigned(AInstance) then
+    Exit;
 
   LMapType := TRttiUtils.Context.GetType(AInstance.ClassType);
 
