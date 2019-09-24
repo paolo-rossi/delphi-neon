@@ -39,7 +39,7 @@
         <DCC_UnitSearchPath>..\..\Source;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
         <SanitizedProjectName>NeonRunTime</SanitizedProjectName>
         <VerInfo_Locale>1040</VerInfo_Locale>
-        <DCC_Description>WiRL REST Library</DCC_Description>
+        <DCC_Description>Neon Serialization Library</DCC_Description>
         <GenDll>true</GenDll>
         <DCC_S>false</DCC_S>
         <DCC_K>false</DCC_K>
@@ -88,9 +88,12 @@
         <DCCReference Include="bindcomp.dcp"/>
         <DCCReference Include="..\..\Source\Neon.Core.Attributes.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.DynamicTypes.pas"/>
-        <DCCReference Include="..\..\Source\Neon.Core.Persistence.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Nullables.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Persistence.JSON.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Persistence.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Persistence.Swagger.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Serializers.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.TypeInfo.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Types.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Utils.pas"/>
         <BuildConfiguration Include="Debug">
