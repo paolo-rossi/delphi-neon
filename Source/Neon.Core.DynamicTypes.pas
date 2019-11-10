@@ -582,6 +582,7 @@ end;
 class function TDynamicNullable.GuessType(AInstance: TValue): IDynamicNullable;
 var
   LType: TRttiType;
+  LContainedType: PTypeInfo;
   LTypeInfoMethod, LHasValueMethod: TRttiMethod;
   LGetValueMethod, LSetValueMethod: TRttiMethod;
 begin
@@ -596,6 +597,10 @@ begin
   LTypeInfoMethod := LType.GetMethod('GetValueType');
   if not Assigned(LTypeInfoMethod) then
     Exit(nil);
+
+  LContainedType := LTypeInfoMethod.Invoke(AInstance, []).AsType<PTypeInfo>;
+  if LContainedType = nil then
+    raise ENeonException.Create('Nullable contains type with no RTTI');
 
   LHasValueMethod := LType.GetMethod('GetHasValue');
   if not Assigned(LHasValueMethod) then

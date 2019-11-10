@@ -533,7 +533,9 @@ begin
     FMemberRttiType := (FMember as TRttiField).FieldType;
   end;
 
-  FTypeAttributes := FMemberRttiType.GetAttributes;
+  if Assigned(FMemberRttiType) then
+    FTypeAttributes := FMemberRttiType.GetAttributes;
+
   ParseAttributes;
 end;
 

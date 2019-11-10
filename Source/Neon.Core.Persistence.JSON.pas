@@ -693,8 +693,11 @@ begin
           if Assigned(LJSONValue) then
             (AResult as TJSONObject).AddPair(GetNameFromMember(LNeonMember), LJSONValue);
         except
-          LogError(Format('Error converting property [%s] of object [%s]',
-            [LNeonMember.Name, AType.Name]));
+          on E: Exception do
+          begin
+            LogError(Format('Error converting member [%s] of type [%s]: %s',
+              [LNeonMember.Name, AType.Name, E.Message]));
+          end;
         end;
       end;
     end;

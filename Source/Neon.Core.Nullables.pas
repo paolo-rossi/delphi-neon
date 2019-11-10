@@ -7,6 +7,8 @@ uses
   System.TypInfo, System.JSON;
 
 type
+  ENullableException = class(Exception);
+
   {$RTTI EXPLICIT FIELDS([vcPrivate]) METHODS([vcPrivate])}
   Nullable<T> = record
   private
@@ -95,7 +97,7 @@ end;
 function Nullable<T>.GetValue: T;
 begin
   if not HasValue then
-    raise Exception.Create('Nullable type has no value');
+    raise ENullableException.Create('Nullable type has no value');
   Result := FValue;
 end;
 
