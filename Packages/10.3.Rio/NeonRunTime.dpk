@@ -53,9 +53,7 @@ package NeonRunTime;
 
 requires
   rtl,
-  dbrtl,
-  bindengine,
-  bindcomp;
+  dbrtl;
 
 contains
   Neon.Core.Attributes in '..\..\Source\Neon.Core.Attributes.pas',
