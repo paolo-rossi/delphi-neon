@@ -1099,7 +1099,7 @@ var
   LJSONArray: TJSONArray;
   LJSONItem: TJSONObject;
   LJSONField: TJSONValue;
-  LDataSet: TDataSet;
+  LDataSet, LNestedDataSet: TDataSet;
   LIndex: Integer;
   LItemIntex: Integer;
   LName: string;
@@ -1120,8 +1120,16 @@ begin
       LJSONField := LJSONItem.GetValue(LName);
       if Assigned(LJSONField) then
       begin
-        { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
-        LDataSet.FieldByName(LName).AsString := LJSONField.Value;
+        if LDataSet.Fields[LItemIntex].DataType <> ftDataSet then
+        begin
+          { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
+          LDataSet.FieldByName(LName).AsString := LJSONField.Value;
+        end
+        else
+        begin
+          LNestedDataSet := (LDataSet.Fields[LItemIntex] as TDataSetField).NestedDataSet;
+          ReadDataMember(LJSONField, TRttiUtils.Context.GetType(LNestedDataSet.ClassType), LNestedDataSet);
+        end;
       end;
     end;
     LDataSet.Post;
