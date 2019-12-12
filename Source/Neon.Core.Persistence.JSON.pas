@@ -1123,7 +1123,7 @@ begin
       begin
         case LDataSet.Fields[LItemIntex].DataType of
           ftDataSet:  JSONToDataSet(LJSONField, (LDataSet.Fields[LItemIntex] as TDataSetField).NestedDataSet);
-          ftBlob: TDataSetUtils.Base64ToBlobField(LJSONField.Value, LDataSet.Fields[LItemIntex] as TBlobField);
+          ftBlob: TDataSetUtils.Base64ToBlobField(LJSONField.Value, LDataSet.Fields[LItemIntex] as TBlobField);       
         else
           begin
             { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
