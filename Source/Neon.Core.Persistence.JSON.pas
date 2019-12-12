@@ -1120,8 +1120,14 @@ begin
       LJSONField := LJSONItem.GetValue(LName);
       if Assigned(LJSONField) then
       begin
-        { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
-        LDataSet.FieldByName(LName).AsString := LJSONField.Value;
+        case LDataSet.Fields[LItemIntex].DataType of
+          ftBlob: TDataSetUtils.Base64ToBlobField(LJSONField.Value, LDataSet.Fields[LItemIntex] as TBlobField);
+        else
+          begin
+            { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
+            LDataSet.FieldByName(LName).AsString := LJSONField.Value;
+          end;
+        end;
       end;
     end;
     LDataSet.Post;

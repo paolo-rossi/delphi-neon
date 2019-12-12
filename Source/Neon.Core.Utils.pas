@@ -148,6 +148,9 @@ type
     class function DataSetToCSV(const ADataSet: TDataSet; AConfig: TNeonConfiguration): string; static;
 
     class function DatasetMetadataToJSONObject(const ADataSet: TDataSet; AConfig: TNeonConfiguration): TJSONObject; static;
+
+    class function BlobFieldToBase64(ABlobField: TBlobField): string;
+    class procedure Base64ToBlobField(const ABase64: string; ABlobField: TBlobField);
   end;
 
 type
@@ -308,7 +311,7 @@ begin
 //        ftBytes: ;
 //        ftVarBytes: ;
       TFieldType.ftAutoInc:       Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
-//        ftBlob: ;
+      TFieldType.ftBlob:          Result.AddPair(LPairName, BlobFieldToBase64(LField as TBlobField));
       TFieldType.ftMemo:          Result.AddPair(LPairName, LField.AsString);
 //        ftGraphic: ;
 //        ftFmtMemo: ;
@@ -613,6 +616,34 @@ begin
     end;
   finally
     ADataSet.EnableControls;
+  end;
+end;
+
+class procedure TDataSetUtils.Base64ToBlobField(const ABase64: string;
+  ABlobField: TBlobField);
+var
+  LBinaryStream: TMemoryStream;
+begin
+  LBinaryStream := TMemoryStream.Create;
+  try
+    TBase64.Decode(ABase64, LBinaryStream);
+    ABlobField.LoadFromStream(LBinaryStream);
+  finally
+    LBinaryStream.Free;
+  end;
+end;
+
+class function TDataSetUtils.BlobFieldToBase64(ABlobField: TBlobField): string;
+var
+  LBlobStream: TMemoryStream;
+begin
+  LBlobStream := TMemoryStream.Create;
+  try
+    ABlobField.SaveToStream(LBlobStream);
+    LBlobStream.Position := soFromBeginning;
+    Result := TBase64.Encode(LBlobStream);
+  finally
+    LBlobStream.Free;
   end;
 end;
 
