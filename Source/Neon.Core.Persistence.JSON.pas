@@ -236,6 +236,7 @@ type
     constructor Create(const AConfig: INeonConfiguration);
 
     procedure JSONToObject(AObject: TObject; AJSON: TJSONValue);
+    procedure JSONToDataSet(AJSON: TJSONValue; ADataSet: TDataSet);
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType): TValue; overload;
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType; const AData: TValue): TValue; overload;
     function JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
@@ -1120,8 +1121,14 @@ begin
       LJSONField := LJSONItem.GetValue(LName);
       if Assigned(LJSONField) then
       begin
-        { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
-        LDataSet.FieldByName(LName).AsString := LJSONField.Value;
+        case LDataSet.Fields[LItemIntex].DataType of
+          ftDataSet:  JSONToDataSet(LJSONField, (LDataSet.Fields[LItemIntex] as TDataSetField).NestedDataSet);
+          else
+          begin
+            { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
+            LDataSet.FieldByName(LName).AsString := LJSONField.Value;
+          end;
+        end;
       end;
     end;
     LDataSet.Post;
@@ -1441,6 +1448,12 @@ end;
 function TNeonDeserializerJSON.JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
 begin
   Result := ReadDataMember(AJSON, AType, TValue.Empty);
+end;
+
+procedure TNeonDeserializerJSON.JSONToDataSet(AJSON: TJSONValue;
+  ADataSet: TDataSet);
+begin
+  ReadDataMember(AJSON, TRttiUtils.Context.GetType(ADataSet.ClassType), ADataSet);
 end;
 
 procedure TNeonDeserializerJSON.JSONToObject(AObject: TObject; AJSON: TJSONValue);

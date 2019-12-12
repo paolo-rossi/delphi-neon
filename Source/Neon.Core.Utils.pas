@@ -322,7 +322,7 @@ begin
 //        ftADT: ;
 //        ftArray: ;
 //        ftReference: ;
-//        ftDataSet: ;
+      TFieldType.ftDataSet:       Result.AddPair(LPairName, DataSetToJSONArray((LField as TDataSetField).NestedDataSet, AConfig));
 //        ftOraBlob: ;
 //        ftOraClob: ;
       TFieldType.ftVariant:       Result.AddPair(LPairName, LField.AsString);
