@@ -236,6 +236,7 @@ type
     constructor Create(const AConfig: INeonConfiguration);
 
     procedure JSONToObject(AObject: TObject; AJSON: TJSONValue);
+    procedure JSONToDataSet(AJSON: TJSONValue; ADataSet: TDataSet);
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType): TValue; overload;
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType; const AData: TValue): TValue; overload;
     function JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
@@ -1121,6 +1122,7 @@ begin
       if Assigned(LJSONField) then
       begin
         case LDataSet.Fields[LItemIntex].DataType of
+          ftDataSet:  JSONToDataSet(LJSONField, (LDataSet.Fields[LItemIntex] as TDataSetField).NestedDataSet);
           ftBlob: TDataSetUtils.Base64ToBlobField(LJSONField.Value, LDataSet.Fields[LItemIntex] as TBlobField);
         else
           begin
@@ -1447,6 +1449,12 @@ end;
 function TNeonDeserializerJSON.JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
 begin
   Result := ReadDataMember(AJSON, AType, TValue.Empty);
+end;
+
+procedure TNeonDeserializerJSON.JSONToDataSet(AJSON: TJSONValue;
+  ADataSet: TDataSet);
+begin
+  ReadDataMember(AJSON, TRttiUtils.Context.GetType(ADataSet.ClassType), ADataSet);
 end;
 
 procedure TNeonDeserializerJSON.JSONToObject(AObject: TObject; AJSON: TJSONValue);
