@@ -236,6 +236,7 @@ type
     constructor Create(const AConfig: INeonConfiguration);
 
     procedure JSONToObject(AObject: TObject; AJSON: TJSONValue);
+    procedure JSONToDataSet(AJSON: TJSONValue; ADataSet: TDataSet);
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType): TValue; overload;
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType; const AData: TValue): TValue; overload;
     function JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
@@ -1099,7 +1100,7 @@ var
   LJSONArray: TJSONArray;
   LJSONItem: TJSONObject;
   LJSONField: TJSONValue;
-  LDataSet, LNestedDataSet: TDataSet;
+  LDataSet: TDataSet;
   LIndex: Integer;
   LItemIntex: Integer;
   LName: string;
@@ -1120,15 +1121,13 @@ begin
       LJSONField := LJSONItem.GetValue(LName);
       if Assigned(LJSONField) then
       begin
-        if LDataSet.Fields[LItemIntex].DataType <> ftDataSet then
-        begin
-          { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
-          LDataSet.FieldByName(LName).AsString := LJSONField.Value;
-        end
-        else
-        begin
-          LNestedDataSet := (LDataSet.Fields[LItemIntex] as TDataSetField).NestedDataSet;
-          ReadDataMember(LJSONField, TRttiUtils.Context.GetType(LNestedDataSet.ClassType), LNestedDataSet);
+        case LDataSet.Fields[LItemIntex].DataType of
+          ftDataSet:  JSONToDataSet(LJSONField, (LDataSet.Fields[LItemIntex] as TDataSetField).NestedDataSet);
+          else
+          begin
+            { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
+            LDataSet.FieldByName(LName).AsString := LJSONField.Value;
+          end;
         end;
       end;
     end;
@@ -1449,6 +1448,12 @@ end;
 function TNeonDeserializerJSON.JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
 begin
   Result := ReadDataMember(AJSON, AType, TValue.Empty);
+end;
+
+procedure TNeonDeserializerJSON.JSONToDataSet(AJSON: TJSONValue;
+  ADataSet: TDataSet);
+begin
+  ReadDataMember(AJSON, TRttiUtils.Context.GetType(ADataSet.ClassType), ADataSet);
 end;
 
 procedure TNeonDeserializerJSON.JSONToObject(AObject: TObject; AJSON: TJSONValue);
