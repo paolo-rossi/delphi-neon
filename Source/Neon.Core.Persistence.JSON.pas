@@ -246,11 +246,22 @@ type
   ///   Static utility class for serializing and deserializing Delphi types
   /// </summary>
   TNeon = class
+  private
+    /// <summary>
+    ///   Prints a TJSONValue in a single line or formatted (PrettyPrinting)
+    /// </summary>
+    class procedure PrintToWriter(AJSONValue: TJSONValue; AWriter: TTextWriter; APretty: Boolean); static;
+
   public
     /// <summary>
     ///   Prints a TJSONValue in a single line or formatted (PrettyPrinting)
     /// </summary>
     class function Print(AJSONValue: TJSONValue; APretty: Boolean): string; static;
+
+    /// <summary>
+    ///   Prints a TJSONValue in a single line or formatted (PrettyPrinting)
+    /// </summary>
+    class procedure PrintToStream(AJSONValue: TJSONValue; AStream: TStream; APretty: Boolean); static;
   public
     /// <summary>
     ///   Serializes a value based type (record, string, integer, etc...) to a TJSONValue
@@ -1122,7 +1133,7 @@ begin
       if Assigned(LJSONField) then
       begin
         case LDataSet.Fields[LItemIntex].DataType of
-          ftDataSet:  JSONToDataSet(LJSONField, (LDataSet.Fields[LItemIntex] as TDataSetField).NestedDataSet);
+          ftDataSet: JSONToDataSet(LJSONField, (LDataSet.Fields[LItemIntex] as TDataSetField).NestedDataSet);
           ftBlob: TDataSetUtils.Base64ToBlobField(LJSONField.Value, LDataSet.Fields[LItemIntex] as TBlobField);       
         else
           begin
@@ -1451,8 +1462,7 @@ begin
   Result := ReadDataMember(AJSON, AType, TValue.Empty);
 end;
 
-procedure TNeonDeserializerJSON.JSONToDataSet(AJSON: TJSONValue;
-  ADataSet: TDataSet);
+procedure TNeonDeserializerJSON.JSONToDataSet(AJSON: TJSONValue; ADataSet: TDataSet);
 begin
   ReadDataMember(AJSON, TRttiUtils.Context.GetType(ADataSet.ClassType), ADataSet);
 end;
@@ -1556,6 +1566,31 @@ end;
 
 class function TNeon.Print(AJSONValue: TJSONValue; APretty: Boolean): string;
 var
+  LWriter: TStringWriter;
+begin
+  LWriter := TStringWriter.Create;
+  try
+    TNeon.PrintToWriter(AJSONValue, LWriter, APretty);
+    Result := LWriter.ToString;
+  finally
+    LWriter.Free;
+  end;
+end;
+
+class procedure TNeon.PrintToStream(AJSONValue: TJSONValue; AStream: TStream; APretty: Boolean);
+var
+  LWriter: TStreamWriter;
+begin
+  LWriter := TStreamWriter.Create(AStream);
+  try
+    TNeon.PrintToWriter(AJSONValue, LWriter, APretty);
+  finally
+    LWriter.Free;
+  end;
+end;
+
+class procedure TNeon.PrintToWriter(AJSONValue: TJSONValue; AWriter: TTextWriter; APretty: Boolean);
+var
   LJSONString: string;
   LChar: Char;
   LOffset: Integer;
@@ -1569,9 +1604,8 @@ var
 
 begin
   if not APretty then
-    Exit(AJSONValue.ToJSON);
+    AWriter.Write(AJSONValue.ToJSON);
 
-  Result := '';
   LOffset := 0;
   LOutsideString := True;
   LJSONString := AJSONValue.ToJSON;
@@ -1586,44 +1620,44 @@ begin
     if LOutsideString and (LChar = '{') then
     begin
       Inc(LOffset);
-      Result := Result + LChar;
-      Result := Result + sLineBreak;
-      Result := Result + Spaces(LOffset);
+      AWriter.Write(LChar);
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
     end
     else if LOutsideString and (LChar = '}') then
     begin
       Dec(LOffset);
-      Result := Result + sLineBreak;
-      Result := Result + Spaces(LOffset);
-      Result := Result + LChar;
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
+      AWriter.Write(LChar);
     end
     else if LOutsideString and (LChar = ',') then
     begin
-      Result := Result + LChar;
-      Result := Result + sLineBreak;
-      Result := Result + Spaces(LOffset);
+      AWriter.Write(LChar);
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
     end
     else if LOutsideString and (LChar = '[') then
     begin
       Inc(LOffset);
-      Result := Result + LChar;
-      Result := Result + sLineBreak;
-      Result := Result + Spaces(LOffset);
+      AWriter.Write(LChar);
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
     end
     else if LOutsideString and (LChar = ']') then
     begin
       Dec(LOffset);
-      Result := Result + sLineBreak;
-      Result := Result + Spaces(LOffset);
-      Result := Result + LChar;
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
+      AWriter.Write(LChar);
     end
     else if LOutsideString and (LChar = ':') then
     begin
-      Result := Result + LChar;
-      Result := Result + ' ';
+      AWriter.Write(LChar);
+      AWriter.Write(' ');
     end
     else
-      Result := Result + LChar;
+      AWriter.Write(LChar);
   end;
 end;
 

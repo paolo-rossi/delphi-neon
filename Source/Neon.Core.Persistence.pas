@@ -460,7 +460,6 @@ end;
 class function TNeonConfiguration.Camel: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
-
   Result.SetMemberCase(TNeonCase.CamelCase);
 end;
 
