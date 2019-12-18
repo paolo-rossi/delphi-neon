@@ -233,7 +233,7 @@ type
     [NeonInclude]
     Field1: TArray<TDateTime>;
 
-    [NeonInclude(Include.CustomFunction)]
+    [NeonInclude(IncludeIf.CustomFunction)]
     Field2: TRect;
   private
     function ShouldInclude(const AContext: TNeonIgnoreIfContext): Boolean;
@@ -248,7 +248,7 @@ type
     property Prop3: TDateTime read FProp3 write FProp3;
     [NeonIgnore]
     property Prop4: TPoint3D read FProp4 write FProp4;
-    [NeonInclude(Include.CustomFunction)]
+    [NeonInclude(IncludeIf.CustomFunction)]
     property Prop5: TVector3D read FProp5 write FProp5;
   end;
 
@@ -298,28 +298,28 @@ type
   public
     constructor Create;
 
-    [NeonInclude(Include.NotDefault)]
+    [NeonInclude(IncludeIf.NotDefault)]
     property PropInteger: Integer read FPropInteger write FPropInteger;
 
-    [NeonInclude(Include.NotDefault)]
+    [NeonInclude(IncludeIf.NotDefault)]
     property PropInt64: Int64 read FPropInt64 write FPropInt64;
 
-    [NeonInclude(Include.NotDefault)]
+    [NeonInclude(IncludeIf.NotDefault)]
     property PropDouble: Double read FPropDouble write FPropDouble;
 
-    [NeonInclude(Include.NotDefault)]
+    [NeonInclude(IncludeIf.NotDefault)]
     property PropDate: TDateTime read FPropDate write FPropDate;
 
-    [NeonInclude(Include.NotEmpty)]
+    [NeonInclude(IncludeIf.NotEmpty)]
     property PropChar: Char read FPropChar write FPropChar;
 
-    [NeonInclude(Include.NotEmpty)]
+    [NeonInclude(IncludeIf.NotEmpty)]
     property PropString: string read FPropString write FPropString;
 
-    [NeonInclude(Include.NotEmpty)]
+    [NeonInclude(IncludeIf.NotEmpty)]
     property PropBoolean: Boolean read FPropBoolean write FPropBoolean;
 
-    [NeonInclude(Include.NotEmpty)]
+    [NeonInclude(IncludeIf.NotEmpty)]
     property PropEnum: TTypeKind read FPropEnum write FPropEnum;
   end;
 

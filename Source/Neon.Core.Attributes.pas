@@ -80,7 +80,7 @@ type
   /// <remarks>
   ///   Write Attribute
   /// </remarks>
-  Include = (
+  IncludeIf = (
     /// <summary>
     ///   Include the member
     /// </summary>
@@ -104,7 +104,7 @@ type
     CustomFunction);
   TIncludeValue = record
     Present: Boolean;
-    Value: Include;
+    Value: IncludeIf;
     IncludeFunction: string;
   end;
 
@@ -116,7 +116,7 @@ type
   private
     FIncludeValue: TIncludeValue;
   public
-    constructor Create(AIncludeValue: Include = Include.Always; const AIncludeFunction: string = 'ShouldInclude');
+    constructor Create(AIncludeValue: IncludeIf = IncludeIf.Always; const AIncludeFunction: string = 'ShouldInclude');
 
     property IncludeValue: TIncludeValue read FIncludeValue write FIncludeValue;
   end;
@@ -257,7 +257,7 @@ end;
 
 { NeonIncludeAttribute }
 
-constructor NeonIncludeAttribute.Create(AIncludeValue: Include; const AIncludeFunction: string);
+constructor NeonIncludeAttribute.Create(AIncludeValue: IncludeIf; const AIncludeFunction: string);
 begin
   FIncludeValue.Present := True;
   FIncludeValue.Value := AIncludeValue;

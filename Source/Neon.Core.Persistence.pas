@@ -625,7 +625,7 @@ begin
   if AAttribute is NeonIncludeAttribute then
   begin
     LIncludeAttribute := AAttribute as NeonIncludeAttribute;
-    if LIncludeAttribute.IncludeValue.Value = Include.CustomFunction then
+    if LIncludeAttribute.IncludeValue.Value = IncludeIf.CustomFunction then
     begin
       LMethodName := LIncludeAttribute.IncludeValue.IncludeFunction;
       LMethod := FParent.FType.GetMethod(LMethodName);
@@ -750,7 +750,7 @@ var
 begin
   for LMember in Self do
   begin
-    if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = Include.Always) then
+    if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = IncludeIf.Always) then
     begin
       LMember.Serializable := True;
       Continue;
@@ -774,7 +774,7 @@ var
 begin
   for LMember in Self do
   begin
-    if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = Include.Always) then
+    if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = IncludeIf.Always) then
     begin
       LMember.Serializable := True;
       Continue;
