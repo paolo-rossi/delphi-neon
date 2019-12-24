@@ -1605,7 +1605,10 @@ var
 
 begin
   if not APretty then
+  begin
     AWriter.Write(AJSONValue.ToJSON);
+    exit;
+  end;
 
   LOffset := 0;
   LOutsideString := True;
