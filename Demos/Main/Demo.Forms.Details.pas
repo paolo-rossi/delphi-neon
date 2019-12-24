@@ -28,7 +28,8 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Data.DB, FireDAC.Stan.Intf, FireDAC.Stan.Option,
   FireDAC.Stan.Param, FireDAC.Stan.Error, FireDAC.DatS, FireDAC.Phys.Intf,
   FireDAC.DApt.Intf, FireDAC.Stan.StorageBin, Vcl.ExtCtrls, Vcl.DBCtrls,
-  FireDAC.Comp.DataSet, FireDAC.Comp.Client, Vcl.Grids, Vcl.DBGrids, Vcl.Imaging.pngimage;
+  FireDAC.Comp.DataSet, FireDAC.Comp.Client, Vcl.Grids, Vcl.DBGrids,
+  Vcl.StdCtrls, Vcl.Mask, FireDAC.Stan.StorageJSON;
 
 type
   TfrmDetails = class(TForm)
@@ -41,10 +42,25 @@ type
     dsoPersons: TDataSource;
     navPersons: TDBNavigator;
     pnlGrid: TPanel;
+    dsPersonsAvatar: TGraphicField;
+    imgAvatar: TDBImage;
+    edtName: TDBEdit;
+    edtSurname: TDBEdit;
+    edtAge: TDBEdit;
+    btnAvatar: TButton;
+    dlgOpenAvatar: TOpenDialog;
+    dsPersonsDelphiDev: TBooleanField;
+    chkDelphiDev: TDBCheckBox;
+    FDStanStorageJSONLink1: TFDStanStorageJSONLink;
+    dsPersonsBirthDate: TDateTimeField;
+    procedure FormCreate(Sender: TObject);
+    procedure btnAvatarClick(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
   private
     { Private declarations }
   public
-    { Public declarations }
+    procedure ClearImage;
+    procedure EmptyDataSet;
   end;
 
 var
@@ -52,6 +68,43 @@ var
 
 implementation
 
+uses
+  Vcl.Imaging.pngimage, Vcl.Imaging.jpeg;
+
 {$R *.dfm}
+
+procedure TfrmDetails.FormCreate(Sender: TObject);
+begin
+  dsPersons.LoadFromFile('D:\projects\GitHub\Project Neon\delphi-neon\Demos\Main\persons.json');
+end;
+
+procedure TfrmDetails.btnAvatarClick(Sender: TObject);
+begin
+  if dlgOpenAvatar.Execute then
+  begin
+    dsPersons.Edit;
+    try
+      (dsPersons.FieldByName('Avatar') as TGraphicField).LoadFromFile(dlgOpenAvatar.FileName);
+      dsPersons.Post;
+    except
+      dsPersons.Cancel;
+    end;
+  end;
+end;
+
+procedure TfrmDetails.Button1Click(Sender: TObject);
+begin
+  dsPersons.SaveToFile('D:\projects\GitHub\Project Neon\delphi-neon\Demos\Main\persons.json', sfJSON);
+end;
+
+procedure TfrmDetails.ClearImage;
+begin
+  imgNeon.Picture.Bitmap.SetSize(0,0);
+end;
+
+procedure TfrmDetails.EmptyDataSet;
+begin
+  dsPersons.EmptyDataSet;
+end;
 
 end.

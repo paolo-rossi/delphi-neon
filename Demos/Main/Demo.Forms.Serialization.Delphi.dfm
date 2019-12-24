@@ -61,7 +61,9 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
     OnClick = btnDesImageClick
   end
   inherited pnlDeserialize: TPanel
+    Width = 400
     TabOrder = 11
+    ExplicitWidth = 400
   end
   inherited memoDeserialize: TMemo
     TabOrder = 10

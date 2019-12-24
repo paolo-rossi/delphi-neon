@@ -145,6 +145,9 @@ type
     class function DataSetToXML(const ADataSet: TDataSet; AConfig: TNeonConfiguration): string; overload; static;
     class function DataSetToXML(const ADataSet: TDataSet; const AAcceptFunc: TFunc<Boolean>; AConfig: TNeonConfiguration): string; overload; static;
 
+    class procedure JSONToRecord(AJSONObject: TJSONObject; ADataSet: TDataSet; AConfig: TNeonConfiguration); static;
+    class procedure JSONToDataSet(AJSONValue: TJSONValue; ADataSet: TDataSet; AConfig: TNeonConfiguration); static;
+
     class function DataSetToCSV(const ADataSet: TDataSet; AConfig: TNeonConfiguration): string; static;
 
     class function DatasetMetadataToJSONObject(const ADataSet: TDataSet; AConfig: TNeonConfiguration): TJSONObject; static;
@@ -155,7 +158,10 @@ type
 
 type
   TBase64 = class
+    class function Encode(const ASource: TBytes): string; overload;
     class function Encode(const ASource: TStream): string; overload;
+
+    class function Decode(const ASource: string): TBytes; overload;
     class procedure Decode(const ASource: string; ADest: TStream); overload;
   end;
 
@@ -297,57 +303,57 @@ begin
       Continue;
 
     case LField.DataType of
-      TFieldType.ftString:        Result.AddPair(LPairName, LField.AsString);
-      TFieldType.ftSmallint:      Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
-      TFieldType.ftInteger:       Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
-      TFieldType.ftWord:          Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
-      TFieldType.ftBoolean:       Result.AddPair(LPairName, TJSONUtils.BooleanToTJSON(LField.AsBoolean));
-      TFieldType.ftFloat:         Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
-      TFieldType.ftCurrency:      Result.AddPair(LPairName, TJSONNumber.Create(LField.AsCurrency));
-      TFieldType.ftBCD:           Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
-      TFieldType.ftDate:          Result.AddPair(LPairName, TJSONUtils.DateToJSON(LField.AsDateTime, AConfig.UseUTCDate));
-      TFieldType.ftTime:          Result.AddPair(LPairName, TJSONUtils.DateToJSON(LField.AsDateTime, AConfig.UseUTCDate));
-      TFieldType.ftDateTime:      Result.AddPair(LPairName, TJSONUtils.DateToJSON(LField.AsDateTime, AConfig.UseUTCDate));
-//        ftBytes: ;
-//        ftVarBytes: ;
-      TFieldType.ftAutoInc:       Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
-      TFieldType.ftBlob:          Result.AddPair(LPairName, BlobFieldToBase64(LField as TBlobField));
-      TFieldType.ftMemo:          Result.AddPair(LPairName, LField.AsString);
-//        ftGraphic: ;
-//        ftFmtMemo: ;
-//        ftParadoxOle: ;
-//        ftDBaseOle: ;
-//        ftTypedBinary: ;
-//        ftCursor: ;
-      TFieldType.ftFixedChar:     Result.AddPair(LPairName, LField.AsString);
-      TFieldType.ftWideString:    Result.AddPair(LPairName, LField.AsWideString);
-      TFieldType.ftLargeint:      Result.AddPair(LPairName, TJSONNumber.Create(LField.AsLargeInt));
-//        ftADT: ;
-//        ftArray: ;
-//        ftReference: ;
-      TFieldType.ftDataSet:       Result.AddPair(LPairName, DataSetToJSONArray((LField as TDataSetField).NestedDataSet, AConfig));
-//        ftOraBlob: ;
-//        ftOraClob: ;
-      TFieldType.ftVariant:       Result.AddPair(LPairName, LField.AsString);
-//        ftInterface: ;
-//        ftIDispatch: ;
-      TFieldType.ftGuid:          Result.AddPair(LPairName, LField.AsString);
-      TFieldType.ftTimeStamp:     Result.AddPair(LPairName, TJSONUtils.DateToJSON(LField.AsDateTime, AConfig.UseUTCDate));
-      TFieldType.ftFMTBcd:        Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
-      TFieldType.ftFixedWideChar: Result.AddPair(LPairName, LField.AsString);
-      TFieldType.ftWideMemo:      Result.AddPair(LPairName, LField.AsString);
-//        ftOraTimeStamp: ;
-//        ftOraInterval: ;
-      TFieldType.ftLongWord:      Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
-      TFieldType.ftShortint:      Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
-      TFieldType.ftByte:          Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
-      TFieldType.ftExtended:      Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
-//        ftConnection: ;
-//        ftParams: ;
-//        ftStream: ;
-//        ftTimeStampOffset: ;
-//        ftObject: ;
-      TFieldType.ftSingle:        Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
+      TFieldType.ftString:          Result.AddPair(LPairName, LField.AsString);
+      TFieldType.ftSmallint:        Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
+      TFieldType.ftInteger:         Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
+      TFieldType.ftWord:            Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
+      TFieldType.ftBoolean:         Result.AddPair(LPairName, TJSONUtils.BooleanToTJSON(LField.AsBoolean));
+      TFieldType.ftFloat:           Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
+      TFieldType.ftCurrency:        Result.AddPair(LPairName, TJSONNumber.Create(LField.AsCurrency));
+      TFieldType.ftBCD:             Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
+      TFieldType.ftDate:            Result.AddPair(LPairName, TJSONUtils.DateToJSON(LField.AsDateTime, AConfig.UseUTCDate));
+      TFieldType.ftTime:            Result.AddPair(LPairName, TJSONUtils.DateToJSON(LField.AsDateTime, AConfig.UseUTCDate));
+      TFieldType.ftDateTime:        Result.AddPair(LPairName, TJSONUtils.DateToJSON(LField.AsDateTime, AConfig.UseUTCDate));
+      TFieldType.ftBytes:           Result.AddPair(LPairName, TBase64.Encode(LField.AsBytes));
+      TFieldType.ftVarBytes:        Result.AddPair(LPairName, TBase64.Encode(LField.AsBytes));
+      TFieldType.ftAutoInc:         Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
+      TFieldType.ftBlob:            Result.AddPair(LPairName, BlobFieldToBase64(LField as TBlobField));
+      TFieldType.ftMemo:            Result.AddPair(LPairName, LField.AsString);
+      TFieldType.ftGraphic:         Result.AddPair(LPairName, TBase64.Encode(LField.AsBytes));
+//      TFieldType.ftFmtMemo: ;
+//      TFieldType.ftParadoxOle: ;
+//      TFieldType.ftDBaseOle: ;
+      TFieldType.ftTypedBinary:     Result.AddPair(LPairName, TBase64.Encode(LField.AsBytes));
+//      TFieldType.ftCursor: ;
+      TFieldType.ftFixedChar:       Result.AddPair(LPairName, LField.AsString);
+      TFieldType.ftWideString:      Result.AddPair(LPairName, LField.AsWideString);
+      TFieldType.ftLargeint:        Result.AddPair(LPairName, TJSONNumber.Create(LField.AsLargeInt));
+      TFieldType.ftADT:             Result.AddPair(LPairName, TBase64.Encode(LField.AsBytes));
+      TFieldType.ftArray:           Result.AddPair(LPairName, TBase64.Encode(LField.AsBytes));
+//      TFieldType.ftReference: ;
+      TFieldType.ftDataSet:         Result.AddPair(LPairName, DataSetToJSONArray((LField as TDataSetField).NestedDataSet, AConfig));
+      TFieldType.ftOraBlob:         Result.AddPair(LPairName, TBase64.Encode(LField.AsBytes));
+      TFieldType.ftOraClob:         Result.AddPair(LPairName, TBase64.Encode(LField.AsBytes));
+      TFieldType.ftVariant:         Result.AddPair(LPairName, LField.AsString);
+//      TFieldType.ftInterface: ;
+//      TFieldType.ftIDispatch: ;
+      TFieldType.ftGuid:            Result.AddPair(LPairName, LField.AsString);
+      TFieldType.ftTimeStamp:       Result.AddPair(LPairName, TJSONUtils.DateToJSON(LField.AsDateTime, AConfig.UseUTCDate));
+      TFieldType.ftFMTBcd:          Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
+      TFieldType.ftFixedWideChar:   Result.AddPair(LPairName, LField.AsString);
+      TFieldType.ftWideMemo:        Result.AddPair(LPairName, LField.AsString);
+      TFieldType.ftOraTimeStamp:    Result.AddPair(LPairName, TJSONUtils.DateToJSON(LField.AsDateTime, AConfig.UseUTCDate));
+      TFieldType.ftOraInterval:     Result.AddPair(LPairName, LField.AsString);
+      TFieldType.ftLongWord:        Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
+      TFieldType.ftShortint:        Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
+      TFieldType.ftByte:            Result.AddPair(LPairName, TJSONNumber.Create(LField.AsInteger));
+      TFieldType.ftExtended:        Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
+//      TFieldType.ftConnection: ;
+//      TFieldType.ftParams: ;
+//      TFieldType.ftStream: ;
+      TFieldType.ftTimeStampOffset: Result.AddPair(LPairName, LField.AsString);
+//      TFieldType.ftObject: ;
+      TFieldType.ftSingle:          Result.AddPair(LPairName, TJSONNumber.Create(LField.AsFloat));
     end;
   end;
 end;
@@ -619,8 +625,101 @@ begin
   end;
 end;
 
-class procedure TDataSetUtils.Base64ToBlobField(const ABase64: string;
-  ABlobField: TBlobField);
+class procedure TDataSetUtils.JSONToDataSet(AJSONValue: TJSONValue; ADataSet: TDataSet; AConfig: TNeonConfiguration);
+var
+  LJSONArray: TJSONArray;
+  LJSONItem: TJSONObject;
+  LIndex: Integer;
+begin
+  LJSONArray := AJSONValue as TJSONArray;
+
+  for LIndex := 0 to LJSONArray.Count - 1 do
+  begin
+    LJSONItem := LJSONArray.Items[LIndex] as TJSONObject;
+
+    JSONToRecord(LJSONItem, ADataSet, AConfig);
+  end;
+end;
+
+class procedure TDataSetUtils.JSONToRecord(AJSONObject: TJSONObject; ADataSet: TDataSet; AConfig: TNeonConfiguration);
+var
+  LJSONField: TJSONValue;
+  LIndex: Integer;
+  LField: TField;
+begin
+  ADataSet.Append;
+  for LIndex := 0 to ADataSet.Fields.Count - 1 do
+  begin
+    LField := ADataSet.Fields[LIndex];
+    LJSONField := AJSONObject.GetValue(LField.FieldName);
+    if not Assigned(LJSONField) then
+      Continue;
+
+    case LField.DataType of
+      //TFieldType.ftUnknown: ;
+      TFieldType.ftString:          LField.AsString := LJSONField.Value;
+      TFieldType.ftSmallint:        LField.AsString := LJSONField.Value;
+      TFieldType.ftInteger:         LField.AsString := LJSONField.Value;
+      TFieldType.ftWord:            LField.AsString := LJSONField.Value;
+      TFieldType.ftBoolean:         LField.AsString := LJSONField.Value;
+      TFieldType.ftFloat:           LField.AsString := LJSONField.Value;
+      TFieldType.ftCurrency:        LField.AsString := LJSONField.Value;
+      TFieldType.ftBCD:             LField.AsString := LJSONField.Value;
+      TFieldType.ftDate:            LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AConfig.UseUTCDate);
+      TFieldType.ftTime:            LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AConfig.UseUTCDate);
+      TFieldType.ftDateTime:        LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AConfig.UseUTCDate);
+      TFieldType.ftBytes:           ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
+      TFieldType.ftVarBytes:        ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
+      TFieldType.ftAutoInc:         LField.AsString := LJSONField.Value;
+      TFieldType.ftBlob:            TDataSetUtils.Base64ToBlobField(LJSONField.Value, ADataSet.Fields[LIndex] as TBlobField);
+      TFieldType.ftMemo:            LField.AsString := LJSONField.Value;
+      TFieldType.ftGraphic:         (ADataSet.Fields[LIndex] as TGraphicField).Value := TBase64.Decode(LJSONField.Value);
+      //TFieldType.ftFmtMemo: ;
+      //TFieldType.ftParadoxOle: ;
+      //TFieldType.ftDBaseOle: ;
+      TFieldType.ftTypedBinary:     ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
+      //TFieldType.ftCursor: ;
+      TFieldType.ftFixedChar:       LField.AsString := LJSONField.Value;
+      TFieldType.ftWideString:      LField.AsString := LJSONField.Value;
+      TFieldType.ftLargeint:        LField.AsString := LJSONField.Value;
+      TFieldType.ftADT:             ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
+      TFieldType.ftArray:           ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
+      //TFieldType.ftReference: ;
+      TFieldType.ftDataSet:         JSONToDataSet(LJSONField, (ADataSet.Fields[LIndex] as TDataSetField).NestedDataSet, AConfig);
+      TFieldType.ftOraBlob:         TDataSetUtils.Base64ToBlobField(LJSONField.Value, ADataSet.Fields[LIndex] as TBlobField);
+      TFieldType.ftOraClob:         TDataSetUtils.Base64ToBlobField(LJSONField.Value, ADataSet.Fields[LIndex] as TBlobField);
+      TFieldType.ftVariant:         TDataSetUtils.Base64ToBlobField(LJSONField.Value, ADataSet.Fields[LIndex] as TBlobField);
+      //TFieldType.ftInterface: ;
+      //TFieldType.ftIDispatch: ;
+      TFieldType.ftGuid:            LField.AsString := LJSONField.Value;
+      TFieldType.ftTimeStamp:       LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AConfig.UseUTCDate);
+      TFieldType.ftFMTBcd:          ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
+      TFieldType.ftFixedWideChar:   LField.AsString := LJSONField.Value;
+      TFieldType.ftWideMemo:        LField.AsString := LJSONField.Value;
+      TFieldType.ftOraTimeStamp:    LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AConfig.UseUTCDate);
+      TFieldType.ftOraInterval:     LField.AsString := LJSONField.Value;
+      TFieldType.ftLongWord:        LField.AsString := LJSONField.Value;
+      TFieldType.ftShortint:        LField.AsString := LJSONField.Value;
+      TFieldType.ftByte:            LField.AsString := LJSONField.Value;
+      TFieldType.ftExtended:        LField.AsString := LJSONField.Value;
+      //TFieldType.ftConnection: ;
+      //TFieldType.ftParams: ;
+      TFieldType.ftStream:          ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
+      //TFieldType.ftTimeStampOffset: ;
+      //TFieldType.ftObject: ;
+      TFieldType.ftSingle:          LField.AsString := LJSONField.Value;
+    end;
+  end;
+
+  try
+    ADataSet.Post;
+  except
+    ADataSet.Cancel;
+    raise;
+  end;
+end;
+
+class procedure TDataSetUtils.Base64ToBlobField(const ABase64: string; ABlobField: TBlobField);
 var
   LBinaryStream: TMemoryStream;
 begin
@@ -1201,6 +1300,15 @@ begin
     ADestination.AddPair(TJSONPair(LPair.Clone));
 end;
 
+class function TBase64.Encode(const ASource: TBytes): string;
+begin
+{$IFDEF HAS_NET_ENCODING}
+  Result := TNetEncoding.Base64.EncodeBytesToString(ASource);
+{$ELSE}
+  Result := TIdEncoderMIME.EncodeBytes(TIdBytes(ASource));
+{$ENDIF}
+end;
+
 class function TBase64.Encode(const ASource: TStream): string;
 {$IFDEF HAS_NET_ENCODING}
 var
@@ -1217,6 +1325,15 @@ begin
   end;
 {$ELSE}
   Result := TIdEncoderMIME.EncodeStream(ASource);
+{$ENDIF}
+end;
+
+class function TBase64.Decode(const ASource: string): TBytes;
+begin
+{$IFDEF HAS_NET_ENCODING}
+  Result := TNetEncoding.Base64.DecodeStringToBytes(ASource);
+{$ELSE}
+  Result := TIdDecoderMIME.DecodeBytes(ASource) as TBytes;
 {$ENDIF}
 end;
 
@@ -1238,6 +1355,5 @@ begin
   TIdDecoderMIME.DecodeStream(ASource, ADest);
 {$ENDIF}
 end;
-
 
 end.

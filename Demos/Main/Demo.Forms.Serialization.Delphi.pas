@@ -73,6 +73,7 @@ begin
   frmDetails.dsPersons.EmptyDataSet;
   DeserializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   SerializeObject(frmDetails.dsPersons, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  ShowMessage('Click "Show details" button. I deserialized the dataset');
 end;
 
 procedure TfrmSerializationDelphi.btnDesStringListClick(Sender: TObject);
@@ -91,6 +92,8 @@ end;
 procedure TfrmSerializationDelphi.btnSerDataSetClick(Sender: TObject);
 begin
   SerializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  frmDetails.EmptyDataSet;
+  ShowMessage('Click "Show details" button. I emptied the dataset, you can change something in the JSON data');
 end;
 
 procedure TfrmSerializationDelphi.btnSerImageClick(Sender: TObject);
@@ -100,8 +103,8 @@ begin
   LFileName := ExtractFilePath(Application.ExeName) + '..\..\neon-logo-600.bmp';
   frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
   SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  frmDetails.imgNeon.Picture.Bitmap.SetSize(0,0);
-  ShowMessage('Click "Show details" button. I''ve clear the picture');
+  frmDetails.ClearImage;
+  ShowMessage('Click "Show details" button. I''ve cleared the picture');
 end;
 
 procedure TfrmSerializationDelphi.btnSerStringListClick(Sender: TObject);

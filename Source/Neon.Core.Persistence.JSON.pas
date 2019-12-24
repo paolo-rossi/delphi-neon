@@ -264,11 +264,19 @@ type
     class procedure PrintToStream(AJSONValue: TJSONValue; AStream: TStream; APretty: Boolean); static;
   public
     /// <summary>
-    ///   Serializes a value based type (record, string, integer, etc...) to a TJSONValue
+    ///   Serializes a value based type (record, string, integer, etc...) to a TStream
     /// </summary>
-    /// <remarks>
-    ///   A default configuration object will be provided
-    /// </remarks>
+    class procedure ValueToStream(const AValue: TValue; AStream: TStream); overload;
+
+    /// <summary>
+    ///   Serializes a value based type (record, string, integer, etc...) to a TStream with a given configuration
+    /// </summary>
+    class procedure ValueToStream(const AValue: TValue; AStream: TStream; AConfig: INeonConfiguration); overload;
+
+    /// <summary>
+    ///   Serializes a value based type (record, string, integer, etc...) to a
+    ///   TJSONValue with a default configuration
+    /// </summary>
     class function ValueToJSON(const AValue: TValue): TJSONValue; overload;
 
     /// <summary>
@@ -276,6 +284,17 @@ type
     ///   with a given configuration
     /// </summary>
     class function ValueToJSON(const AValue: TValue; AConfig: INeonConfiguration): TJSONValue; overload;
+
+  public
+    /// <summary>
+    ///   Serializes an object based type into a TTStream with a default configuration
+    /// </summary>
+    class procedure ObjectToStream(AObject: TObject; AStream: TStream); overload;
+
+    /// <summary>
+    ///   Serializes an object based type into a TTStream with a given configuration
+    /// </summary>
+    class procedure ObjectToStream(AObject: TObject; AStream: TStream; AConfig: INeonConfiguration); overload;
 
     /// <summary>
     ///   Serializes an object based type to a TJSONValue with a default configuration
@@ -1107,44 +1126,9 @@ begin
 end;
 
 function TNeonDeserializerJSON.ReadDataSet(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
-var
-  LJSONArray: TJSONArray;
-  LJSONItem: TJSONObject;
-  LJSONField: TJSONValue;
-  LDataSet: TDataSet;
-  LIndex: Integer;
-  LItemIntex: Integer;
-  LName: string;
 begin
   Result := AData;
-  LDataSet := AData.AsObject as TDataSet;
-  LJSONArray := AParam.JSONValue as TJSONArray;
-
-  for LIndex := 0 to LJSONArray.Count - 1 do
-  begin
-    LJSONItem := LJSONArray.Items[LIndex] as TJSONObject;
-
-    LDataSet.Append;
-    for LItemIntex := 0 to LDataSet.Fields.Count - 1 do
-    begin
-      LName := LDataSet.Fields[LItemIntex].FieldName;
-
-      LJSONField := LJSONItem.GetValue(LName);
-      if Assigned(LJSONField) then
-      begin
-        case LDataSet.Fields[LItemIntex].DataType of
-          ftDataSet: JSONToDataSet(LJSONField, (LDataSet.Fields[LItemIntex] as TDataSetField).NestedDataSet);
-          ftBlob: TDataSetUtils.Base64ToBlobField(LJSONField.Value, LDataSet.Fields[LItemIntex] as TBlobField);       
-        else
-          begin
-            { TODO -opaolo -c : Be more specific (field and json type) 27/04/2017 17:16:09 }
-            LDataSet.FieldByName(LName).AsString := LJSONField.Value;
-          end;
-        end;
-      end;
-    end;
-    LDataSet.Post;
-  end;
+  TDataSetUtils.JSONToDataSet(AParam.JSONValue, AData.AsObject as TDataSet, FConfig);
 end;
 
 function TNeonDeserializerJSON.ReadEnum(const AParam: TNeonDeserializerParam): TValue;
@@ -1564,6 +1548,23 @@ begin
   end;
 end;
 
+class procedure TNeon.ObjectToStream(AObject: TObject; AStream: TStream);
+begin
+  ObjectToStream(AObject, AStream, TNeonConfiguration.Default);
+end;
+
+class procedure TNeon.ObjectToStream(AObject: TObject; AStream: TStream; AConfig: INeonConfiguration);
+var
+  LJSON: TJSONValue;
+begin
+  LJSON := TNeon.ObjectToJSON(AObject, AConfig);
+  try
+    PrintToStream(LJSON, AStream, AConfig.GetPrettyPrint);
+  finally
+    LJSON.Free;
+  end;
+end;
+
 class function TNeon.Print(AJSONValue: TJSONValue; APretty: Boolean): string;
 var
   LWriter: TStringWriter;
@@ -1675,6 +1676,23 @@ begin
     Result := LWriter.ValueToJSON(AValue);
   finally
     LWriter.Free;
+  end;
+end;
+
+class procedure TNeon.ValueToStream(const AValue: TValue; AStream: TStream);
+begin
+  ValueToStream(AValue, AStream, TNeonConfiguration.Default);
+end;
+
+class procedure TNeon.ValueToStream(const AValue: TValue; AStream: TStream; AConfig: INeonConfiguration);
+var
+  LJSON: TJSONValue;
+begin
+  LJSON := TNeon.ValueToJSON(AValue, AConfig);
+  try
+    PrintToStream(LJSON, AStream, AConfig.GetPrettyPrint);
+  finally
+    LJSON.Free;
   end;
 end;
 
