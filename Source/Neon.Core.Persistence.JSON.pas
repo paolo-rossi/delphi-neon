@@ -125,16 +125,6 @@ type
     function WriteInterface(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
-    ///   Writer for TStream (descendants) objects
-    /// </summary>
-    function WriteStream(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
-
-    /// <summary>
-    ///   Writer for TDataSet (descendants) objects
-    /// </summary>
-    function WriteDataSet(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
-
-    /// <summary>
     ///   Writer for "Enumerable" objects (Lists, Generic Lists, TStrings, etc...)
     /// </summary>
     /// <remarks>
@@ -221,10 +211,8 @@ type
     function ReadObject(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
     function ReadInterface(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
     function ReadRecord(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
-    function ReadDataSet(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
-    function ReadStream(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 
-	// Dynamic types
+  	// Dynamic types
     function ReadStreamable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
     function ReadEnumerable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
     function ReadEnumerableMap(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
@@ -519,7 +507,7 @@ begin
   LCustomSer := FConfig.Serializers.GetSerializer(AValue.TypeInfo);
   if Assigned(LCustomSer) then
   begin
-    Result := LCustomSer.Serialize(AValue, Self);
+    Result := LCustomSer.Serialize(AValue, ANeonObject, Self);
     Exit(Result);
   end;
 
@@ -573,10 +561,6 @@ begin
           Exit(TJSONNull.Create);
         end;
       end
-      else if AValue.AsObject is TDataSet then
-        Result := WriteDataSet(AValue, ANeonObject)
-      else if AValue.AsObject is TStream then
-        Result := WriteStream(AValue, ANeonObject)
       else if IsEnumerableMap(AValue, LDynamicMap) then
         Result := WriteEnumerableMap(AValue, ANeonObject, LDynamicMap)
       else if IsEnumerable(AValue, LDynamicList) then
@@ -627,19 +611,6 @@ begin
     tkClassRef:
     }
   end;
-end;
-
-function TNeonSerializerJSON.WriteDataSet(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
-var
-  LDataSet: TDataSet;
-begin
-  LDataSet := AValue.AsObject as TDataSet;
-
-  if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
-    if LDataSet.IsEmpty then
-      Exit(nil);
-
-  Result := TDataSetUtils.DataSetToJSONArray(LDataSet, FConfig);
 end;
 
 function TNeonSerializerJSON.WriteDate(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -884,27 +855,6 @@ begin
   Result := TJSONString.Create(LRes);
 end;
 
-function TNeonSerializerJSON.WriteStream(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
-var
-  LStream: TStream;
-  LBase64: string;
-begin
-  LStream := AValue.AsObject as TStream;
-
-  if LStream.Size = 0 then
-  begin
-    case ANeonObject.NeonInclude.Value of
-      IncludeIf.NotEmpty, IncludeIf.NotDefault: Exit(nil);
-    else
-      Exit(TJSONString.Create(''));
-    end;
-  end;
-
-  LStream.Position := soFromBeginning;
-  LBase64 := TBase64.Encode(LStream);
-  Result := TJSONString.Create(LBase64);
-end;
-
 function TNeonSerializerJSON.WriteStreamable(const AValue: TValue; ANeonObject: TNeonRttiObject; AStream: IDynamicStream): TJSONValue;
 var
   LBinaryStream: TMemoryStream;
@@ -1063,7 +1013,7 @@ begin
 
   if Assigned(LCustom) then
   begin
-    Result := LCustom.Deserialize(AParam.JSONValue, AData, Self);
+    Result := LCustom.Deserialize(AParam.JSONValue, AData, AParam.NeonObject, Self);
     Exit(Result);
   end;
 
@@ -1087,24 +1037,18 @@ begin
     // Complex types
     tkClass:
     begin
-      { TODO -opaolo -c : Refactor Read*Object function (boolean result) 20/05/2017 12:25:19 }
-      if AData.AsObject is TDataSet then
-        Result := ReadDataSet(AParam, AData)
-      else if AData.AsObject is TStream then
-        Result := ReadStream(AParam, AData)
+      if ReadEnumerableMap(AParam, AData) then
+        Result := AData
+      else if ReadEnumerable(AParam, AData) then
+        Result := AData
+      else if ReadStreamable(AParam, AData) then
+        Result := AData
       else
-      begin
-        if ReadEnumerableMap(AParam, AData) then
-          Result := AData
-        else if ReadEnumerable(AParam, AData) then
-          Result := AData
-        else if ReadStreamable(AParam, AData) then
-          Result := AData
-        else
-          Result := ReadObject(AParam, AData);
-      end;
+        Result := ReadObject(AParam, AData);
     end;
+
     tkInterface:   Result := ReadInterface(AParam, AData);
+
     tkRecord:
     begin
       if ReadNullable(AParam, AData) then
@@ -1123,12 +1067,6 @@ begin
     }
     else Result := TValue.Empty;
   end;
-end;
-
-function TNeonDeserializerJSON.ReadDataSet(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
-begin
-  Result := AData;
-  TDataSetUtils.JSONToDataSet(AParam.JSONValue, AData.AsObject as TDataSet, FConfig);
 end;
 
 function TNeonDeserializerJSON.ReadEnum(const AParam: TNeonDeserializerParam): TValue;
@@ -1377,17 +1315,6 @@ begin
   TValue.Make(StringToSet(AParam.RttiType.Handle, LSetStr), AParam.RttiType.Handle, Result);
 end;
 
-function TNeonDeserializerJSON.ReadStream(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
-var
-  LStream: TStream;
-begin
-  Result := AData;
-  LStream := AData.AsObject as TStream;
-  LStream.Position := soFromBeginning;
-
-  TBase64.Decode(AParam.JSONValue.Value, LStream);
-end;
-
 function TNeonDeserializerJSON.ReadStreamable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
 var
   LStream: TMemoryStream;
@@ -1607,7 +1534,7 @@ begin
   if not APretty then
   begin
     AWriter.Write(AJSONValue.ToJSON);
-    exit;
+    Exit;
   end;
 
   LOffset := 0;

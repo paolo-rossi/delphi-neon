@@ -25,7 +25,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs, System.TypInfo,
-  System.Generics.Collections, System.Math.Vectors, System.JSON,
+  System.Generics.Collections, System.Math.Vectors, System.JSON, Data.DB,
 
   Neon.Core.Types,
   Neon.Core.Attributes,
@@ -33,14 +33,37 @@ uses
 
 type
   TGUIDSerializer = class(TCustomSerializer)
-  public
+  protected
     class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
   public
-    function Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue; override;
-    function Deserialize(AValue: TJSONValue; const AData: TValue; AContext: IDeserializerContext): TValue; override;
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
+  TStreamSerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
+  TDataSetSerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
 implementation
+
+uses
+  Neon.Core.Utils,
+  Neon.Core.Utils.DB;
 
 { TGUIDSerializer }
 
@@ -49,7 +72,8 @@ begin
   Result := TypeInfo(TGUID);
 end;
 
-function TGUIDSerializer.Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue;
+function TGUIDSerializer.Serialize(const AValue: TValue; ANeonObject:
+    TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
 var
   LGUID: TGUID;
 begin
@@ -60,12 +84,100 @@ begin
     );
 end;
 
-function TGUIDSerializer.Deserialize(AValue: TJSONValue; const AData: TValue; AContext: IDeserializerContext): TValue;
+class function TGUIDSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  if AType = GetTargetInfo then
+    Result := True
+  else
+    Result := False;
+end;
+
+function TGUIDSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
+    ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
 var
   LGUID: TGUID;
 begin
   LGUID := StringToGUID(Format('{%s}', [AValue.Value]));
   Result := TValue.From<TGUID>(LGUID);
+end;
+
+{ TDataSetSerializer }
+
+class function TDataSetSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := TDataSet.ClassInfo;
+end;
+
+class function TDataSetSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := TypeInfoIs(AType);
+end;
+
+function TDataSetSerializer.Deserialize(AValue: TJSONValue; const AData:
+    TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
+begin
+  Result := AData;
+  TDataSetUtils.JSONToDataSet(AValue, AData.AsObject as TDataSet, AContext.GetConfiguration);
+end;
+
+function TDataSetSerializer.Serialize(const AValue: TValue; ANeonObject:
+    TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+var
+  LDataSet: TDataSet;
+begin
+  LDataSet := AValue.AsType<TDataSet>;
+
+  if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
+    if LDataSet.IsEmpty then
+      Exit(nil);
+
+  Result := TDataSetUtils.DataSetToJSONArray(LDataSet, AContext.GetConfiguration);
+end;
+
+{ TStreamSerializer }
+
+class function TStreamSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := TStream.ClassInfo;
+end;
+
+class function TStreamSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := TypeInfoIs(AType);
+end;
+
+function TStreamSerializer.Serialize(const AValue: TValue;
+  ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+var
+  LStream: TStream;
+  LBase64: string;
+begin
+  LStream := AValue.AsObject as TStream;
+
+  if LStream.Size = 0 then
+  begin
+    case ANeonObject.NeonInclude.Value of
+      IncludeIf.NotEmpty, IncludeIf.NotDefault: Exit(nil);
+    else
+      Exit(TJSONString.Create(''));
+    end;
+  end;
+
+  LStream.Position := soFromBeginning;
+  LBase64 := TBase64.Encode(LStream);
+  Result := TJSONString.Create(LBase64);
+end;
+
+function TStreamSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
+  ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
+var
+  LStream: TStream;
+begin
+  Result := AData;
+  LStream := AData.AsObject as TStream;
+  LStream.Position := soFromBeginning;
+
+  TBase64.Decode(AValue.Value, LStream);
 end;
 
 end.

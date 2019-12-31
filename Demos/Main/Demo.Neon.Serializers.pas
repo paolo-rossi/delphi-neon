@@ -34,35 +34,39 @@ uses
 
 type
   TPoint3DSerializer = class(TCustomSerializer)
-  public
+  protected
     class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
   public
-    function Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue; override;
-    function Deserialize(AValue: TJSONValue; const AData: TValue; AContext: IDeserializerContext): TValue; override;
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
   TParameterSerializer = class(TCustomSerializer)
-  public
+  protected
     class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
   public
-    function Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue; override;
-    function Deserialize(AValue: TJSONValue; const AData: TValue; AContext: IDeserializerContext): TValue; override;
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
   TFontSerializer = class(TCustomSerializer)
-  public
+  protected
     class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
   public
-    function Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue; override;
-    function Deserialize(AValue: TJSONValue; const AData: TValue; AContext: IDeserializerContext): TValue; override;
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
   TCaseClassSerializer = class(TCustomSerializer)
-  public
+  protected
     class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
   public
-    function Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue; override;
-    function Deserialize(AValue: TJSONValue; const AData: TValue; AContext: IDeserializerContext): TValue; override;
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
 implementation
@@ -77,7 +81,8 @@ begin
   Result := TypeInfo(TPoint3D);
 end;
 
-function TPoint3DSerializer.Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue;
+function TPoint3DSerializer.Serialize(const AValue: TValue; ANeonObject:
+    TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
 var
   LVal: TPoint3D;
   LJSON: TJSONObject;
@@ -90,7 +95,13 @@ begin
   Result := LJSON;
 end;
 
-function TPoint3DSerializer.Deserialize(AValue: TJSONValue; const AData: TValue; AContext: IDeserializerContext): TValue;
+class function TPoint3DSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := AType = TypeInfo(TPoint3D);
+end;
+
+function TPoint3DSerializer.Deserialize(AValue: TJSONValue; const AData:
+    TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
 var
   LVal: TPoint3D;
 begin
@@ -108,7 +119,8 @@ begin
   Result := TParameterContainer.ClassInfo;
 end;
 
-function TParameterSerializer.Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue;
+function TParameterSerializer.Serialize(const AValue: TValue; ANeonObject:
+    TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
 var
   LParam: TParameterContainer;
 begin
@@ -120,8 +132,13 @@ begin
     Result := AContext.WriteDataMember(LParam.par);
 end;
 
-function TParameterSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
-  AContext: IDeserializerContext): TValue;
+class function TParameterSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := TypeInfoIs(AType);
+end;
+
+function TParameterSerializer.Deserialize(AValue: TJSONValue; const AData:
+    TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
 var
   LVal: TParameterContainer;
   LType: TRttiType;
@@ -149,7 +166,8 @@ begin
   Result := TFont.ClassInfo;
 end;
 
-function TFontSerializer.Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue;
+function TFontSerializer.Serialize(const AValue: TValue; ANeonObject:
+    TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
 var
   LFont: TFont;
   LJSON: TJSONObject;
@@ -165,8 +183,13 @@ begin
   Result := LJSON;
 end;
 
+class function TFontSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := TypeInfoIs(AType);
+end;
+
 function TFontSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
-  AContext: IDeserializerContext): TValue;
+    ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
 var
   LJSONObject: TJSONObject;
   LJSONValue: TJSONValue;
@@ -199,8 +222,13 @@ end;
 
 { TCaseClassSerializer }
 
-function TCaseClassSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
-  AContext: IDeserializerContext): TValue;
+class function TCaseClassSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := TypeInfoIs(AType);
+end;
+
+function TCaseClassSerializer.Deserialize(AValue: TJSONValue; const AData:
+    TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
 var
   LJSONObject: TJSONObject;
   LJSONValue: TJSONValue;
@@ -238,7 +266,8 @@ begin
   Result := TCaseClass.ClassInfo;
 end;
 
-function TCaseClassSerializer.Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue;
+function TCaseClassSerializer.Serialize(const AValue: TValue; ANeonObject:
+    TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
 var
   LObj: TCaseClass;
   LJSON: TJSONObject;

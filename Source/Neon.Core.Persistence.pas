@@ -25,7 +25,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs, System.TypInfo,
-  System.Generics.Collections, System.JSON,  System.Generics.Defaults,
+  System.Generics.Collections, System.JSON, System.Generics.Defaults,
 
   Neon.Core.Types,
   Neon.Core.Attributes,
@@ -35,6 +35,7 @@ uses
 
 type
   TNeonSerializerRegistry = class;
+  TNeonRttiObject = class;
 
   INeonConfiguration = interface
   ['{F82AB790-1C65-4501-915C-0289EFD9D8CC}']
@@ -67,20 +68,26 @@ type
   end;
 
   TCustomSerializer = class abstract(TObject)
-    class function GetTargetInfo: PTypeInfo; virtual; abstract;
-    function Serialize(const AValue: TValue; AContext: ISerializerContext): TJSONValue; virtual; abstract;
-    function Deserialize(AValue: TJSONValue; const AData: TValue; AContext: IDeserializerContext): TValue; virtual; abstract;
+  protected
+    class function GetTargetInfo: PTypeInfo; virtual;
+    class function CanHandle(AType: PTypeInfo): Boolean; virtual; abstract;
+  protected
+    class function ClassIs(AClass: TClass): Boolean;
+    class function TypeInfoIs(AInfo: PTypeInfo): Boolean;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; virtual; abstract;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; virtual; abstract;
   end;
 
   TCustomSerializerClass = class of TCustomSerializer;
 
   TNeonSerializerRegistry = class
   private type
-    SerializerRegistry = class(TObjectDictionary<PTypeInfo, TCustomSerializer>);
-    SerializerClassRegistry = class(TObjectDictionary<PTypeInfo, TCustomSerializerClass>);
+    SerializerCacheRegistry = class(TObjectDictionary<PTypeInfo, TCustomSerializer>);
+    SerializerClassRegistry = class(TList<TCustomSerializerClass>);
   private
-    FRegistry: SerializerClassRegistry;
-    FRegistryCache: SerializerRegistry;
+    FRegistryClass: SerializerClassRegistry;
+    FRegistryCache: SerializerCacheRegistry;
     function GetCount: Integer;
     function InternalGetSerializer(ATypeInfo: PTypeInfo): TCustomSerializer;
   public
@@ -135,6 +142,8 @@ type
     class function Pretty: INeonConfiguration; static;
     class function Snake: INeonConfiguration; static;
     class function Camel: INeonConfiguration; static;
+
+    class procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 
     function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
@@ -283,7 +292,9 @@ type
 implementation
 
 uses
-  System.RegularExpressions;
+  System.RegularExpressions,
+  Neon.Core.Utils,
+  Neon.Core.Serializers;
 
 { TNeonBase }
 
@@ -428,6 +439,8 @@ end;
 class function TNeonConfiguration.Default: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
+
+  RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
 destructor TNeonConfiguration.Destroy;
@@ -454,13 +467,24 @@ end;
 class function TNeonConfiguration.Pretty: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
+
   Result.SetPrettyPrint(True);
+  RegisterDefaultSerializers(Result.GetSerializers);
+end;
+
+class procedure TNeonConfiguration.RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
+begin
+  ARegistry.RegisterSerializer(TGUIDSerializer);
+  ARegistry.RegisterSerializer(TStreamSerializer);
+  ARegistry.RegisterSerializer(TDataSetSerializer);
 end;
 
 class function TNeonConfiguration.Camel: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
+
   Result.SetMemberCase(TNeonCase.CamelCase);
+  RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
 class function TNeonConfiguration.Snake: INeonConfiguration;
@@ -469,6 +493,7 @@ begin
 
   Result.SetIgnoreFieldPrefix(True);
   Result.SetMemberCase(TNeonCase.SnakeCase);
+  RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
 function TNeonConfiguration.SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
@@ -727,7 +752,7 @@ end;
 
 { TNeonRttiMembers }
 
-constructor TNeonRttiMembers.Create(AConfig: TNeonConfiguration; AInstance: Pointer; 
+constructor TNeonRttiMembers.Create(AConfig: TNeonConfiguration; AInstance: Pointer;
   AType: TRttiType; AOperation: TNeonOperation);
 begin
   inherited Create(True);
@@ -946,7 +971,7 @@ end;
 
 procedure TNeonSerializerRegistry.Clear;
 begin
-  FRegistry.Clear;
+  FRegistryClass.Clear;
   FRegistryCache.Clear;
 end;
 
@@ -957,20 +982,20 @@ end;
 
 constructor TNeonSerializerRegistry.Create;
 begin
-  FRegistry := SerializerClassRegistry.Create();
-  FRegistryCache := SerializerRegistry.Create([doOwnsValues]);
+  FRegistryClass := SerializerClassRegistry.Create();
+  FRegistryCache := SerializerCacheRegistry.Create([doOwnsValues]);
 end;
 
 destructor TNeonSerializerRegistry.Destroy;
 begin
-  FRegistry.Free;
+  FRegistryClass.Free;
   FRegistryCache.Free;
   inherited;
 end;
 
 function TNeonSerializerRegistry.GetCount: Integer;
 begin
-  Result := FRegistry.Count;
+  Result := FRegistryClass.Count;
 end;
 
 function TNeonSerializerRegistry.GetSerializer(AValue: TValue): TCustomSerializer;
@@ -1002,48 +1027,80 @@ begin
   if FRegistryCache.TryGetValue(ATypeInfo, Result) then
     Exit(Result);
 
-  if FRegistry.TryGetValue(ATypeInfo, LClass) then
+  for LClass in FRegistryClass do
   begin
-    Result := LClass.Create;
-    FRegistryCache.Add(ATypeInfo, Result);
+    if LClass.CanHandle(ATypeInfo) then
+    begin
+      Result := LClass.Create;
+      FRegistryCache.Add(ATypeInfo, Result);
+      Break;
+    end;
   end;
 end;
 
 function TNeonSerializerRegistry.RegisterSerializer<T>(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry;
 begin
-  FRegistry.Add(TypeInfo(T), ASerializerClass);
+  FRegistryClass.Add(ASerializerClass);
   Result := Self;
 end;
 
 procedure TNeonSerializerRegistry.RegisterSerializer(ATargetClass: TClass; ASerializerClass: TCustomSerializerClass);
 begin
-  FRegistry.Add(ATargetClass.ClassInfo, ASerializerClass);
+  FRegistryClass.Add(ASerializerClass);
 end;
 
 procedure TNeonSerializerRegistry.RegisterSerializer(ATargetInfo: PTypeInfo; ASerializerClass: TCustomSerializerClass);
 begin
-  FRegistry.Add(ATargetInfo, ASerializerClass);
+  FRegistryClass.Add(ASerializerClass);
 end;
 
 function TNeonSerializerRegistry.RegisterSerializer(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry;
 begin
-  FRegistry.Add(ASerializerClass.GetTargetInfo, ASerializerClass);
+  FRegistryClass.Add(ASerializerClass);
   Result := Self;
 end;
 
 procedure TNeonSerializerRegistry.UnregisterSerializer(ATargetInfo: PTypeInfo);
 begin
-  FRegistry.Remove(ATargetInfo);
+  FRegistryClass.Remove(ATargetInfo);
 end;
 
 procedure TNeonSerializerRegistry.UnregisterSerializer(ATargetClass: TClass);
 begin
-  FRegistry.Remove(ATargetClass.ClassInfo);
+  FRegistryClass.Remove(ATargetClass.ClassInfo);
 end;
 
 procedure TNeonSerializerRegistry.UnregisterSerializer<T>;
 begin
-  FRegistry.Remove(TypeInfo(T));
+  FRegistryClass.Remove(TypeInfo(T));
+end;
+
+{ TCustomSerializer }
+
+class function TCustomSerializer.ClassIs(AClass: TClass): Boolean;
+var
+  LType: TRttiType;
+begin
+  Result := False;
+
+  LType := TRttiUtils.Context.GetType(GetTargetInfo);
+  if Assigned(LType) and (LType.TypeKind = tkClass) then
+    Result := AClass.InheritsFrom(LType.AsInstance.MetaclassType);
+end;
+
+class function TCustomSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := nil;
+end;
+
+class function TCustomSerializer.TypeInfoIs(AInfo: PTypeInfo): Boolean;
+var
+  LType: TRttiType;
+begin
+  Result := False;
+  LType := TRttiUtils.Context.GetType(AInfo);
+  if Assigned(LType) and (LType.TypeKind = tkClass) then
+    Result := ClassIs(LType.AsInstance.MetaclassType);
 end;
 
 end.
