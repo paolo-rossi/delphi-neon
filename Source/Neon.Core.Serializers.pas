@@ -62,8 +62,7 @@ type
 implementation
 
 uses
-  Neon.Core.Utils,
-  Neon.Core.Utils.DB;
+  Neon.Core.Utils;
 
 { TGUIDSerializer }
 
@@ -117,7 +116,7 @@ function TDataSetSerializer.Deserialize(AValue: TJSONValue; const AData:
     TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
 begin
   Result := AData;
-  TDataSetUtils.JSONToDataSet(AValue, AData.AsObject as TDataSet, AContext.GetConfiguration);
+  TDataSetUtils.JSONToDataSet(AValue, AData.AsObject as TDataSet, AContext.GetConfiguration.GetUseUTCDate);
 end;
 
 function TDataSetSerializer.Serialize(const AValue: TValue; ANeonObject:
@@ -131,7 +130,7 @@ begin
     if LDataSet.IsEmpty then
       Exit(nil);
 
-  Result := TDataSetUtils.DataSetToJSONArray(LDataSet, AContext.GetConfiguration);
+  Result := TDataSetUtils.DataSetToJSONArray(LDataSet, AContext.GetConfiguration.GetUseUTCDate);
 end;
 
 { TStreamSerializer }
