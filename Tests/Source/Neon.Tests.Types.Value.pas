@@ -87,13 +87,13 @@ procedure TTestValueTypes.TestRecord;
 const
   LExpected = '{"Name":"Paolo","BirthDate":"1969-10-02T03:00:00.000Z","Age":50}';
 var
-  LValue: TMyRecord;
+  LValue: TSimpleRecord;
   LResult: string;
 begin
   LValue.Name := 'Paolo';
   LValue.BirthDate := EncodeDateTime(1969, 10, 02, 03, 0, 0, 0);
   LValue.Age := 50;
-  LResult := TTestUtils.SerializeValue(TValue.From<TMyRecord>(LValue));
+  LResult := TTestUtils.SerializeValue(TValue.From<TSimpleRecord>(LValue));
   Assert.AreEqual(LExpected, LResult);
 end;
 
