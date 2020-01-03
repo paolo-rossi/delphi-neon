@@ -18,16 +18,15 @@ type
 
     class function DeserializeObject(AObject: TObject; AConfig: INeonConfiguration): string;
 
-    class function SerializeValueFrom<T>(AValue: TValue): string; overload;
-    class function SerializeValueFrom<T>(AValue: TValue; AConfig: INeonConfiguration): string; overload;
+    class function SerializeValue(AValue: TValue): string; overload;
+    class function SerializeValue(AValue: TValue; AConfig: INeonConfiguration): string; overload;
 
     class function DeserializeValueTo<T>(AValue: T; AConfig: INeonConfiguration): T;
   end;
 
 implementation
 
-class function TTestUtils.SerializeObject(AObject: TObject; AConfig:
-    INeonConfiguration): string;
+class function TTestUtils.SerializeObject(AObject: TObject; AConfig: INeonConfiguration): string;
 var
   LJSON: TJSONValue;
   LWriter: TNeonSerializerJSON;
@@ -45,13 +44,12 @@ begin
   end;
 end;
 
-class function TTestUtils.SerializeValueFrom<T>(AValue: TValue): string;
+class function TTestUtils.SerializeValue(AValue: TValue): string;
 begin
-  Result := SerializeValueFrom<T>(AValue, TNeonConfiguration.Default);
+  Result := SerializeValue(AValue, TNeonConfiguration.Default);
 end;
 
-class function TTestUtils.DeserializeObject(AObject: TObject; AConfig:
-    INeonConfiguration): string;
+class function TTestUtils.DeserializeObject(AObject: TObject; AConfig: INeonConfiguration): string;
 var
   LJSON: TJSONValue;
   LReader: TNeonDeserializerJSON;
@@ -77,8 +75,7 @@ begin
   Result := SerializeObject(AObject, TNeonConfiguration.Default);
 end;
 
-class function TTestUtils.SerializeValueFrom<T>(AValue: TValue; AConfig:
-    INeonConfiguration): string;
+class function TTestUtils.SerializeValue(AValue: TValue; AConfig: INeonConfiguration): string;
 var
   LJSON: TJSONValue;
   LWriter: TNeonSerializerJSON;
@@ -96,8 +93,7 @@ begin
   end;
 end;
 
-class function TTestUtils.DeserializeValueTo<T>(AValue: T; AConfig:
-    INeonConfiguration): T;
+class function TTestUtils.DeserializeValueTo<T>(AValue: T; AConfig: INeonConfiguration): T;
 var
   LJSON: TJSONValue;
   LValue: TValue;

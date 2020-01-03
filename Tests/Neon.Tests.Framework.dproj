@@ -98,8 +98,11 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="Source\Neon.Tests.Serializer.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Types.Simple.pas"/>
         <DCCReference Include="Source\Neon.Tests.Utils.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Entities.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Serializer.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Types.Value.pas"/>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>
