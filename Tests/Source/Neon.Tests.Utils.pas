@@ -13,6 +13,8 @@ type
   private class var
     FContext: TRttiContext;
   public
+    class function ExpectedFromFile(const AFileName: string): string;
+  public
     class function SerializeObject(AObject: TObject): string; overload;
     class function SerializeObject(AObject: TObject; AConfig: INeonConfiguration): string; overload;
 
@@ -25,6 +27,9 @@ type
   end;
 
 implementation
+
+uses
+  System.IOUtils;
 
 class function TTestUtils.SerializeObject(AObject: TObject; AConfig: INeonConfiguration): string;
 var
@@ -114,6 +119,18 @@ begin
     end;
   finally
     LJSON.Free;
+  end;
+end;
+
+class function TTestUtils.ExpectedFromFile(const AFileName: string): string;
+var
+  LReader: TStreamReader;
+begin
+  LReader := TStreamReader.Create(AFileName, TEncoding.UTF8);
+  try
+    Result := LReader.ReadToEnd;
+  finally
+    LReader.Free;
   end;
 end;
 

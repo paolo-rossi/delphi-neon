@@ -17,7 +17,8 @@ uses
   Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas',
   Neon.Tests.Entities in 'Source\Neon.Tests.Entities.pas',
   Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas',
-  Neon.Tests.Types.Value in 'Source\Neon.Tests.Types.Value.pas';
+  Neon.Tests.Types.Value in 'Source\Neon.Tests.Types.Value.pas',
+  Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas';
 
 var
   LRunner : ITestRunner;

@@ -13,7 +13,7 @@ type
   TIntegerArray = TArray<Integer>;
 
   [TestFixture]
-  [Category('Value Types')]
+  [Category('valuetypes')]
   TTestValueTypes = class(TObject)
   public
     [Setup]

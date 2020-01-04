@@ -28,6 +28,7 @@ implementation
 
 procedure TTestSerializer.Setup;
 begin
+
 end;
 
 procedure TTestSerializer.TearDown;
@@ -36,6 +37,7 @@ end;
 
 procedure TTestSerializer.TestSerializer(const AValue: Boolean);
 begin
+
   //Assert.AreEqual(_Result, TTestUtils.SerializeValue(AValue));
 end;
 

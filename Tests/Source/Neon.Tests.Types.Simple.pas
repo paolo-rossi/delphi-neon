@@ -11,7 +11,7 @@ uses
 type
 
   [TestFixture]
-  [Category('Simple Types')]
+  [Category('simpletypes')]
   TTestSimpleTypes = class(TObject)
   public
     [Setup]
