@@ -26,7 +26,7 @@ interface
 {$I Neon.inc}
 
 uses
-  System.Classes, System.SysUtils, Data.DB, System.Rtti, System.JSON,
+  System.Classes, System.SysUtils, Data.DB, System.Rtti, System.JSON, System.TypInfo,
   {$IFDEF HAS_NET_ENCODING}
   System.NetEncoding,
   {$ELSE}
@@ -60,14 +60,11 @@ type
     // TRttiObject helpers functions
     class function FindAttribute<T: TCustomAttribute>(AType: TRttiObject): T; static;
 
-    class function HasAttribute<T: TCustomAttribute>(
-      AClass: TClass): Boolean; overload; static;
+    class function HasAttribute<T: TCustomAttribute>(AClass: TClass): Boolean; overload; static;
 
-    class function HasAttribute<T: TCustomAttribute>(
-      ARttiObj: TRttiObject): Boolean; overload; static;
+    class function HasAttribute<T: TCustomAttribute>(ARttiObj: TRttiObject): Boolean; overload; static;
 
-    class function HasAttribute<T: TCustomAttribute>(
-      ARttiObj: TRttiObject; const ADoSomething: TProc<T>): Boolean; overload; static;
+    class function HasAttribute<T: TCustomAttribute>(ARttiObj: TRttiObject; const ADoSomething: TProc<T>): Boolean; overload; static;
 
     class function ForEachAttribute<T: TCustomAttribute>(
       ARttiObj: TRttiObject; const ADoSomething: TProc<T>): Integer; overload; static;
@@ -126,6 +123,9 @@ type
 
     class function GetType(AObject: TRttiObject): TRttiType;
 
+    class function ClassDistanceFromRoot(AClass: TClass): Integer; overload; static;
+    class function ClassDistanceFromRoot(AInfo: PTypeInfo): Integer; overload; static;
+
     class property Context: TRttiContext read FContext;
   end;
 
@@ -177,7 +177,7 @@ function TValueToJSONObject(AObject: TJSONObject; const AName: string; const AVa
 implementation
 
 uses
-  System.StrUtils, System.DateUtils, System.TypInfo;
+  System.StrUtils, System.DateUtils;
 
 type
   TJSONFieldType = (NestedObject, NestedArray, SimpleValue);
@@ -263,7 +263,29 @@ begin
   end;
 end;
 
+class function TRttiUtils.ClassDistanceFromRoot(AClass: TClass): Integer;
+var
+  LClass: TClass;
+begin
+  Result := 0;
+  LClass := AClass;
+  while LClass <> TObject do
+  begin
+    LClass := LClass.ClassParent;
+    Inc(Result);
+  end;
+end;
 
+class function TRttiUtils.ClassDistanceFromRoot(AInfo: PTypeInfo): Integer;
+var
+  LType: TRttiType;
+begin
+  Result := -1;
+
+  LType := TRttiUtils.Context.GetType(AInfo);
+  if Assigned(LType) and (LType.TypeKind = tkClass) then
+    Result := TRttiUtils.ClassDistanceFromRoot(LType.AsInstance.MetaclassType);
+end;
 
 { TRttiUtils }
 
@@ -650,8 +672,7 @@ begin
   Result := CreateInstance(LType, Args);
 end;
 
-class function TRttiUtils.CreateInstance(AType: TRttiType;
-  const Args: array of TValue): TObject;
+class function TRttiUtils.CreateInstance(AType: TRttiType; const Args: array of TValue): TObject;
 var
   LMethod: TRttiMethod;
   LMetaClass: TClass;
@@ -675,8 +696,7 @@ begin
     raise Exception.CreateFmt('TRttiUtils.CreateInstance: can''t create object [%s]', [AType.Name]);
 end;
 
-class function TRttiUtils.CreateInstance(const ATypeName: string;
-  const Args: array of TValue): TObject;
+class function TRttiUtils.CreateInstance(const ATypeName: string; const Args: array of TValue): TObject;
 var
   LType: TRttiType;
 begin

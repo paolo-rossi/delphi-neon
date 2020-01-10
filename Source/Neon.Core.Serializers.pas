@@ -59,10 +59,19 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
+
 implementation
 
 uses
   Neon.Core.Utils;
+
+procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
+begin
+  ARegistry.RegisterSerializer(TGUIDSerializer);
+  ARegistry.RegisterSerializer(TStreamSerializer);
+  ARegistry.RegisterSerializer(TDataSetSerializer);
+end;
 
 { TGUIDSerializer }
 

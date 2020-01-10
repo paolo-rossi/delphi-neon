@@ -72,8 +72,10 @@ type
     class function GetTargetInfo: PTypeInfo; virtual;
     class function CanHandle(AType: PTypeInfo): Boolean; virtual; abstract;
   protected
+    class function ClassDistance: Integer;
     class function ClassIs(AClass: TClass): Boolean;
     class function TypeInfoIs(AInfo: PTypeInfo): Boolean;
+    class function TypeInfoIsClass(AInfo: PTypeInfo): Boolean;
   public
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; virtual; abstract;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; virtual; abstract;
@@ -81,14 +83,23 @@ type
 
   TCustomSerializerClass = class of TCustomSerializer;
 
+  TSerializerInfo = record
+  public
+    SerializerClass: TCustomSerializerClass;
+    Distance: Integer;
+  public
+    class function FromSerializer(ASerializerClass: TCustomSerializerClass): TSerializerInfo; static;
+  end;
+
   TNeonSerializerRegistry = class
   private type
     SerializerCacheRegistry = class(TObjectDictionary<PTypeInfo, TCustomSerializer>);
-    SerializerClassRegistry = class(TList<TCustomSerializerClass>);
+    SerializerClassRegistry = class(TList<TSerializerInfo>);
   private
     FRegistryClass: SerializerClassRegistry;
     FRegistryCache: SerializerCacheRegistry;
     function GetCount: Integer;
+
     function InternalGetSerializer(ATypeInfo: PTypeInfo): TCustomSerializer;
   public
     constructor Create;
@@ -96,16 +107,9 @@ type
   public
     procedure Clear;
     procedure ClearCache;
-    procedure Assign(ARegistry: TNeonSerializerRegistry);
 
     function RegisterSerializer(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry; overload;
-    function RegisterSerializer<T>(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry; overload;
-    procedure RegisterSerializer(ATargetClass: TClass; ASerializerClass: TCustomSerializerClass); overload;
-    procedure RegisterSerializer(ATargetInfo: PTypeInfo; ASerializerClass: TCustomSerializerClass); overload;
-
-    procedure UnregisterSerializer<T>; overload;
-    procedure UnregisterSerializer(ATargetClass: TClass); overload;
-    procedure UnregisterSerializer(ATargetInfo: PTypeInfo); overload;
+    procedure UnregisterSerializer(ASerializerClass: TCustomSerializerClass);
 
     function GetSerializer<T>: TCustomSerializer; overload;
     function GetSerializer(AValue: TValue): TCustomSerializer; overload;
@@ -142,8 +146,6 @@ type
     class function Pretty: INeonConfiguration; static;
     class function Snake: INeonConfiguration; static;
     class function Camel: INeonConfiguration; static;
-
-    class procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 
     function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
@@ -467,32 +469,25 @@ end;
 class function TNeonConfiguration.Pretty: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
-
   Result.SetPrettyPrint(True);
-  RegisterDefaultSerializers(Result.GetSerializers);
-end;
 
-class procedure TNeonConfiguration.RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
-begin
-  ARegistry.RegisterSerializer(TGUIDSerializer);
-  ARegistry.RegisterSerializer(TStreamSerializer);
-  ARegistry.RegisterSerializer(TDataSetSerializer);
+  RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
 class function TNeonConfiguration.Camel: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
-
   Result.SetMemberCase(TNeonCase.CamelCase);
+
   RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
 class function TNeonConfiguration.Snake: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
-
   Result.SetIgnoreFieldPrefix(True);
   Result.SetMemberCase(TNeonCase.SnakeCase);
+
   RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
@@ -963,12 +958,6 @@ begin
 end;
 
 { TNeonSerializerRegistry }
-
-procedure TNeonSerializerRegistry.Assign(ARegistry: TNeonSerializerRegistry);
-begin
-  //
-end;
-
 procedure TNeonSerializerRegistry.Clear;
 begin
   FRegistryClass.Clear;
@@ -1020,62 +1009,68 @@ end;
 
 function TNeonSerializerRegistry.InternalGetSerializer(ATypeInfo: PTypeInfo): TCustomSerializer;
 var
+  LInfo: TSerializerInfo;
   LClass: TCustomSerializerClass;
+  LDistanceMin: Integer;
 begin
   Result := nil;
+  LClass := nil;
+  LDistanceMin := MaxInt;
 
   if FRegistryCache.TryGetValue(ATypeInfo, Result) then
     Exit(Result);
 
-  for LClass in FRegistryClass do
+  for LInfo in FRegistryClass do
   begin
-    if LClass.CanHandle(ATypeInfo) then
+    if LInfo.SerializerClass.CanHandle(ATypeInfo) then
     begin
-      Result := LClass.Create;
-      FRegistryCache.Add(ATypeInfo, Result);
-      Break;
+      if LInfo.Distance = -1 then
+      begin
+        LClass := LInfo.SerializerClass;
+        Break;
+      end
+      else
+      begin
+        if LInfo.Distance < LDistanceMin then
+        begin
+          LDistanceMin := LInfo.Distance;
+          LClass := LInfo.SerializerClass;
+        end;
+      end;
     end;
   end;
-end;
 
-function TNeonSerializerRegistry.RegisterSerializer<T>(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry;
-begin
-  FRegistryClass.Add(ASerializerClass);
-  Result := Self;
-end;
-
-procedure TNeonSerializerRegistry.RegisterSerializer(ATargetClass: TClass; ASerializerClass: TCustomSerializerClass);
-begin
-  FRegistryClass.Add(ASerializerClass);
-end;
-
-procedure TNeonSerializerRegistry.RegisterSerializer(ATargetInfo: PTypeInfo; ASerializerClass: TCustomSerializerClass);
-begin
-  FRegistryClass.Add(ASerializerClass);
+  if Assigned(LClass) then
+  begin
+    Result := LClass.Create;
+    FRegistryCache.Add(ATypeInfo, Result);
+  end;
 end;
 
 function TNeonSerializerRegistry.RegisterSerializer(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry;
 begin
-  FRegistryClass.Add(ASerializerClass);
+  FRegistryClass.Add(TSerializerInfo.FromSerializer(ASerializerClass));
   Result := Self;
 end;
 
-procedure TNeonSerializerRegistry.UnregisterSerializer(ATargetInfo: PTypeInfo);
+procedure TNeonSerializerRegistry.UnregisterSerializer(ASerializerClass: TCustomSerializerClass);
+var
+  LIndex: Integer;
 begin
-  FRegistryClass.Remove(ATargetInfo);
-end;
-
-procedure TNeonSerializerRegistry.UnregisterSerializer(ATargetClass: TClass);
-begin
-  FRegistryClass.Remove(ATargetClass.ClassInfo);
-end;
-
-procedure TNeonSerializerRegistry.UnregisterSerializer<T>;
-begin
-  FRegistryClass.Remove(TypeInfo(T));
+  for LIndex := 0 to FRegistryClass.Count - 1 do
+    if FRegistryClass[LIndex].SerializerClass = ASerializerClass then
+    begin
+      FRegistryClass.Delete(LIndex);
+      Break;
+    end;
 end;
 
 { TCustomSerializer }
+
+class function TCustomSerializer.ClassDistance: Integer;
+begin
+  Result := TRttiUtils.ClassDistanceFromRoot(GetTargetInfo);
+end;
 
 class function TCustomSerializer.ClassIs(AClass: TClass): Boolean;
 var
@@ -1101,6 +1096,24 @@ begin
   LType := TRttiUtils.Context.GetType(AInfo);
   if Assigned(LType) and (LType.TypeKind = tkClass) then
     Result := ClassIs(LType.AsInstance.MetaclassType);
+end;
+
+class function TCustomSerializer.TypeInfoIsClass(AInfo: PTypeInfo): Boolean;
+var
+  LType: TRttiType;
+begin
+  Result := False;
+  LType := TRttiUtils.Context.GetType(AInfo);
+  if Assigned(LType) and (LType.TypeKind = tkClass) then
+    Result := True;
+end;
+
+{ TSerializerInfo }
+
+class function TSerializerInfo.FromSerializer(ASerializerClass: TCustomSerializerClass): TSerializerInfo;
+begin
+  Result.SerializerClass := ASerializerClass;
+  Result.Distance := ASerializerClass.ClassDistance;
 end;
 
 end.
