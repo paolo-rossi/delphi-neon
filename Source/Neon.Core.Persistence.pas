@@ -1011,11 +1011,11 @@ function TNeonSerializerRegistry.InternalGetSerializer(ATypeInfo: PTypeInfo): TC
 var
   LInfo: TSerializerInfo;
   LClass: TCustomSerializerClass;
-  LDistanceMin: Integer;
+  LDistanceMax: Integer;
 begin
   Result := nil;
   LClass := nil;
-  LDistanceMin := MaxInt;
+  LDistanceMax := 0;
 
   if FRegistryCache.TryGetValue(ATypeInfo, Result) then
     Exit(Result);
@@ -1031,9 +1031,9 @@ begin
       end
       else
       begin
-        if LInfo.Distance < LDistanceMin then
+        if LInfo.Distance > LDistanceMax then
         begin
-          LDistanceMin := LInfo.Distance;
+          LDistanceMax := LInfo.Distance;
           LClass := LInfo.SerializerClass;
         end;
       end;
@@ -1061,6 +1061,7 @@ begin
     if FRegistryClass[LIndex].SerializerClass = ASerializerClass then
     begin
       FRegistryClass.Delete(LIndex);
+      ClearCache;
       Break;
     end;
 end;

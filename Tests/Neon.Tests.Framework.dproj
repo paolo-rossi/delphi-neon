@@ -104,6 +104,13 @@
         <DCCReference Include="Source\Neon.Tests.Serializer.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Value.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Reference.pas"/>
+        <DCCReference Include="Source\Neon.Serializers.Tests.pas"/>
+        <DCCReference Include="Source\Neon.Tests.CustomSerializers.pas"/>
+        <DCCReference Include="Source\Neon.Data.Tests.pas">
+            <Form>DataTests</Form>
+            <FormType>dfm</FormType>
+            <DesignClass>TDataModule</DesignClass>
+        </DCCReference>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

@@ -18,7 +18,10 @@ uses
   Neon.Tests.Entities in 'Source\Neon.Tests.Entities.pas',
   Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas',
   Neon.Tests.Types.Value in 'Source\Neon.Tests.Types.Value.pas',
-  Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas';
+  Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas',
+  Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',
+  Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
+  Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule};
 
 var
   LRunner : ITestRunner;
