@@ -107,6 +107,7 @@ type
   public
     procedure Clear;
     procedure ClearCache;
+    procedure Assign(ARegistry: TNeonSerializerRegistry);
 
     function RegisterSerializer(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry; overload;
     procedure UnregisterSerializer(ASerializerClass: TCustomSerializerClass);
@@ -958,6 +959,19 @@ begin
 end;
 
 { TNeonSerializerRegistry }
+
+procedure TNeonSerializerRegistry.Assign(ARegistry: TNeonSerializerRegistry);
+var
+  LInfo: TSerializerInfo;
+  LPair: TPair<PTypeInfo, TCustomSerializer>;
+begin
+  for LInfo in ARegistry.FRegistryClass do
+    FRegistryClass.Add(LInfo);
+
+  for LPair in ARegistry.FRegistryCache do
+    FRegistryCache.Add(LPair.Key, LPair.Value);
+end;
+
 procedure TNeonSerializerRegistry.Clear;
 begin
   FRegistryClass.Clear;
