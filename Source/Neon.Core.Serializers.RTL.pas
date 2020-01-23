@@ -19,13 +19,13 @@
 {  limitations under the License.                                              }
 {                                                                              }
 {******************************************************************************}
-unit Neon.Core.Serializers;
+unit Neon.Core.Serializers.RTL;
 
 interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs, System.TypInfo,
-  System.Generics.Collections, System.Math.Vectors, System.JSON, Data.DB,
+  System.Generics.Collections, System.Math.Vectors, System.JSON,
 
   Neon.Core.Types,
   Neon.Core.Attributes,
@@ -50,15 +50,6 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
-  TDataSetSerializer = class(TCustomSerializer)
-  protected
-    class function GetTargetInfo: PTypeInfo; override;
-    class function CanHandle(AType: PTypeInfo): Boolean; override;
-  public
-    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
-    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
-  end;
-
 procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 
 implementation
@@ -70,7 +61,6 @@ procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 begin
   ARegistry.RegisterSerializer(TGUIDSerializer);
   ARegistry.RegisterSerializer(TStreamSerializer);
-  ARegistry.RegisterSerializer(TDataSetSerializer);
 end;
 
 { TGUIDSerializer }
@@ -107,39 +97,6 @@ var
 begin
   LGUID := StringToGUID(Format('{%s}', [AValue.Value]));
   Result := TValue.From<TGUID>(LGUID);
-end;
-
-{ TDataSetSerializer }
-
-class function TDataSetSerializer.GetTargetInfo: PTypeInfo;
-begin
-  Result := TDataSet.ClassInfo;
-end;
-
-class function TDataSetSerializer.CanHandle(AType: PTypeInfo): Boolean;
-begin
-  Result := TypeInfoIs(AType);
-end;
-
-function TDataSetSerializer.Deserialize(AValue: TJSONValue; const AData:
-    TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
-begin
-  Result := AData;
-  TDataSetUtils.JSONToDataSet(AValue, AData.AsObject as TDataSet, AContext.GetConfiguration.GetUseUTCDate);
-end;
-
-function TDataSetSerializer.Serialize(const AValue: TValue; ANeonObject:
-    TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
-var
-  LDataSet: TDataSet;
-begin
-  LDataSet := AValue.AsType<TDataSet>;
-
-  if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
-    if LDataSet.IsEmpty then
-      Exit(nil);
-
-  Result := TDataSetUtils.DataSetToJSONArray(LDataSet, AContext.GetConfiguration.GetUseUTCDate);
 end;
 
 { TStreamSerializer }

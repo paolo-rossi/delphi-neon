@@ -24,7 +24,7 @@ unit Neon.Core.DynamicTypes;
 interface
 
 uses
-  System.Classes, System.SysUtils, Data.DB, System.Rtti, System.TypInfo,
+  System.Classes, System.SysUtils, System.Rtti, System.TypInfo,
   System.Generics.Collections;
 
 type

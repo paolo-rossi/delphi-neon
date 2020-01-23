@@ -68,7 +68,9 @@ type
 implementation
 
 uses
-  Neon.Core.Serializers,
+  Neon.Core.Serializers.DB,
+  Neon.Core.Serializers.RTL,
+  Neon.Core.Serializers.VCL,
   Neon.Serializers.Tests;
 
 procedure TTestCustomSerializers.RegisterSerializers;
@@ -79,6 +81,7 @@ begin
   FConfig.GetSerializers.RegisterSerializer(TGUIDSerializer);
   FConfig.GetSerializers.RegisterSerializer(TStreamSerializer);
   FConfig.GetSerializers.RegisterSerializer(TDataSetSerializer);
+  FConfig.GetSerializers.RegisterSerializer(TImageSerializer);
 
   // Test Serializers
   FConfig.GetSerializers.RegisterSerializer(TGUIDSerializerTest);
@@ -111,9 +114,9 @@ end;
 procedure TTestCustomSerializers.TestSerializerRegistryCount;
 begin
   RegisterSerializers;
-  Assert.AreEqual(5, FConfig.GetSerializers.Count);
+  Assert.AreEqual(6, FConfig.GetSerializers.Count);
   FConfig.GetSerializers.UnregisterSerializer(TGUIDSerializer);
-  Assert.AreEqual(4, FConfig.GetSerializers.Count);
+  Assert.AreEqual(5, FConfig.GetSerializers.Count);
 end;
 
 procedure TTestCustomSerializers.TestSelectorAlgorithmOnClass;

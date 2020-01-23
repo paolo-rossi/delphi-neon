@@ -39,6 +39,9 @@ type
     btnDesStringList: TButton;
     btnDesImage: TButton;
     btnShowDetails: TButton;
+    btnSerBitmap: TButton;
+    btnDesBitmap: TButton;
+    procedure btnDesBitmapClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure btnDesDataSetClick(Sender: TObject);
     procedure btnDesStringListClick(Sender: TObject);
@@ -46,6 +49,7 @@ type
     procedure btnSerImageClick(Sender: TObject);
     procedure btnSerStringListClick(Sender: TObject);
     procedure btnDesImageClick(Sender: TObject);
+    procedure btnSerBitmapClick(Sender: TObject);
     procedure btnShowDetailsClick(Sender: TObject);
   private
     { Private declarations }
@@ -62,6 +66,12 @@ uses
   Demo.Forms.Details;
 
 {$R *.dfm}
+
+procedure TfrmSerializationDelphi.btnDesBitmapClick(Sender: TObject);
+begin
+  DeserializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  ShowMessage('Click "Show details" button. I''ve deserialized the picture');
+end;
 
 procedure TfrmSerializationDelphi.FormCreate(Sender: TObject);
 begin
@@ -102,7 +112,7 @@ var
 begin
   LFileName := ExtractFilePath(Application.ExeName) + '..\..\neon-logo-600.bmp';
   frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
-  SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  SerializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   frmDetails.ClearImage;
   ShowMessage('Click "Show details" button. I''ve cleared the picture');
 end;
@@ -124,8 +134,19 @@ end;
 
 procedure TfrmSerializationDelphi.btnDesImageClick(Sender: TObject);
 begin
-  DeserializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  DeserializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   ShowMessage('Click "Show details" button. I''ve deserialized the picture');
+end;
+
+procedure TfrmSerializationDelphi.btnSerBitmapClick(Sender: TObject);
+var
+  LFileName: string;
+begin
+  LFileName := ExtractFilePath(Application.ExeName) + '..\..\neon-logo-600.bmp';
+  frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
+  SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  frmDetails.ClearImage;
+  ShowMessage('Click "Show details" button. I''ve cleared the picture');
 end;
 
 procedure TfrmSerializationDelphi.btnShowDetailsClick(Sender: TObject);

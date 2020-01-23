@@ -24,7 +24,7 @@ unit Neon.Core.TypeInfo;
 interface
 
 uses
-  System.Classes, System.SysUtils, Data.DB, System.Rtti, System.TypInfo,
+  System.Classes, System.SysUtils, System.Rtti, System.TypInfo,
   System.Generics.Collections;
 
 type

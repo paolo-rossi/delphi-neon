@@ -27,7 +27,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs,
-  System.TypInfo, System.Generics.Collections, System.JSON, Data.DB,
+  System.TypInfo, System.Generics.Collections, System.JSON,
 
   Neon.Core.Types,
   Neon.Core.Attributes,
@@ -224,7 +224,6 @@ type
     constructor Create(const AConfig: INeonConfiguration);
 
     procedure JSONToObject(AObject: TObject; AJSON: TJSONValue);
-    procedure JSONToDataSet(AJSON: TJSONValue; ADataSet: TDataSet);
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType): TValue; overload;
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType; const AData: TValue): TValue; overload;
     function JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
@@ -1371,11 +1370,6 @@ end;
 function TNeonDeserializerJSON.JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
 begin
   Result := ReadDataMember(AJSON, AType, TValue.Empty);
-end;
-
-procedure TNeonDeserializerJSON.JSONToDataSet(AJSON: TJSONValue; ADataSet: TDataSet);
-begin
-  ReadDataMember(AJSON, TRttiUtils.Context.GetType(ADataSet.ClassType), ADataSet);
 end;
 
 procedure TNeonDeserializerJSON.JSONToObject(AObject: TObject; AJSON: TJSONValue);

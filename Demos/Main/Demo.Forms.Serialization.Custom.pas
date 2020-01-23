@@ -32,7 +32,6 @@ uses
   Neon.Core.Types,
   Neon.Core.Attributes,
   Neon.Core.Persistence,
-  Neon.Core.Serializers,
   Neon.Core.Persistence.JSON,
   Neon.Core.Utils;
 

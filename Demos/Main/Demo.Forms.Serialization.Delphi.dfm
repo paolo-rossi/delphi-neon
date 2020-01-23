@@ -27,13 +27,16 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
     Top = 64
     Width = 131
     Height = 25
-    Caption = 'Image'
+    Hint = 'Serialize an Image using a custom serializer'
+    Caption = 'Image (TImage)'
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 5
     OnClick = btnSerImageClick
   end
   object btnSerStringList: TButton [5]
     Left = 3
-    Top = 95
+    Top = 126
     Width = 131
     Height = 25
     Caption = 'StringList'
@@ -42,7 +45,7 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
   end
   object btnDesStringList: TButton [6]
     Left = 482
-    Top = 95
+    Top = 126
     Width = 131
     Height = 25
     Anchors = [akTop, akRight]
@@ -55,8 +58,11 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
     Top = 64
     Width = 131
     Height = 25
+    Hint = 'Deserialize an Image using a custom serializer'
     Anchors = [akTop, akRight]
-    Caption = 'Image'
+    Caption = 'Image (TImage)'
+    ParentShowHint = False
+    ShowHint = True
     TabOrder = 8
     OnClick = btnDesImageClick
   end
@@ -77,5 +83,30 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
     Caption = 'Show Details'
     TabOrder = 9
     OnClick = btnShowDetailsClick
+  end
+  object btnSerBitmap: TButton
+    Left = 3
+    Top = 95
+    Width = 131
+    Height = 25
+    Hint = 'Serialize an Image through the Bitmap property'
+    Caption = 'Image (TBitmap)'
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 12
+    OnClick = btnSerBitmapClick
+  end
+  object btnDesBitmap: TButton
+    Left = 482
+    Top = 95
+    Width = 131
+    Height = 25
+    Hint = 'Deserialize an Image through the Bitmap property'
+    Anchors = [akTop, akRight]
+    Caption = 'Image (TBitmap)'
+    ParentShowHint = False
+    ShowHint = True
+    TabOrder = 13
+    OnClick = btnDesBitmapClick
   end
 end

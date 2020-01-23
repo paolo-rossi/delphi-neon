@@ -296,8 +296,7 @@ implementation
 
 uses
   System.RegularExpressions,
-  Neon.Core.Utils,
-  Neon.Core.Serializers;
+  Neon.Core.Utils;
 
 { TNeonBase }
 
@@ -442,8 +441,6 @@ end;
 class function TNeonConfiguration.Default: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
-
-  RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
 destructor TNeonConfiguration.Destroy;
@@ -471,16 +468,12 @@ class function TNeonConfiguration.Pretty: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
   Result.SetPrettyPrint(True);
-
-  RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
 class function TNeonConfiguration.Camel: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create;
   Result.SetMemberCase(TNeonCase.CamelCase);
-
-  RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
 class function TNeonConfiguration.Snake: INeonConfiguration;
@@ -488,8 +481,6 @@ begin
   Result := TNeonConfiguration.Create;
   Result.SetIgnoreFieldPrefix(True);
   Result.SetMemberCase(TNeonCase.SnakeCase);
-
-  RegisterDefaultSerializers(Result.GetSerializers);
 end;
 
 function TNeonConfiguration.SetMembers(AValue: TNeonMembersSet): INeonConfiguration;

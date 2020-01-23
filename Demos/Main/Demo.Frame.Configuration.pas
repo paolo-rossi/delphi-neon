@@ -28,7 +28,6 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
   System.TypInfo,
 
-  Neon.Core.Serializers,
   Neon.Core.Types,
   Neon.Core.Persistence;
 
@@ -65,6 +64,10 @@ type
 implementation
 
 uses
+  Neon.Core.Serializers.DB,
+  Neon.Core.Serializers.RTL,
+  Neon.Core.Serializers.VCL,
+
   Demo.Neon.Serializers;
 
 {$R *.dfm}
@@ -120,7 +123,13 @@ begin
     LVis := LVis + [mvPublished];
   Result.SetVisibility(LVis);
 
+  //RTL serializers
   Result.GetSerializers.RegisterSerializer(TGUIDSerializer);
+  Result.GetSerializers.RegisterSerializer(TStreamSerializer);
+  //DB serializers
+  Result.GetSerializers.RegisterSerializer(TDataSetSerializer);
+  //VCL serializers
+  Result.GetSerializers.RegisterSerializer(TImageSerializer);
 
   // Demo Serializers
   Result.GetSerializers.RegisterSerializer(TPoint3DSerializer);
