@@ -21,7 +21,8 @@ uses
   Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas',
   Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
-  Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule};
+  Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule},
+  Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas';
 
 var
   LRunner : ITestRunner;

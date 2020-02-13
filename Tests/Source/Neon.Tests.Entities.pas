@@ -78,6 +78,24 @@ type
     property Contacts: TObjectList<TContact> read FContacts write FContacts;
   end;
 
+  TCaseClass = class
+  private
+    FFirstName: string;
+    FGender: string;
+    Flastname: string;
+    FCOUNTRY: string;
+    F_Age_: Integer;
+  public
+    constructor Create(const AFirstName, ALastName, AGender, ACountry: string; AAge: Integer);
+
+    property FirstName: string read FFirstName write FFirstName;
+    property lastname: string read Flastname write Flastname;
+    property _Age_: Integer read F_Age_ write F_Age_;
+    property Gender: string read FGender write FGender;
+    property COUNTRY: string read FCOUNTRY write FCOUNTRY;
+  end;
+
+
 implementation
 
 { TPerson }
@@ -117,6 +135,18 @@ begin
 
   FContacts.Free;
   inherited;
+end;
+
+{ TCaseClass }
+
+constructor TCaseClass.Create(const AFirstName, ALastName, AGender,
+  ACountry: string; AAge: Integer);
+begin
+  FFirstName := AFirstName;
+  Flastname := ALastName;
+  F_Age_ := AAge;
+  FGender := AGender;
+  FCOUNTRY := ACountry;
 end;
 
 end.
