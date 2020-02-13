@@ -93,15 +93,14 @@
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="dbrtl.dcp"/>
-        <DCCReference Include="bindengine.dcp"/>
-        <DCCReference Include="bindcomp.dcp"/>
         <DCCReference Include="..\..\Source\Neon.Core.Attributes.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.DynamicTypes.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Nullables.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Persistence.JSON.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Persistence.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Persistence.Swagger.pas"/>
-        <DCCReference Include="..\..\Source\Neon.Core.Serializers.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Serializers.RTL.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Serializers.DB.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.TypeInfo.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Types.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Utils.pas"/>

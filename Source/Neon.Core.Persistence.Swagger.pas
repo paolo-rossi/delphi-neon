@@ -27,7 +27,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs,
-  System.TypInfo, System.Generics.Collections, System.JSON,
+  System.TypInfo, System.Generics.Collections, System.JSON, Data.DB,
 
   Neon.Core.Types,
   Neon.Core.Attributes,
@@ -347,7 +347,11 @@ begin
 
     tkClass:
     begin
-      if IsEnumerableMap(AType, LNeonMap) then
+      if AType.IsInstance and AType.AsInstance.MetaclassType.InheritsFrom(TDataSet) then
+        Result := WriteDataSet(AType, ANeonObject)
+      else if AType.IsInstance and AType.AsInstance.MetaclassType.InheritsFrom(TStream) then
+        Result := WriteStream(AType, ANeonObject)
+      else if IsEnumerableMap(AType, LNeonMap) then
         Result := WriteEnumerableMap(AType, ANeonObject, LNeonMap)
       else if IsEnumerable(AType, LNeonList) then
         Result := WriteEnumerable(AType, ANeonObject, LNeonList)

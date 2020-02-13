@@ -53,9 +53,7 @@ package NeonRunTime;
 
 requires
   rtl,
-  dbrtl,
-  bindengine,
-  bindcomp;
+  dbrtl;
 
 contains
   Neon.Core.Attributes in '..\..\Source\Neon.Core.Attributes.pas',
@@ -64,7 +62,8 @@ contains
   Neon.Core.Persistence.JSON in '..\..\Source\Neon.Core.Persistence.JSON.pas',
   Neon.Core.Persistence in '..\..\Source\Neon.Core.Persistence.pas',
   Neon.Core.Persistence.Swagger in '..\..\Source\Neon.Core.Persistence.Swagger.pas',
-  Neon.Core.Serializers in '..\..\Source\Neon.Core.Serializers.pas',
+  Neon.Core.Serializers.RTL in '..\..\Source\Neon.Core.Serializers.RTL.pas',
+  Neon.Core.Serializers.DB in '..\..\Source\Neon.Core.Serializers.DB.pas',
   Neon.Core.TypeInfo in '..\..\Source\Neon.Core.TypeInfo.pas',
   Neon.Core.Types in '..\..\Source\Neon.Core.Types.pas',
   Neon.Core.Utils in '..\..\Source\Neon.Core.Utils.pas';
