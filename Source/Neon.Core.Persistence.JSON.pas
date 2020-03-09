@@ -721,6 +721,10 @@ var
   LType: TRttiType;
 begin
   LObject := AValue.AsObject;
+
+  if LObject = nil then
+     exit(nil);
+
   LType := TRttiUtils.Context.GetType(LObject.ClassType);
 
   Result := TJSONObject.Create;
