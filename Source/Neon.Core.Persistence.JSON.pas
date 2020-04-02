@@ -723,7 +723,7 @@ begin
   LObject := AValue.AsObject;
 
   if LObject = nil then
-     exit(nil);
+    Exit(nil);
 
   LType := TRttiUtils.Context.GetType(LObject.ClassType);
 

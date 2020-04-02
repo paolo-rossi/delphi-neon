@@ -28,7 +28,8 @@ uses
 
   Neon.Core.Persistence,
   Neon.Tests.Entities,
-  Neon.Tests.Utils;
+  Neon.Tests.Utils,
+  Neon.Core.Types;
 
 type
   [TestFixture]
@@ -37,7 +38,6 @@ type
   private
     FDataPath: string;
     FCaseObj1: TCaseClass;
-    FCaseObj2: TCaseClass;
 
     function GetFileName(const AMethod: string): string;
   public
@@ -57,6 +57,14 @@ type
     [Test]
     [TestCase('TestSnakeCase', 'TestSnakeCase')]
     procedure TestSnakeCase(const AMethod: string);
+
+    [Test]
+    [TestCase('TestLowerCase', 'TestLowerCase')]
+    procedure TestLowerCase(const AMethod: string);
+
+    [Test]
+    [TestCase('TestUpperCase', 'TestUpperCase')]
+    procedure TestUpperCase(const AMethod: string);
   end;
 
 implementation
@@ -77,13 +85,11 @@ begin
   FDataPath := TPath.Combine(FDataPath, 'Data');
 
   FCaseObj1 := TCaseClass.Create('Paolo', 'Rossi', 'Male', 'Italy', 50);
-  FCaseObj2 := TCaseClass.Create('Dmitry', 'Arefiev', 'Male', 'Россия', 55);
 end;
 
 procedure TTestConfigMemberCase.TearDown;
 begin
   FCaseObj1.Free;
-  FCaseObj2.Free;
 end;
 
 procedure TTestConfigMemberCase.TestPascalCase(const AMethod: string);
@@ -100,11 +106,33 @@ begin
     TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.Snake));
 end;
 
+procedure TTestConfigMemberCase.TestUpperCase(const AMethod: string);
+var
+  LConfig: INeonConfiguration;
+begin
+  LConfig := TNeonConfiguration.Default;
+  LConfig.SetMemberCase(TNeonCase.UpperCase);
+  Assert.AreEqual(
+    TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
+    TTestUtils.SerializeObject(FCaseObj1, LConfig));
+end;
+
 procedure TTestConfigMemberCase.TestCamelCase(const AMethod: string);
 begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
     TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.Camel));
+end;
+
+procedure TTestConfigMemberCase.TestLowerCase(const AMethod: string);
+var
+  LConfig: INeonConfiguration;
+begin
+  LConfig := TNeonConfiguration.Default;
+  LConfig.SetMemberCase(TNeonCase.LowerCase);
+  Assert.AreEqual(
+    TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
+    TTestUtils.SerializeObject(FCaseObj1, LConfig));
 end;
 
 initialization

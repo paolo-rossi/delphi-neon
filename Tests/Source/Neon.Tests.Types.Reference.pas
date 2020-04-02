@@ -57,6 +57,11 @@ type
     [Test]
     [TestCase('TestPersonPretty', 'TestPersonPretty')]
     procedure TestPersonPretty(const AMethod: string);
+
+    [Test]
+    [TestCase('TestPersonNil', 'TestPersonNil')]
+    procedure TestPersonNil(const AMethod: string);
+
   end;
 
 implementation
@@ -98,6 +103,12 @@ begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
     TTestUtils.SerializeObject(FPerson1));
+end;
+
+procedure TTestReferenceTypes.TestPersonNil(const AMethod: string);
+begin
+  Assert.AreEqual('{}',
+    TTestUtils.SerializeObject(nil, TNeonConfiguration.Default));
 end;
 
 procedure TTestReferenceTypes.TestPersonPretty(const AMethod: string);
