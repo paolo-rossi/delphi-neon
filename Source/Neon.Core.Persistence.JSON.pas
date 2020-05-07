@@ -810,7 +810,7 @@ begin
         (Result as TJSONObject).AddPair(LName, LJSONValue);
 
         if LName.IsEmpty then
-          raise Exception.Create('Dictionary [Key]: type not supported');
+          raise ENeonException.Create('Dictionary [Key]: type not supported');
       finally
         LJSONName.Free;
       end;
@@ -1681,10 +1681,20 @@ class function TNeon.JSONToValue<T>(AJSON: TJSONValue; AConfig: INeonConfigurati
 var
   LDes: TNeonDeserializerJSON;
   LValue: TValue;
+  LType: TRttiType;
 begin
   LDes := TNeonDeserializerJSON.Create(AConfig);
   try
-    LValue := LDes.JSONToTValue(AJSON, TRttiUtils.Context.GetType(TypeInfo(T)));
+    LType := TRttiUtils.Context.GetType(TypeInfo(T));
+    if not Assigned(LType) then
+      raise ENeonException.Create('Empty RttiType in JSONToValue');
+
+    case LType.TypeKind of
+      tkArray, tkRecord, tkDynArray: TValue.Make(nil, TypeInfo(T), LValue);
+    else
+      LValue := TValue.Empty;
+    end;
+    LValue := LDes.JSONToTValue(AJSON, LType, LValue);
     Result := LValue.AsType<T>;
   finally
     LDes.Free;
