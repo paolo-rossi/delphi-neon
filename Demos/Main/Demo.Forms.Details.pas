@@ -75,7 +75,7 @@ uses
 
 procedure TfrmDetails.FormCreate(Sender: TObject);
 begin
-  dsPersons.LoadFromFile('D:\projects\GitHub\Project Neon\delphi-neon\Demos\Main\persons.json');
+  dsPersons.LoadFromFile('persons.json');
 end;
 
 procedure TfrmDetails.btnAvatarClick(Sender: TObject);
@@ -94,7 +94,7 @@ end;
 
 procedure TfrmDetails.Button1Click(Sender: TObject);
 begin
-  dsPersons.SaveToFile('D:\projects\GitHub\Project Neon\delphi-neon\Demos\Main\persons.json', sfJSON);
+  dsPersons.SaveToFile('persons.json', sfJSON);
 end;
 
 procedure TfrmDetails.ClearImage;

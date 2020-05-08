@@ -58,6 +58,7 @@
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Keys>CompanyName=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductVersion=1.0.0.0;Comments=;ProgramID=com.embarcadero.$(ModuleName);FileDescription=$(ModuleName);ProductName=$(ModuleName)</VerInfo_Keys>
+        <Debugger_CWD>.\</Debugger_CWD>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>RELEASE;$(DCC_Define)</DCC_Define>
