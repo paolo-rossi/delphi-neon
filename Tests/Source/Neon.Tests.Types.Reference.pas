@@ -113,7 +113,7 @@ end;
 
 procedure TTestReferenceTypes.TestPersonPretty(const AMethod: string);
 var
-	expected, actual: String;
+  expected, actual: String;
 begin
   expected := TTestUtils.ExpectedFromFile(GetFileName(AMethod));
   expected := AdjustLineBreaks(expected, TTextLineBreakStyle.tlbsCRLF);
