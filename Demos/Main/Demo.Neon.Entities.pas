@@ -23,6 +23,8 @@ unit Demo.Neon.Entities;
 
 interface
 
+{$I Neon.inc}
+
 uses
   System.SysUtils, System.Classes, System.Contnrs, System.Generics.Collections,
   System.Math, System.Math.Vectors, System.Types, system.JSON, Vcl.Graphics,
@@ -38,6 +40,16 @@ type
 
   [NeonEnumNames('Low Speed,Medium Speed,High Speed')]
   TEnumSpeed = (Low, Medium, High);
+
+  TManagedRecord = record
+    Name: string;
+    Age: Integer;
+    Height: Double;
+    {$IFDEF HAS_MRECORDS}
+    class operator Initialize (out Dest: TManagedRecord);
+    class operator Finalize (var Dest: TManagedRecord);
+    {$ENDIF}
+  end;
 
   // Sample
   TVector3f = record
@@ -323,7 +335,6 @@ type
     property PropEnum: TTypeKind read FPropEnum write FPropEnum;
   end;
 
-
   TClassOfNullables = class
   private
     FName: NullString;
@@ -336,9 +347,26 @@ type
     property Speed: Nullable<TEnumSpeed> read FSpeed write FSpeed;
   end;
 
-
-
 implementation
+
+
+{$IFDEF HAS_MRECORDS}
+
+{ TManagedRecord }
+
+class operator TManagedRecord.Initialize(out Dest: TManagedRecord);
+begin
+  Dest.Name := '';
+  Dest.Age := 0;
+  Dest.Height := 0;
+end;
+
+class operator TManagedRecord.Finalize(var Dest: TManagedRecord);
+begin
+
+end;
+
+{$ENDIF}
 
 { TPerson }
 

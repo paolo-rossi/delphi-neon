@@ -23,6 +23,8 @@ unit Neon.Tests.Entities;
 
 interface
 
+{$INCLUDE ..\Source\Neon.inc}
+
 uses
   System.SysUtils, System.Classes, System.Generics.Collections;
 
@@ -35,6 +37,25 @@ type
     Name: string;
     BirthDate: TDateTime;
     Age: Integer;
+  end;
+
+  TManagedRecord = record
+    Name: string;
+    Age: Integer;
+    Height: Double;
+    {$IFDEF HAS_MRECORDS}
+    class operator Initialize (out Dest: TManagedRecord);
+    class operator Finalize (var Dest: TManagedRecord);
+    {$ENDIF}
+  end;
+
+  TRecordInsideClass = class
+  private
+    FManagedRecord: TManagedRecord;
+    FSimpleRecord: TSimpleRecord;
+  public
+    property SimpleRecord: TSimpleRecord read FSimpleRecord write FSimpleRecord;
+    property ManagedRecord: TManagedRecord read FManagedRecord write FManagedRecord;
   end;
 
   TContact = class
@@ -95,7 +116,6 @@ type
     property COUNTRY: string read FCOUNTRY write FCOUNTRY;
   end;
 
-
 implementation
 
 { TPerson }
@@ -149,4 +169,21 @@ begin
   FCOUNTRY := ACountry;
 end;
 
+{$IFDEF HAS_MRECORDS}
+
+{ TManagedRecord }
+
+class operator TManagedRecord.Initialize(out Dest: TManagedRecord);
+begin
+  Dest.Name := '';
+  Dest.Age := 0;
+  Dest.Height := 0;
+end;
+
+class operator TManagedRecord.Finalize(var Dest: TManagedRecord);
+begin
+
+end;
+
+{$ENDIF}
 end.

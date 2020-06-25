@@ -585,7 +585,7 @@ begin
       Result := WriteSet(AValue, ANeonObject);
     end;
 
-    tkRecord:
+    tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
     begin
       if IsNullable(AValue, LDynamicNullable) then
         Result := WriteNullable(AValue, ANeonObject, LDynamicNullable)
@@ -602,6 +602,7 @@ begin
     begin
       Result := WriteVariant(AValue, ANeonObject);
     end;
+
     {
     tkUnknown,
     tkMethod,
@@ -626,18 +627,29 @@ end;
 
 function TNeonSerializerJSON.WriteEnum(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
+  LValue: Int64;
+  LTypeData: PTypeData;
   LName: string;
 begin
-  LName := GetEnumName(AValue.TypeInfo, AValue.AsOrdinal);
+  LName := '';
+  LValue := AValue.AsOrdinal;
+  LTypeData := GetTypeData(AValue.TypeInfo);
 
-  if Length(ANeonObject.NeonEnumNames) > 0 then
+  if (LValue >= LTypeData.MinValue) and (LValue <= LTypeData.MaxValue) then
   begin
-    if (AValue.AsOrdinal >= Low(ANeonObject.NeonEnumNames)) and
-       (AValue.AsOrdinal <= High(ANeonObject.NeonEnumNames)) then
-      LName := ANeonObject.NeonEnumNames[AValue.AsOrdinal]
-  end;
+    LName := GetEnumName(AValue.TypeInfo, LValue);
 
-  Result := TJSONString.Create(LName);
+    if Length(ANeonObject.NeonEnumNames) > 0 then
+    begin
+      if (LValue >= Low(ANeonObject.NeonEnumNames)) and
+         (LValue <= High(ANeonObject.NeonEnumNames)) then
+        LName := ANeonObject.NeonEnumNames[LValue]
+    end;
+
+    Result := TJSONString.Create(LName);
+  end
+  else
+    raise ENeonException.Create('Enum value out of bound: ' + LValue.ToString);
 end;
 
 function TNeonSerializerJSON.WriteFloat(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -974,8 +986,7 @@ begin
   end;
 end;
 
-function TNeonDeserializerJSON.ReadChar(const AParam: TNeonDeserializerParam):
-    TValue;
+function TNeonDeserializerJSON.ReadChar(const AParam: TNeonDeserializerParam): TValue;
 begin
   if (AParam.JSONValue is TJSONNull) or AParam.JSONValue.Value.IsEmpty then
     Exit(#0);
@@ -1052,7 +1063,7 @@ begin
 
     tkInterface:   Result := ReadInterface(AParam, AData);
 
-    tkRecord:
+    tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
     begin
       if ReadNullable(AParam, AData) then
         Result := AData
@@ -1075,6 +1086,7 @@ end;
 function TNeonDeserializerJSON.ReadEnum(const AParam: TNeonDeserializerParam): TValue;
 var
   LIndex, LOrdinal: Integer;
+  LTypeData: PTypeData;
 begin
   if AParam.RttiType.Handle = System.TypeInfo(Boolean) then
   begin
@@ -1096,7 +1108,13 @@ begin
     end;
     if LOrdinal = -1 then
       LOrdinal := GetEnumValue(AParam.RttiType.Handle, AParam.JSONValue.Value);
-    TValue.Make(LOrdinal, AParam.RttiType.Handle, Result);
+
+    LTypeData := GetTypeData(AParam.RttiType.Handle);
+
+    if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
+      TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
+    else
+      raise ENeonException.Create('No correspondence with enum names');
   end;
 end;
 
@@ -1248,8 +1266,16 @@ begin
         if not Assigned(LParam.JSONValue) then
           Continue;
 
-        LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue);
-        LNeonMember.SetValue(LMemberValue);
+        try
+          LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue);
+          LNeonMember.SetValue(LMemberValue);
+        except
+          on E: Exception do
+          begin
+            LogError(Format('Error converting member [%s] of type [%s]: %s',
+              [LNeonMember.Name, AType.Name, E.Message]));
+          end;
+        end;
       end;
     end;
   finally

@@ -63,8 +63,8 @@ uses
   System.Generics.Collections, Vcl.Graphics,
 
   Demo.Forms.Serialization.Custom, Demo.Forms.Serialization.Delphi,
-  Demo.Forms.Serialization.Simple, Demo.Forms.Serialization.Complex,
-  Demo.Forms.Serialization.Schema;
+  Demo.Forms.Serialization.Simple, Demo.Forms.Serialization.Records,
+  Demo.Forms.Serialization.Schema, Demo.Forms.Serialization.Complex;
 
 { TMainForm }
 
@@ -89,6 +89,7 @@ begin
   frmConfiguration.Initialize;
 
   CreateTab('Simple Types', clGreen, TfrmSerializationSimple);
+  CreateTab('Record Types', clTeal, TfrmSerializationRecords);
   CreateTab('Complex Types', clNavy, TfrmSerializationComplex);
   CreateTab('Delphi Types', clOlive, TfrmSerializationDelphi);
   CreateTab('Custom Types', clMaroon, TfrmSerializationCustom);

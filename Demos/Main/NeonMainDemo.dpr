@@ -33,7 +33,8 @@ uses
   Demo.Forms.Serialization.Complex in 'Demo.Forms.Serialization.Complex.pas' {frmSerializationComplex},
   Demo.Forms.Serialization.Delphi in 'Demo.Forms.Serialization.Delphi.pas' {frmSerializationDelphi},
   Demo.Forms.Serialization.Schema in 'Demo.Forms.Serialization.Schema.pas' {frmSerializationSchema},
-  Demo.Forms.Details in 'Demo.Forms.Details.pas' {frmDetails};
+  Demo.Forms.Details in 'Demo.Forms.Details.pas' {frmDetails},
+  Demo.Forms.Serialization.Records in 'Demo.Forms.Serialization.Records.pas' {frmSerializationRecords};
 
 {$R *.res}
 
@@ -43,5 +44,6 @@ begin
   Application.Initialize;
   Application.MainFormOnTaskbar := True;
   Application.CreateForm(TMainForm, MainForm);
+  Application.CreateForm(TfrmSerializationRecords, frmSerializationRecords);
   Application.Run;
 end.

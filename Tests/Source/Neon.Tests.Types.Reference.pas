@@ -41,6 +41,9 @@ type
 
     function GetFileName(const AMethod: string): string;
   public
+    constructor Create;
+    destructor Destroy; override;
+
     [Setup]
     procedure Setup;
     [TearDown]
@@ -69,12 +72,7 @@ implementation
 uses
   System.IOUtils, System.DateUtils;
 
-function TTestReferenceTypes.GetFileName(const AMethod: string): string;
-begin
-  Result := TPath.Combine(FDataPath, ClassName + '.' + AMethod + '.json');
-end;
-
-procedure TTestReferenceTypes.Setup;
+constructor TTestReferenceTypes.Create;
 begin
   FDataPath := TDirectory.GetCurrentDirectory;
   FDataPath := TDirectory.GetParent(FDataPath);
@@ -92,10 +90,25 @@ begin
   FPerson2.AddContact(TContactType.Email, 'paolo@mail.com');
 end;
 
-procedure TTestReferenceTypes.TearDown;
+destructor TTestReferenceTypes.Destroy;
 begin
   FPerson1.Free;
   FPerson2.Free;
+
+  inherited;
+end;
+
+function TTestReferenceTypes.GetFileName(const AMethod: string): string;
+begin
+  Result := TPath.Combine(FDataPath, ClassName + '.' + AMethod + '.json');
+end;
+
+procedure TTestReferenceTypes.Setup;
+begin
+end;
+
+procedure TTestReferenceTypes.TearDown;
+begin
 end;
 
 procedure TTestReferenceTypes.TestPersonAnsi(const AMethod: string);

@@ -3,7 +3,7 @@ inherited frmSerializationSimple: TfrmSerializationSimple
   PixelsPerInch = 96
   TextHeight = 13
   inherited pnlSerialize: TPanel
-    TabOrder = 16
+    TabOrder = 14
   end
   object btnSerSimpleInteger: TButton [1]
     Left = 3
@@ -32,138 +32,119 @@ inherited frmSerializationSimple: TfrmSerializationSimple
     TabOrder = 2
     OnClick = btnSerSimpleDatTimeClick
   end
-  object btnSerSimpleRecord: TButton [4]
+  object btnSerSimpleArray: TButton [4]
     Left = 3
     Top = 187
     Width = 131
     Height = 25
-    Caption = 'TMyRecord'
-    TabOrder = 4
-    OnClick = btnSerSimpleRecordClick
-  end
-  object btnSerSimpleArray: TButton [5]
-    Left = 3
-    Top = 218
-    Width = 131
-    Height = 25
     Caption = 'Int Array'
-    TabOrder = 5
+    TabOrder = 4
     OnClick = btnSerSimpleArrayClick
   end
-  object btnSerSimpleFloat: TButton [6]
+  object btnSerSimpleFloat: TButton [5]
     Left = 3
     Top = 94
     Width = 131
     Height = 25
     Caption = 'Float'
-    TabOrder = 6
+    TabOrder = 5
     OnClick = btnSerSimpleFloatClick
   end
-  object btnSerSimpleBool: TButton [7]
+  object btnSerSimpleBool: TButton [6]
     Left = 3
     Top = 125
     Width = 131
     Height = 25
     Caption = 'Boolean'
-    TabOrder = 7
+    TabOrder = 6
     OnClick = btnSerSimpleBoolClick
   end
-  object btnDesSimpleInteger: TButton [8]
+  object btnDesSimpleInteger: TButton [7]
     Left = 485
     Top = 33
     Width = 131
     Height = 25
     Anchors = [akTop, akRight]
     Caption = 'Intgeger'
-    TabOrder = 8
+    TabOrder = 7
     OnClick = btnDesSimpleIntegerClick
   end
-  object btnDesSimpleString: TButton [9]
+  object btnDesSimpleString: TButton [8]
     Left = 485
     Top = 64
     Width = 131
     Height = 25
     Anchors = [akTop, akRight]
     Caption = 'String'
-    TabOrder = 9
+    TabOrder = 8
     OnClick = btnDesSimpleStringClick
   end
-  object btnDesSimpleDateTime: TButton [10]
+  object btnDesSimpleDateTime: TButton [9]
     Left = 485
     Top = 157
     Width = 131
     Height = 25
     Anchors = [akTop, akRight]
     Caption = 'DateTime'
-    TabOrder = 10
+    TabOrder = 9
     OnClick = btnDesSimpleDateTimeClick
   end
-  object btnDesSimpleRecord: TButton [11]
+  object btnDesSimpleArray: TButton [10]
     Left = 485
     Top = 188
     Width = 131
     Height = 25
     Anchors = [akTop, akRight]
-    Caption = 'TMyRecord'
-    TabOrder = 11
-    OnClick = btnDesSimpleRecordClick
-  end
-  object btnDesSimpleArray: TButton [12]
-    Left = 485
-    Top = 219
-    Width = 131
-    Height = 25
-    Anchors = [akTop, akRight]
     Caption = 'Int Array'
-    TabOrder = 12
+    TabOrder = 10
     OnClick = btnDesSimpleArrayClick
   end
-  object btnDesSimpleFloat: TButton [13]
+  object btnDesSimpleFloat: TButton [11]
     Left = 485
     Top = 95
     Width = 131
     Height = 25
     Anchors = [akTop, akRight]
     Caption = 'Float'
-    TabOrder = 13
+    TabOrder = 11
     OnClick = btnDesSimpleFloatClick
   end
-  object btnDesSimpleBool: TButton [14]
+  object btnDesSimpleBool: TButton [12]
     Left = 485
     Top = 126
     Width = 131
     Height = 25
     Anchors = [akTop, akRight]
     Caption = 'Boolean'
-    TabOrder = 14
+    TabOrder = 12
     OnClick = btnDesSimpleBoolClick
   end
   inherited memoSerialize: TMemo
-    TabOrder = 17
+    TabOrder = 15
   end
   inherited pnlDeserialize: TPanel
-    TabOrder = 18
+    TabOrder = 16
   end
   inherited memoLog: TMemo
-    TabOrder = 15
+    TabOrder = 13
   end
   object btnSerTypeClass: TButton
     Left = 3
-    Top = 248
+    Top = 217
     Width = 131
     Height = 25
     Caption = 'Types Class'
-    TabOrder = 19
+    TabOrder = 17
     OnClick = btnSerTypeClassClick
   end
   object btnDesTypeClass: TButton
     Left = 485
-    Top = 248
+    Top = 217
     Width = 131
     Height = 25
     Anchors = [akTop, akRight]
     Caption = 'Types Class'
-    TabOrder = 20
+    TabOrder = 18
     OnClick = btnDesTypeClassClick
   end
 end

@@ -27,3 +27,7 @@
   {$DEFINE HAS_NEW_JSON}
 {$ENDIF}
 
+{$IF CompilerVersion >= 34} // Delphi 10.4 Sydney
+  {$DEFINE HAS_MRECORDS}
+{$ENDIF}
+

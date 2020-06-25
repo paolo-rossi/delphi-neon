@@ -12,14 +12,12 @@ type
     btnSerSimpleInteger: TButton;
     btnSerSimpleString: TButton;
     btnSerSimpleDatTime: TButton;
-    btnSerSimpleRecord: TButton;
     btnSerSimpleArray: TButton;
     btnSerSimpleFloat: TButton;
     btnSerSimpleBool: TButton;
     btnDesSimpleInteger: TButton;
     btnDesSimpleString: TButton;
     btnDesSimpleDateTime: TButton;
-    btnDesSimpleRecord: TButton;
     btnDesSimpleArray: TButton;
     btnDesSimpleFloat: TButton;
     btnDesSimpleBool: TButton;
@@ -30,7 +28,6 @@ type
     procedure btnDesSimpleDateTimeClick(Sender: TObject);
     procedure btnDesSimpleFloatClick(Sender: TObject);
     procedure btnDesSimpleIntegerClick(Sender: TObject);
-    procedure btnDesSimpleRecordClick(Sender: TObject);
     procedure btnDesSimpleStringClick(Sender: TObject);
     procedure btnSerSimpleArrayClick(Sender: TObject);
     procedure btnSerSimpleBoolClick(Sender: TObject);
@@ -38,7 +35,6 @@ type
     procedure btnSerSimpleDatTimeClick(Sender: TObject);
     procedure btnSerSimpleFloatClick(Sender: TObject);
     procedure btnSerSimpleIntegerClick(Sender: TObject);
-    procedure btnSerSimpleRecordClick(Sender: TObject);
     procedure btnSerSimpleStringClick(Sender: TObject);
     procedure btnDesTypeClassClick(Sender: TObject);
   private
@@ -86,13 +82,6 @@ end;
 procedure TfrmSerializationSimple.btnDesSimpleIntegerClick(Sender: TObject);
 begin
   DeserializeSimple<Integer>;
-end;
-
-procedure TfrmSerializationSimple.btnDesSimpleRecordClick(Sender: TObject);
-var
-  LRecord: TMyRecord;
-begin
-  DeserializeSimple<TMyRecord>(LRecord);
 end;
 
 procedure TfrmSerializationSimple.btnDesSimpleStringClick(Sender: TObject);
@@ -144,18 +133,9 @@ begin
   SerializeSimple<Integer>(42);
 end;
 
-procedure TfrmSerializationSimple.btnSerSimpleRecordClick(Sender: TObject);
-var
-  LVal: TMyRecord;
-begin
-  LVal.One := 'Test Test Test';
-  LVal.Two := 42;
-  SerializeSimple<TMyRecord>(LVal);
-end;
-
 procedure TfrmSerializationSimple.btnSerSimpleStringClick(Sender: TObject);
 begin
-  SerializeSimple<string>('Lorem "Ipsum" \n \\ {}');
+  SerializeSimple<string>('Lorem "Ipsum" \n \\ {} итзам');
 end;
 
 procedure TfrmSerializationSimple.btnDesTypeClassClick(Sender: TObject);

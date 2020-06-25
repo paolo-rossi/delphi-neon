@@ -19,40 +19,39 @@
 {  limitations under the License.                                              }
 {                                                                              }
 {******************************************************************************}
-unit Neon.Tests.Types.Value;
+unit Neon.Tests.Types.Records;
 
 interface
 
 uses
-  System.SysUtils, System.Rtti, DUnitX.TestFramework,
+  System.Rtti, DUnitX.TestFramework,
 
   Neon.Tests.Entities,
   Neon.Tests.Utils;
 
 type
-  TStringArray = TArray<string>;
-  TIntegerArray = TArray<Integer>;
 
   [TestFixture]
-  [Category('valuetypes')]
-  TTestValueTypes = class(TObject)
+  [Category('recordtypes')]
+  TTestRecordTypes = class(TObject)
+  private
+    FSimpleRecord: TSimpleRecord;
+    FManagedrecord: TManagedRecord;
   public
+    constructor Create;
+
     [Setup]
     procedure Setup;
     [TearDown]
     procedure TearDown;
 
     [Test]
-    procedure TestRecord;
+    [TestCase('TestSimpleRecord', '{"Name":"Paolo","BirthDate":"1969-02-02T03:23:54.000Z","Age":50}', '|')]
+    procedure TestSimpleRecord(_Result: string);
 
     [Test]
-    procedure TestArrayInteger;
-
-    [Test]
-    procedure TestMatrixInteger;
-
-    [Test]
-    procedure TestMatrixIntegerString;
+    [TestCase('TestManagedRecord', '{"Name":"Luca","Age":43,"Height":1.8}', '|')]
+    procedure TestManagedRecord(_Result: string);
   end;
 
 implementation
@@ -60,65 +59,36 @@ implementation
 uses
   System.DateUtils;
 
-procedure TTestValueTypes.Setup;
+constructor TTestRecordTypes.Create;
+begin
+  FSimpleRecord.Name := 'Paolo';
+  FSimpleRecord.BirthDate := EncodeDateTime(1969, 02, 02, 03, 23, 54, 0);
+  FSimpleRecord.Age := 50;
+
+  FManagedrecord.Name := 'Luca';
+  FManagedrecord.Age := 43;
+  FManagedrecord.Height := 1.80;
+end;
+
+procedure TTestRecordTypes.Setup;
 begin
 end;
 
-procedure TTestValueTypes.TearDown;
+procedure TTestRecordTypes.TearDown;
 begin
 end;
 
-procedure TTestValueTypes.TestArrayInteger;
-const
-  LExpected = '[0,-10,20,-30,42]';
-var
-  LValue: TArray<Integer>;
-  LResult: string;
+procedure TTestRecordTypes.TestManagedRecord(_Result: string);
 begin
-  LValue := [0,-10,20,-30,42];
-  LResult := TTestUtils.SerializeValue(TValue.From<TArray<Integer>>(LValue));
-  Assert.AreEqual(LExpected, LResult);
+  Assert.AreEqual(_Result, TTestUtils.SerializeValue(TValue.From<TManagedRecord>(FManagedRecord)));
 end;
 
-procedure TTestValueTypes.TestMatrixInteger;
-const
-  LExpected = '[[0,1,2,3],[-10,22,1230000000],[20,-30,42],[]]';
-var
-  LValue: TArray<TIntegerArray>;
-  LResult: string;
+procedure TTestRecordTypes.TestSimpleRecord(_Result: string);
 begin
-  LValue := [[0,1,2,3], [-10,22,1230000000], [20,-30,42], []];
-  LResult := TTestUtils.SerializeValue(TValue.From<TArray<TIntegerArray>>(LValue));
-  Assert.AreEqual(LExpected, LResult);
-end;
-
-procedure TTestValueTypes.TestMatrixIntegerString;
-const
-  LExpected = '[["Zero","Uno","Due"],["","\u00E7\u00B0\u00E8\u00E9"],[]]';
-var
-  LValue: TArray<TStringArray>;
-  LResult: string;
-begin
-  LValue := [['Zero','Uno','Due'], ['', 'η°θι'],[]];
-  LResult := TTestUtils.SerializeValue(TValue.From<TArray<TStringArray>>(LValue));
-  Assert.AreEqual(LExpected, LResult);
-end;
-
-procedure TTestValueTypes.TestRecord;
-const
-  LExpected = '{"Name":"Paolo","BirthDate":"1969-10-02T03:00:00.000Z","Age":50}';
-var
-  LValue: TSimpleRecord;
-  LResult: string;
-begin
-  LValue.Name := 'Paolo';
-  LValue.BirthDate := EncodeDateTime(1969, 10, 02, 03, 0, 0, 0);
-  LValue.Age := 50;
-  LResult := TTestUtils.SerializeValue(TValue.From<TSimpleRecord>(LValue));
-  Assert.AreEqual(LExpected, LResult);
+  Assert.AreEqual(_Result, TTestUtils.SerializeValue(TValue.From<TSimpleRecord>(FSimpleRecord)));
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TTestValueTypes);
+  TDUnitX.RegisterTestFixture(TTestRecordTypes);
 
 end.
