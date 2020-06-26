@@ -19,7 +19,7 @@
 {  limitations under the License.                                              }
 {                                                                              }
 {******************************************************************************}
-unit Neon.Tests.Types.Arrays;
+unit Neon.Tests.Types.Strings;
 
 interface
 
@@ -34,8 +34,8 @@ type
   TIntegerArray = TArray<Integer>;
 
   [TestFixture]
-  [Category('arraytypes')]
-  TTestArrayTypes = class(TObject)
+  [Category('stringtypes')]
+  TTestStringsTypes = class(TObject)
   public
     [Setup]
     procedure Setup;
@@ -43,16 +43,25 @@ type
     procedure TearDown;
 
     [Test]
-    [TestCase('TestManagedRecord', '[0,-10,20,-30,42]', '|')]
-    procedure TestArrayInteger(_Result: string);
+    [TestCase('TestAnsiNormal', 'Paolo,"Paolo"')]
+    [TestCase('TestAnsiEmpty', ',""')]
+    [TestCase('TestAnsiSpace', ' ," "')]
+    [TestCase('TestAnsiExtended', 'Cantù,"Cant\u00F9"')]
+    procedure TestAnsiString(const AValue: AnsiString; const _Result: string);
 
     [Test]
-    [TestCase('TestManagedRecord', '[[0,1,2,3],[-10,22,1230000000],[20,-30,42],[]]', '|')]
-    procedure TestMatrixInteger(_Result: string);
+    [TestCase('TestUnicodeNormal', 'Paolo,"Paolo"')]
+    [TestCase('TestUnicodeEmpty', ',""')]
+    [TestCase('TestUnicodeSpace', ' ," "')]
+    [TestCase('TestUnicodeExtended', 'Cantù,"Cant\u00F9"')]
+    procedure TestUnicodeString(const AValue: string; const _Result: string);
 
     [Test]
-    [TestCase('TestManagedRecord', '[["Zero","Uno","Due"],["","\u00E7\u00B0\u00E8\u00E9"],[]]', '|')]
-    procedure TestMatrixIntegerString(_Result: string);
+    [TestCase('TestUTF8Normal', 'Paolo,"Paolo"')]
+    [TestCase('TestUTF8Empty', ',""')]
+    [TestCase('TestUTF8Space', ' ," "')]
+    [TestCase('TestUTF8Extended', 'Cantù,"Cant\u00F9"')]
+    procedure TestUTF8String(const AValue: UTF8String; const _Result: string);
   end;
 
 implementation
@@ -60,45 +69,39 @@ implementation
 uses
   System.DateUtils;
 
-procedure TTestArrayTypes.Setup;
+procedure TTestStringsTypes.Setup;
 begin
 end;
 
-procedure TTestArrayTypes.TearDown;
+procedure TTestStringsTypes.TearDown;
 begin
 end;
 
-procedure TTestArrayTypes.TestArrayInteger(_Result: string);
+procedure TTestStringsTypes.TestAnsiString(const AValue: AnsiString; const _Result: string);
 var
-  LValue: TArray<Integer>;
   LResult: string;
 begin
-  LValue := [0,-10,20,-30,42];
-  LResult := TTestUtils.SerializeValue(TValue.From<TArray<Integer>>(LValue));
+  LResult := TTestUtils.SerializeValue(TValue.From<AnsiString>(AValue));
   Assert.AreEqual(_Result, LResult);
 end;
 
-procedure TTestArrayTypes.TestMatrixInteger(_Result: string);
+procedure TTestStringsTypes.TestUnicodeString(const AValue: string; const _Result: string);
 var
-  LValue: TArray<TIntegerArray>;
   LResult: string;
 begin
-  LValue := [[0,1,2,3], [-10,22,1230000000], [20,-30,42], []];
-  LResult := TTestUtils.SerializeValue(TValue.From<TArray<TIntegerArray>>(LValue));
+  LResult := TTestUtils.SerializeValue(TValue.From<string>(AValue));
   Assert.AreEqual(_Result, LResult);
 end;
 
-procedure TTestArrayTypes.TestMatrixIntegerString(_Result: string);
+procedure TTestStringsTypes.TestUTF8String(const AValue: UTF8String; const _Result: string);
 var
-  LValue: TArray<TStringArray>;
   LResult: string;
 begin
-  LValue := [['Zero','Uno','Due'], ['', 'ç°èé'],[]];
-  LResult := TTestUtils.SerializeValue(TValue.From<TArray<TStringArray>>(LValue));
+  LResult := TTestUtils.SerializeValue(TValue.From<UTF8String>(AValue));
   Assert.AreEqual(_Result, LResult);
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TTestArrayTypes);
+  TDUnitX.RegisterTestFixture(TTestStringsTypes);
 
 end.

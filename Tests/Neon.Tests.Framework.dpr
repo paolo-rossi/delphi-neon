@@ -13,15 +13,17 @@ uses
   DUnitX.Loggers.Console,
   DUnitX.Loggers.Xml.NUnit,
   DUnitX.TestFramework,
+  Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule},
+  Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',
   Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas',
   Neon.Tests.Entities in 'Source\Neon.Tests.Entities.pas',
   Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas',
+  Neon.Tests.Types.Simple in 'Source\Neon.Tests.Types.Simple.pas',
   Neon.Tests.Types.Arrays in 'Source\Neon.Tests.Types.Arrays.pas',
+  Neon.Tests.Types.Strings in 'Source\Neon.Tests.Types.Strings.pas',
   Neon.Tests.Types.Records in 'Source\Neon.Tests.Types.Records.pas',
   Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas',
-  Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
-  Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule},
   Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas';
 
 var

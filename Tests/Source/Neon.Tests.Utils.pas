@@ -149,7 +149,7 @@ var
 begin
   LReader := TStreamReader.Create(AFileName, TEncoding.UTF8);
   try
-    Result := LReader.ReadToEnd;
+    Result := AdjustLineBreaks(LReader.ReadToEnd, tlbsCRLF);
   finally
     LReader.Free;
   end;
