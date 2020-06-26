@@ -125,10 +125,14 @@ begin
 end;
 
 procedure TTestReferenceTypes.TestPersonPretty(const AMethod: string);
+var
+  expected, actual: String;
 begin
-  Assert.AreEqual(
-    TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
-    TTestUtils.SerializeObject(FPerson1, TNeonConfiguration.Pretty));
+  expected := TTestUtils.ExpectedFromFile(GetFileName(AMethod));
+  expected := AdjustLineBreaks(expected, TTextLineBreakStyle.tlbsCRLF);
+
+  actual := TTestUtils.SerializeObject(FPerson1, TNeonConfiguration.Pretty);
+  Assert.AreEqual(expected, actual);
 end;
 
 procedure TTestReferenceTypes.TestPersonUnicode(const AMethod: string);
