@@ -23,6 +23,8 @@ type
     btnDesSimpleBool: TButton;
     btnSerTypeClass: TButton;
     btnDesTypeClass: TButton;
+    btnSerVariants: TButton;
+    btnDesVariants: TButton;
     procedure btnDesSimpleArrayClick(Sender: TObject);
     procedure btnDesSimpleBoolClick(Sender: TObject);
     procedure btnDesSimpleDateTimeClick(Sender: TObject);
@@ -37,6 +39,8 @@ type
     procedure btnSerSimpleIntegerClick(Sender: TObject);
     procedure btnSerSimpleStringClick(Sender: TObject);
     procedure btnDesTypeClassClick(Sender: TObject);
+    procedure btnDesVariantsClick(Sender: TObject);
+    procedure btnSerVariantsClick(Sender: TObject);
   private
     procedure SerializeSimple<T>(AValue: T);
     procedure DeserializeSimple<T>; overload;
@@ -148,6 +152,38 @@ begin
     SerializeObject(LTypeClass, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally
     LTypeClass.Free;
+  end;
+end;
+
+procedure TfrmSerializationSimple.btnDesVariantsClick(Sender: TObject);
+var
+  LVariantObj: TVariantEntity;
+begin
+  LVariantObj := TVariantEntity.Create;
+  try
+    DeserializeObject(LVariantObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LVariantObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  finally
+    LVariantObj.Free;
+  end;
+end;
+
+procedure TfrmSerializationSimple.btnSerVariantsClick(Sender: TObject);
+var
+  LVariantObj: TVariantEntity;
+begin
+  LVariantObj := TVariantEntity.Create;
+
+  LVariantObj.Prop1 := Null;
+  LVariantObj.Prop2 := 'Paolo';
+  LVariantObj.Prop3 := 123.45;
+  LVariantObj.Prop4 := True;
+  LVariantObj.Prop5 := Now();
+
+  try
+    SerializeObject(LVariantObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  finally
+    LVariantObj.Free;
   end;
 end;
 

@@ -47,6 +47,8 @@ type
     btnDesFont: TButton;
     btnSerNullables: TButton;
     btnDesNullables: TButton;
+    btnSerNeonInclude: TButton;
+    btnDesNeonInclude: TButton;
     procedure btnSerCaseClassClick(Sender: TObject);
     procedure btnDesCaseClassClick(Sender: TObject);
     procedure btnDesFontClick(Sender: TObject);
@@ -54,9 +56,11 @@ type
     procedure btnSerParameterClick(Sender: TObject);
     procedure btnSerMyClassClick(Sender: TObject);
     procedure btnDesMyClassClick(Sender: TObject);
+    procedure btnDesNeonIncludeClick(Sender: TObject);
     procedure btnDesNullablesClick(Sender: TObject);
     procedure btnDesParameterClick(Sender: TObject);
     procedure btnSerNullablesClick(Sender: TObject);
+    procedure btnSerNeonIncludeClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -162,6 +166,19 @@ begin
   end;
 end;
 
+procedure TfrmSerializationCustom.btnDesNeonIncludeClick(Sender: TObject);
+var
+  LObj: TNeonIncludeEntity;
+begin
+  LObj := TNeonIncludeEntity.Create;
+  try
+    DeserializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  finally
+    LObj.Free;
+  end;
+end;
+
 procedure TfrmSerializationCustom.btnDesNullablesClick(Sender: TObject);
 var
   LObj: TClassOfNullables;
@@ -194,9 +211,28 @@ var
 begin
   LObj := TClassOfNullables.Create;
   try
-    LObj.Name := 'Paolo';
+    LObj.Name := nil;
     //LObj.Age := 50;
     LObj.Speed := TEnumSpeed.Medium;
+
+    SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  finally
+    LObj.Free;
+  end;
+end;
+
+procedure TfrmSerializationCustom.btnSerNeonIncludeClick(Sender: TObject);
+var
+  LObj: TNeonIncludeEntity;
+begin
+  LObj := TNeonIncludeEntity.Create;
+  try
+    LObj.Name := 'Paolo';
+    LObj.Obj := nil;
+    LObj.NullObject1 := nil;
+    LObj.NullObject2 := nil;
+    LObj.NString := '';
+    LObj.NInteger := 0;
 
     SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   finally

@@ -383,6 +383,7 @@ type
 implementation
 
 uses
+  System.DateUtils,
   System.Variants;
 
 { TNeonSerializerJSON }
@@ -495,7 +496,6 @@ var
   LCustomSer: TCustomSerializer;
   LDynamicType: IDynamicType;
 
-
   LDynamicMap: IDynamicMap absolute LDynamicType;
   LDynamicList: IDynamicList absolute LDynamicType;
   LDynamicStream: IDynamicStream absolute LDynamicType;
@@ -554,10 +554,10 @@ begin
       if AValue.AsObject = nil then
       begin
         case ANeonObject.NeonInclude.Value of
-          IncludeIf.NotNull, IncludeIf.NotEmpty, IncludeIf.NotDefault:
-          Exit(nil);
-        else
+          IncludeIf.Always, IncludeIf.CustomFunction:
           Exit(TJSONNull.Create);
+        else
+          Exit(nil);
         end;
       end
       else if IsEnumerableMap(AValue, LDynamicMap) then
@@ -722,9 +722,23 @@ end;
 function TNeonSerializerJSON.WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject; ANullable: IDynamicNullable): TJSONValue;
 begin
   Result := nil;
+  if not Assigned(ANullable) then
+    Exit;
 
-  if Assigned(ANullable) and ANullable.HasValue then
-    Result := WriteDataMember(ANullable.GetValue);
+  case ANeonObject.NeonInclude.Value of
+    IncludeIf.Always, IncludeIf.CustomFunction:
+    begin
+      if ANullable.HasValue then
+        Result := WriteDataMember(ANullable.GetValue, ANeonObject)
+      else
+        Result := TJSONNull.Create;
+    end;
+    IncludeIf.NotNull, IncludeIf.NotEmpty, IncludeIf.NotDefault:
+    begin
+      if ANullable.HasValue then
+        Result := WriteDataMember(ANullable.GetValue, ANeonObject);
+    end;
+  end;
 end;
 
 function TNeonSerializerJSON.WriteObject(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -758,7 +772,7 @@ function TNeonSerializerJSON.WriteEnumerable(const AValue: TValue; ANeonObject: 
 var
   LJSONValue: TJSONValue;
 begin
-  // Is not an Enumerable compatible object
+  // Not an enumerable object
   if not Assigned(AList) then
     Exit(nil);
   if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
@@ -780,7 +794,7 @@ var
   LJSONValue: TJSONValue;
   LKeyValue, LValValue: TValue;
 begin
-  // Is not an EnumerableMap-compatible object
+  // Not an EnumerableMap object
   if not Assigned(AMap) then
     Exit(nil);
 
@@ -908,21 +922,59 @@ begin
 end;
 
 function TNeonSerializerJSON.WriteVariant(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+var
+  LValue: Variant;
+  LVariantType: Integer;
 begin
+  LValue := AValue.AsVariant;
   case ANeonObject.NeonInclude.Value of
+    IncludeIf.Always:
+    begin
+      if VarIsNull(LValue) then
+        Exit(TJSONNull.Create);
+    end;
+
     IncludeIf.NotNull:
     begin
-      if VarIsNull(AValue.AsVariant) then
+      if VarIsNull(LValue) then
         Exit(nil);
     end;
+
     IncludeIf.NotEmpty:
     begin
-      if VarIsEmpty(AValue.AsVariant) then
+      if VarIsEmpty(LValue) then
         Exit(nil);
     end;
   end;
 
-  Result := TJSONString.Create(AValue.AsVariant);
+  LVariantType := VarType(LValue) and VarTypeMask;
+  case LVariantType of
+    //varEmpty   :
+    //varNull    :
+    varSmallInt,
+    varInteger : Result := WriteInteger(Int64(LValue), ANeonObject);
+    varSingle  ,
+    varDouble  ,
+    varCurrency: Result := WriteFloat(Currency(LValue), ANeonObject);
+    varDate    : Result := WriteDate(VarToDateTime(LValue), ANeonObject);
+    //varOleStr  :
+    //varDispatch:
+    //varError   :
+    varBoolean : Result := WriteBoolean(Boolean(LValue), ANeonObject);
+    //varVariant :
+    //varUnknown :
+    varByte    ,
+    varWord    ,
+    varLongWord,
+    varInt64   : Result := WriteInteger(Int64(LValue), ANeonObject);
+    //varStrArg  :
+    varString  : Result := WriteString(VarToStr(LValue), ANeonObject);
+    //varAny     :
+    //varTypeMask:
+
+  else
+    Result := TJSONString.Create(AValue.AsVariant);
+  end;
 end;
 
 { TNeonDeserializerJSON }
@@ -1378,7 +1430,7 @@ begin
     tkLString: Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
 
     //WideString
-    tkWString: Result := TValue.From<string>(AParam.JSONValue.Value);
+    tkWString: Result := TValue.From<WideString>(AParam.JSONValue.Value);
 
     //UnicodeString
     tkUString: Result := TValue.From<string>(AParam.JSONValue.Value);
@@ -1393,8 +1445,32 @@ begin
 end;
 
 function TNeonDeserializerJSON.ReadVariant(const AParam: TNeonDeserializerParam): TValue;
+var
+  LDateTime: TDateTime;
+  LJSONNumber: TJSONNumber;
+  LJSONString: TJSONString;
 begin
-
+  if AParam.JSONValue is TJSONNull then
+    Result := TValue.FromVariant(Null)
+  else if AParam.JSONValue is TJSONTrue then
+    Result := TValue.FromVariant(True)
+  else if AParam.JSONValue is TJSONFalse then
+    Result := TValue.FromVariant(False)
+  else if AParam.JSONValue is TJSONNumber then
+  begin
+    LJSONNumber := AParam.JSONValue as TJSONNumber;
+    Result := TValue.FromVariant(LJSONNumber.AsDouble);
+  end
+  else if AParam.JSONValue is TJSONString then
+  begin
+    LJSONString := AParam.JSONValue as TJSONString;
+    try
+      LDateTime := ISO8601ToDate(LJSONString.Value, FConfig.UseUTCDate);
+      Result := TValue.FromVariant(VarFromDateTime(LDateTime))
+    except
+      Result := TValue.FromVariant(LJSONString.Value);
+    end;
+  end;
 end;
 
 function TNeonDeserializerJSON.JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;

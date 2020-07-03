@@ -297,6 +297,9 @@ type
     procedure DefaultValues; override;
   end;
 
+  /// <summary>
+  ///   Entity to test simple type properties
+  /// </summary>
   TTypeClass = class
   private
     FPropInteger: Integer;
@@ -335,17 +338,72 @@ type
     property PropEnum: TTypeKind read FPropEnum write FPropEnum;
   end;
 
+  /// <summary>
+  ///   Entity to test the Nullables serialization
+  /// </summary>
   TClassOfNullables = class
   private
     FName: NullString;
     FAge: NullInteger;
     FSpeed: Nullable<TEnumSpeed>;
+    FObj: TObject;
   public
+    [NeonInclude(IncludeIf.Always)]
+    property Obj: TObject read FObj write FObj;
+    [NeonInclude(IncludeIf.Always)]
     property Name: NullString read FName write FName;
-    //[NeonInclude(Include.NotEmpty)]
+    [NeonInclude(IncludeIf.NotNull)]
     property Age: NullInteger read FAge write FAge;
     property Speed: Nullable<TEnumSpeed> read FSpeed write FSpeed;
   end;
+
+  /// <summary>
+  ///   Entity to test the NeonInclude attribute (IncludeIf enum)
+  /// </summary>
+  TNeonIncludeEntity = class
+  private
+    FNullObject1: TObject;
+    FNullObject2: TObject;
+    FNString: NullString;
+    FNInteger: NullInteger;
+    FName: string;
+    FObj: TObject;
+
+    function ShouldInclude(const AContext: TNeonIgnoreIfContext): Boolean;
+  public
+    [NeonInclude(IncludeIf.CustomFunction)]
+    property Name: string read FName write FName;
+    [NeonInclude(IncludeIf.CustomFunction)]
+    property Obj: TObject read FObj write FObj;
+
+    [NeonInclude(IncludeIf.Always)]
+    property NullObject1: TObject read FNullObject1 write FNullObject1;
+    [NeonInclude(IncludeIf.NotNull)]
+    property NullObject2: TObject read FNullObject2 write FNullObject2;
+    [NeonInclude(IncludeIf.NotEmpty)]
+    property NString: NullString read FNString write FNString;
+    [NeonInclude(IncludeIf.NotDefault)]
+    property NInteger: NullInteger read FNInteger write FNInteger;
+  end;
+
+  /// <summary>
+  ///   Entity to test conversion to and from variants
+  /// </summary>
+  TVariantEntity = class
+  private
+    FProp1: Variant;
+    FProp2: Variant;
+    FProp3: Variant;
+    FProp4: Variant;
+    FProp5: Variant;
+  public
+    property Prop1: Variant read FProp1 write FProp1;
+    property Prop2: Variant read FProp2 write FProp2;
+    property Prop3: Variant read FProp3 write FProp3;
+    property Prop4: Variant read FProp4 write FProp4;
+    property Prop5: Variant read FProp5 write FProp5;
+  end;
+
 
 implementation
 
@@ -622,6 +680,24 @@ begin
   inherited;
   FPropertyTest := 'property added';
   FieldTest := 'my field: hello world!';
+end;
+
+{ TNeonIncludeEntity }
+
+function TNeonIncludeEntity.ShouldInclude(const AContext: TNeonIgnoreIfContext): Boolean;
+begin
+  Result := False;
+
+  // You can filter by the member name
+  if SameText(AContext.MemberName, 'Name') then
+  begin
+    Result := True;
+  end
+  // You can reuse (only if you want) the same function for several members
+  else if SameText(AContext.MemberName, 'Obj') then
+  begin
+    Result := True;
+  end;
 end;
 
 initialization

@@ -82,10 +82,6 @@ type
   /// </remarks>
   IncludeIf = (
     /// <summary>
-    ///   Include the member
-    /// </summary>
-    Always,
-    /// <summary>
     ///   Include the member if it's not nil
     /// </summary>
     NotNull,
@@ -97,6 +93,10 @@ type
     ///   Include the member if it's value it's not the default value
     /// </summary>
     NotDefault,
+    /// <summary>
+    ///   Include the member always
+    /// </summary>
+    Always,
     /// <summary>
     ///   Include the member based on the result of the function specified as string
     ///   (default function is ShouldInclude)

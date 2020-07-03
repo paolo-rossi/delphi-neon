@@ -147,4 +147,23 @@ inherited frmSerializationSimple: TfrmSerializationSimple
     TabOrder = 18
     OnClick = btnDesTypeClassClick
   end
+  object btnSerVariants: TButton
+    Left = 3
+    Top = 248
+    Width = 131
+    Height = 25
+    Caption = 'Variants'
+    TabOrder = 19
+    OnClick = btnSerVariantsClick
+  end
+  object btnDesVariants: TButton
+    Left = 485
+    Top = 248
+    Width = 131
+    Height = 25
+    Anchors = [akTop, akRight]
+    Caption = 'Variants'
+    TabOrder = 20
+    OnClick = btnDesVariantsClick
+  end
 end

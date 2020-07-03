@@ -26,7 +26,10 @@ interface
 {$INCLUDE ..\Source\Neon.inc}
 
 uses
-  System.SysUtils, System.Classes, System.Generics.Collections;
+  System.SysUtils, System.Classes, System.Generics.Collections,
+
+  Neon.Core.Attributes,
+  Neon.Core.Nullables;
 
 {$SCOPEDENUMS ON}
 
@@ -99,6 +102,9 @@ type
     property Contacts: TObjectList<TContact> read FContacts write FContacts;
   end;
 
+  /// <summary>
+  ///   Entity to test the MemberCase configuration
+  /// </summary>
   TCaseClass = class
   private
     FFirstName: string;
@@ -108,12 +114,32 @@ type
     F_Age_: Integer;
   public
     constructor Create(const AFirstName, ALastName, AGender, ACountry: string; AAge: Integer);
-
+  public
     property FirstName: string read FFirstName write FFirstName;
     property lastname: string read Flastname write Flastname;
     property _Age_: Integer read F_Age_ write F_Age_;
     property Gender: string read FGender write FGender;
     property COUNTRY: string read FCOUNTRY write FCOUNTRY;
+  end;
+
+  /// <summary>
+  ///   Entity to test the NeonInclude attribute (IncludeIf enum)
+  /// </summary>
+  TNeonIncludeEntity = class
+  private
+    FNullObject1: TObject;
+    FNullObject2: TObject;
+    FNString: NullString;
+    FNInteger: NullInteger;
+  public
+    [NeonInclude(IncludeIf.Always)]
+    property NullObject1: TObject read FNullObject1 write FNullObject1;
+    [NeonInclude(IncludeIf.NotNull)]
+    property NullObject2: TObject read FNullObject2 write FNullObject2;
+    [NeonInclude(IncludeIf.NotEmpty)]
+    property NString: NullString read FNString write FNString;
+    [NeonInclude(IncludeIf.NotDefault)]
+    property NInteger: NullInteger read FNInteger write FNInteger;
   end;
 
 implementation

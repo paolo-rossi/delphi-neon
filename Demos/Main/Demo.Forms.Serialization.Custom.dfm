@@ -112,4 +112,23 @@ inherited frmSerializationCustom: TfrmSerializationCustom
     TabOrder = 14
     OnClick = btnDesNullablesClick
   end
+  object btnSerNeonInclude: TButton
+    Left = 3
+    Top = 219
+    Width = 131
+    Height = 25
+    Caption = 'NeonInclude Test'
+    TabOrder = 15
+    OnClick = btnSerNeonIncludeClick
+  end
+  object btnDesNeonInclude: TButton
+    Left = 485
+    Top = 219
+    Width = 131
+    Height = 25
+    Anchors = [akTop, akRight]
+    Caption = 'NeonInclude Test'
+    TabOrder = 16
+    OnClick = btnDesNeonIncludeClick
+  end
 end
