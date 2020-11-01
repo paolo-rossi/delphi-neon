@@ -18,6 +18,7 @@ uses
   Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas',
   Neon.Tests.Entities in 'Source\Neon.Tests.Entities.pas',
   Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas',
+  Neon.Tests.Types.Enums in 'Source\Neon.Tests.Types.Enums.pas',
   Neon.Tests.Types.Simple in 'Source\Neon.Tests.Types.Simple.pas',
   Neon.Tests.Types.Arrays in 'Source\Neon.Tests.Types.Arrays.pas',
   Neon.Tests.Types.Strings in 'Source\Neon.Tests.Types.Strings.pas',

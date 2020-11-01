@@ -98,6 +98,7 @@
         <DCCReference Include="Source\Neon.Tests.Utils.pas"/>
         <DCCReference Include="Source\Neon.Tests.Entities.pas"/>
         <DCCReference Include="Source\Neon.Tests.Serializer.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Types.Enums.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Simple.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Arrays.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Strings.pas"/>

@@ -10,7 +10,9 @@
 
 ## What is Neon
 
-**Neon** is a serialization library for [Delphi](https://www.embarcadero.com/products/delphi) that helps you to convert (back and forth) objects and other values to JSON. It supports simple Delphi types but also complex class and records. Please take a look at the Demo to see 
+**Neon** is a serialization library for [Delphi](https://www.embarcadero.com/products/delphi) that helps you to convert (back and forth) objects and other values to JSON. It supports simple Delphi types but also complex class and records. **Neon** has been designed with **REST** in mind, to exchange pure data between applications with no *"metadata"* or added fields, in fact **Neon** is the default JSON serialization engine for the [WiRL REST Library](https://github.com/delphi-blocks/WiRL).
+
+Please take a look at the Demos to see **Neon** in action.
 
 ## General Features
 
@@ -54,7 +56,7 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 - Unit Tests
 
 ## Prerequisite
-This library has been tested with **Delphi 10.4 Sydney** **Delphi 10.3 Rio** **Delphi 10.2 Tokyo**, **Delphi 10.1 Berlin**, but with a minimum amount of work it should compile with **Delphi XE7 and higher**
+This library has been tested with **Delphi 10.4 Sydney**, **Delphi 10.3 Rio**, **Delphi 10.2 Tokyo**, **Delphi 10.1 Berlin**, but with a minimum amount of work it should compile with **Delphi XE7 and higher**
 
 #### Libraries/Units dependencies
 This library has no dependencies on external libraries/units.
@@ -70,7 +72,6 @@ Simply add the source path "Source" to your Delphi project path and.. you are go
 ## Code Examples
 
 ### Serialize an object
-To 
 
 #### Using TNeon utility class
 The easiest way to serialize and deserialize is to use the `TNeon` utility class:
