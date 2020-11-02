@@ -13,12 +13,13 @@ uses
   Neon.Core.Attributes,
   Neon.Core.Persistence,
   Neon.Core.Persistence.Swagger,
-  Neon.Core.Utils;
+  Neon.Core.Utils, System.Actions, Vcl.ActnList, System.ImageList, Vcl.ImgList,
+  Vcl.CategoryButtons;
 
 type
   TfrmSerializationSchema = class(TfrmSerializationBase)
-    btnSchemaCaseClass: TButton;
-    procedure btnSchemaCaseClassClick(Sender: TObject);
+    actSerJSONSchema: TAction;
+    procedure actSerJSONSchemaExecute(Sender: TObject);
   private
     { Private declarations }
   public
@@ -35,7 +36,7 @@ uses
 
 {$R *.dfm}
 
-procedure TfrmSerializationSchema.btnSchemaCaseClassClick(Sender: TObject);
+procedure TfrmSerializationSchema.actSerJSONSchemaExecute(Sender: TObject);
 var
   LJSON: TJSONObject;
 begin

@@ -41,6 +41,22 @@ type
   [NeonEnumNames('Low Speed,Medium Speed,High Speed')]
   TEnumSpeed = (Low, Medium, High);
 
+  TSetSpeed = set of TEnumSpeed;
+
+  TArraySpeed = TArray<TEnumSpeed>;
+
+  TArrayDuplicates = TArray<TDuplicates>;
+
+  TSetDuplicates = set of TDuplicates;
+
+  TSetBoolean = set of Boolean;
+
+  TWeekDays = 1..7;
+  TSetWeekDays = set of TWeekDays;
+
+  TUppercase = 'A'..'Z';
+  TSetUppercase = set of TUppercase;
+
   TManagedRecord = record
     Name: string;
     Age: Integer;
@@ -669,7 +685,7 @@ end;
 
 function TAddress.ToString: string;
 begin
-  Result := 'Key-' + FCity;
+  Result := FCity;
 end;
 
 

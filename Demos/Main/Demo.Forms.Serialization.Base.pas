@@ -24,8 +24,9 @@ unit Demo.Forms.Serialization.Base;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, System.Rtti,
+  Winapi.Windows, Winapi.Messages, System.Rtti, System.SysUtils, System.Classes,
+  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
+  Vcl.CategoryButtons, System.ImageList, Vcl.ImgList, System.Actions, Vcl.ActnList,
 
   Demo.Frame.Configuration,
   Neon.Core.Persistence,
@@ -39,6 +40,13 @@ type
     pnlDeserialize: TPanel;
     memoDeserialize: TMemo;
     memoLog: TMemo;
+    catSerialize: TCategoryButtons;
+    imlMain: TImageList;
+    catDeserialize: TCategoryButtons;
+    aclMain: TActionList;
+    pnlLeft: TPanel;
+    pnlRight: TPanel;
+    splMain: TSplitter;
   protected
     frmConfiguration: TframeConfiguration;
     procedure Log(const ALog: string; AWhere: TStrings); overload;

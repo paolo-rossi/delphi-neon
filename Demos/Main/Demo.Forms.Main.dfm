@@ -3,7 +3,7 @@ object MainForm: TMainForm
   Top = 0
   Caption = 'Neon Serialization Demo'
   ClientHeight = 537
-  ClientWidth = 983
+  ClientWidth = 1019
   Color = clBtnFace
   Constraints.MinHeight = 240
   Constraints.MinWidth = 480
@@ -19,17 +19,18 @@ object MainForm: TMainForm
   object TopPanel: TPanel
     Left = 0
     Top = 0
-    Width = 983
+    Width = 1019
     Height = 137
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
+    ExplicitWidth = 983
     object imgNeon: TImage
-      Left = 710
+      Left = 746
       Top = 0
       Width = 273
       Height = 137
-      Align = alLeft
+      Align = alRight
       Picture.Data = {
         0954506E67496D61676589504E470D0A1A0A0000000D49484452000002580000
         013008060000006B290F76000000097048597300000EC400000EC401952B0E1B
@@ -6021,7 +6022,7 @@ object MainForm: TMainForm
         9A490000000049454E44AE426082}
       Proportional = True
       Stretch = True
-      ExplicitLeft = 824
+      ExplicitLeft = 782
       ExplicitTop = 7
     end
     inline frmConfiguration: TframeConfiguration
@@ -6038,9 +6039,10 @@ object MainForm: TMainForm
   object pgcMain: TPageControl
     Left = 0
     Top = 137
-    Width = 983
+    Width = 1019
     Height = 400
     Align = alClient
     TabOrder = 1
+    ExplicitWidth = 983
   end
 end

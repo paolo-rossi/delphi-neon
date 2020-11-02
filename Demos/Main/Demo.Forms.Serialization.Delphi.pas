@@ -28,28 +28,30 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Data.DB,
 
   Demo.Forms.Serialization.Base,
-  Neon.Core.Attributes;
+  Neon.Core.Attributes, Vcl.CategoryButtons, System.Actions, Vcl.ActnList,
+  System.ImageList, Vcl.ImgList;
 
 type
   TfrmSerializationDelphi = class(TfrmSerializationBase)
-    btnSerDataSet: TButton;
-    btnDesDataSet: TButton;
-    btnSerImage: TButton;
-    btnSerStringList: TButton;
-    btnDesStringList: TButton;
-    btnDesImage: TButton;
     btnShowDetails: TButton;
-    btnSerBitmap: TButton;
-    btnDesBitmap: TButton;
-    procedure btnDesBitmapClick(Sender: TObject);
+    actSerDataSet: TAction;
+    actSerImage: TAction;
+    actSerBitmap: TAction;
+    actStringList: TAction;
+    actDesDataSet: TAction;
+    actDesImage: TAction;
+    actDesBitmap: TAction;
+    actDesStringList: TAction;
+    btnShowDetailsLeft: TButton;
+    procedure actDesBitmapExecute(Sender: TObject);
+    procedure actDesDataSetExecute(Sender: TObject);
+    procedure actDesImageExecute(Sender: TObject);
+    procedure actDesStringListExecute(Sender: TObject);
+    procedure actSerBitmapExecute(Sender: TObject);
+    procedure actSerDataSetExecute(Sender: TObject);
+    procedure actSerImageExecute(Sender: TObject);
+    procedure actStringListExecute(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure btnDesDataSetClick(Sender: TObject);
-    procedure btnDesStringListClick(Sender: TObject);
-    procedure btnSerDataSetClick(Sender: TObject);
-    procedure btnSerImageClick(Sender: TObject);
-    procedure btnSerStringListClick(Sender: TObject);
-    procedure btnDesImageClick(Sender: TObject);
-    procedure btnSerBitmapClick(Sender: TObject);
     procedure btnShowDetailsClick(Sender: TObject);
   private
     { Private declarations }
@@ -67,18 +69,13 @@ uses
 
 {$R *.dfm}
 
-procedure TfrmSerializationDelphi.btnDesBitmapClick(Sender: TObject);
+procedure TfrmSerializationDelphi.actDesBitmapExecute(Sender: TObject);
 begin
   DeserializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   ShowMessage('Click "Show details" button. I''ve deserialized the picture');
 end;
 
-procedure TfrmSerializationDelphi.FormCreate(Sender: TObject);
-begin
-  frmDetails := TfrmDetails.Create(Self);
-end;
-
-procedure TfrmSerializationDelphi.btnDesDataSetClick(Sender: TObject);
+procedure TfrmSerializationDelphi.actDesDataSetExecute(Sender: TObject);
 begin
   frmDetails.dsPersons.EmptyDataSet;
   DeserializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
@@ -86,7 +83,13 @@ begin
   ShowMessage('Click "Show details" button. I deserialized the dataset');
 end;
 
-procedure TfrmSerializationDelphi.btnDesStringListClick(Sender: TObject);
+procedure TfrmSerializationDelphi.actDesImageExecute(Sender: TObject);
+begin
+  DeserializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  ShowMessage('Click "Show details" button. I''ve deserialized the picture');
+end;
+
+procedure TfrmSerializationDelphi.actDesStringListExecute(Sender: TObject);
 var
   LList: TStringList;
 begin
@@ -99,14 +102,25 @@ begin
   end;
 end;
 
-procedure TfrmSerializationDelphi.btnSerDataSetClick(Sender: TObject);
+procedure TfrmSerializationDelphi.actSerBitmapExecute(Sender: TObject);
+var
+  LFileName: string;
+begin
+  LFileName := ExtractFilePath(Application.ExeName) + '..\..\neon-logo-600.bmp';
+  frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
+  SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  frmDetails.ClearImage;
+  ShowMessage('Click "Show details" button. I''ve cleared the picture');
+end;
+
+procedure TfrmSerializationDelphi.actSerDataSetExecute(Sender: TObject);
 begin
   SerializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   frmDetails.EmptyDataSet;
   ShowMessage('Click "Show details" button. I emptied the dataset, you can change something in the JSON data');
 end;
 
-procedure TfrmSerializationDelphi.btnSerImageClick(Sender: TObject);
+procedure TfrmSerializationDelphi.actSerImageExecute(Sender: TObject);
 var
   LFileName: string;
 begin
@@ -117,7 +131,7 @@ begin
   ShowMessage('Click "Show details" button. I''ve cleared the picture');
 end;
 
-procedure TfrmSerializationDelphi.btnSerStringListClick(Sender: TObject);
+procedure TfrmSerializationDelphi.actStringListExecute(Sender: TObject);
 var
   LList: TStringList;
 begin
@@ -132,21 +146,9 @@ begin
   end;
 end;
 
-procedure TfrmSerializationDelphi.btnDesImageClick(Sender: TObject);
+procedure TfrmSerializationDelphi.FormCreate(Sender: TObject);
 begin
-  DeserializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  ShowMessage('Click "Show details" button. I''ve deserialized the picture');
-end;
-
-procedure TfrmSerializationDelphi.btnSerBitmapClick(Sender: TObject);
-var
-  LFileName: string;
-begin
-  LFileName := ExtractFilePath(Application.ExeName) + '..\..\neon-logo-600.bmp';
-  frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
-  SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  frmDetails.ClearImage;
-  ShowMessage('Click "Show details" button. I''ve cleared the picture');
+  frmDetails := TfrmDetails.Create(Self);
 end;
 
 procedure TfrmSerializationDelphi.btnShowDetailsClick(Sender: TObject);
