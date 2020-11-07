@@ -53,20 +53,28 @@ type
     actDesNeonInclude: TAction;
     actSerNullableInteger: TAction;
     actDesNullableInteger: TAction;
+    actSerTGUID: TAction;
+    actSerTTime: TAction;
+    actDesTGUID: TAction;
+    actDesTTime: TAction;
     procedure actDesNeonIncludeExecute(Sender: TObject);
     procedure actDesNullableClassExecute(Sender: TObject);
     procedure actDesNullableIntegerExecute(Sender: TObject);
     procedure actDesTCaseClassExecute(Sender: TObject);
     procedure actDesTFontExecute(Sender: TObject);
+    procedure actDesTGUIDExecute(Sender: TObject);
     procedure actDesTMyClassExecute(Sender: TObject);
     procedure actDesTParameterExecute(Sender: TObject);
+    procedure actDesTTimeExecute(Sender: TObject);
     procedure actSerNeonIncludeExecute(Sender: TObject);
     procedure actSerNullableClassExecute(Sender: TObject);
     procedure actSerNullableIntegerExecute(Sender: TObject);
     procedure actSerTCaseClassExecute(Sender: TObject);
     procedure actSerTFontExecute(Sender: TObject);
+    procedure actSerTGUIDExecute(Sender: TObject);
     procedure actSerTMyClassExecute(Sender: TObject);
     procedure actSerTParameterExecute(Sender: TObject);
+    procedure actSerTTimeExecute(Sender: TObject);
   private
     { Private declarations }
   public
@@ -142,6 +150,14 @@ begin
   SerializeObject(LFont, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
+procedure TfrmSerializationCustom.actDesTGUIDExecute(Sender: TObject);
+var
+  LValue: TGUID;
+begin
+  LValue := DeserializeValueTo<TGUID>(memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  SerializeValueFrom<TGUID>(TValue.From<TGUID>(LValue), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+end;
+
 procedure TfrmSerializationCustom.actDesTMyClassExecute(Sender: TObject);
 var
   LSimple: TMyClass;
@@ -167,6 +183,14 @@ begin
   finally
     LVal.Free;
   end;
+end;
+
+procedure TfrmSerializationCustom.actDesTTimeExecute(Sender: TObject);
+var
+  LValue: TTime;
+begin
+  LValue := DeserializeValueTo<TTime>(memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  SerializeValueFrom<TTime>(TValue.From<TTime>(LValue), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
 procedure TfrmSerializationCustom.actSerNeonIncludeExecute(Sender: TObject);
@@ -232,6 +256,14 @@ begin
   SerializeObject(LFont, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
+procedure TfrmSerializationCustom.actSerTGUIDExecute(Sender: TObject);
+var
+  LVal: TGUID;
+begin
+  CreateGUID(LVal);
+  SerializeSimple<TGUID>(LVal);
+end;
+
 procedure TfrmSerializationCustom.actSerTMyClassExecute(Sender: TObject);
 var
   LObj: TMyClass;
@@ -260,6 +292,11 @@ begin
   finally
     LParam.Free;
   end;
+end;
+
+procedure TfrmSerializationCustom.actSerTTimeExecute(Sender: TObject);
+begin
+  SerializeSimple<TTime>(Now);
 end;
 
 end.

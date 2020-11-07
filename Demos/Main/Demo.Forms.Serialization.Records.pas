@@ -62,9 +62,7 @@ type
     procedure actSerSetEnumExecute(Sender: TObject);
     procedure actSerSetNumberExecute(Sender: TObject);
   private
-    procedure SerializeSimple<T>(AValue: T);
-    procedure DeserializeSimple<T>; overload;
-    procedure DeserializeSimple<T>(AValue: T); overload;
+    { Private declarations }
   public
     { Public declarations }
   end;
@@ -225,17 +223,6 @@ begin
   SerializeSimple<TSetDuplicates>(LValue);
 end;
 
-procedure TfrmSerializationRecords.DeserializeSimple<T>;
-var
-  LVal: T;
-begin
-  LVal := DeserializeValueTo<T>(
-    memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-
-  SerializeValueFrom<T>(
-    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
-end;
-
 procedure TfrmSerializationRecords.actDesRecordExecute(Sender: TObject);
 var
   LRecord: TMyRecord;
@@ -308,23 +295,6 @@ var
 begin
   LValue := [1,4,7];
   SerializeSimple<TSetWeekDays>(LValue);
-end;
-
-procedure TfrmSerializationRecords.DeserializeSimple<T>(AValue: T);
-var
-  LVal: T;
-begin
-  LVal := DeserializeValueTo<T>(AValue,
-    memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-
-  SerializeValueFrom<T>(
-    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
-end;
-
-procedure TfrmSerializationRecords.SerializeSimple<T>(AValue: T);
-begin
-  SerializeValueFrom<T>(
-    TValue.From<T>(AValue), memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
 end.

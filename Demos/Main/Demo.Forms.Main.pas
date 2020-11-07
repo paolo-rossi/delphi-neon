@@ -92,7 +92,7 @@ begin
   CreateTab('Value Types', clTeal, TfrmSerializationRecords);
   CreateTab('Reference Types', clNavy, TfrmSerializationComplex);
   CreateTab('Delphi Types', clOlive, TfrmSerializationDelphi);
-  CreateTab('Custom Types', clMaroon, TfrmSerializationCustom);
+  CreateTab('Custom Serializers', clMaroon, TfrmSerializationCustom);
   CreateTab('JSON Schema', clWebTan, TfrmSerializationSchema);
 end;
 

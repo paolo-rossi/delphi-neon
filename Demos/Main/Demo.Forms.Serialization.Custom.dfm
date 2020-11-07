@@ -34,6 +34,18 @@ inherited frmSerializationCustom: TfrmSerializationCustom
             end>
         end
         item
+          Caption = 'Value Types'
+          Color = 4040177
+          Collapsed = False
+          Items = <
+            item
+              Action = actSerTGUID
+            end
+            item
+              Action = actSerTTime
+            end>
+        end
+        item
           Caption = 'Nullables'
           Color = 15459203
           Collapsed = False
@@ -54,6 +66,15 @@ inherited frmSerializationCustom: TfrmSerializationCustom
               Action = actSerNeonInclude
             end>
         end>
+      ExplicitLeft = 0
+      ExplicitTop = 23
+      ExplicitHeight = 297
+    end
+    inherited memoSerialize: TMemo
+      ExplicitLeft = 153
+      ExplicitTop = 23
+      ExplicitWidth = 347
+      ExplicitHeight = 297
     end
   end
   inherited pnlRight: TPanel
@@ -88,6 +109,18 @@ inherited frmSerializationCustom: TfrmSerializationCustom
             end>
         end
         item
+          Caption = 'Value Types'
+          Color = 4040177
+          Collapsed = False
+          Items = <
+            item
+              Action = actDesTGUID
+            end
+            item
+              Action = actDesTTime
+            end>
+        end
+        item
           Caption = 'Nullables'
           Color = 15459203
           Collapsed = False
@@ -108,14 +141,20 @@ inherited frmSerializationCustom: TfrmSerializationCustom
               Action = actDesNeonInclude
             end>
         end>
+      ExplicitLeft = 0
+      ExplicitTop = 23
+      ExplicitHeight = 297
     end
     inherited memoDeserialize: TMemo
-      ExplicitLeft = 188
+      ExplicitLeft = 153
+      ExplicitTop = 23
+      ExplicitWidth = 347
+      ExplicitHeight = 297
     end
   end
   inherited imlMain: TImageList
     Bitmap = {
-      494C010102000800180010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000800200010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -290,6 +329,16 @@ inherited frmSerializationCustom: TfrmSerializationCustom
       ImageIndex = 0
       OnExecute = actSerNeonIncludeExecute
     end
+    object actSerTGUID: TAction
+      Caption = 'TGUID'
+      ImageIndex = 0
+      OnExecute = actSerTGUIDExecute
+    end
+    object actSerTTime: TAction
+      Caption = 'TTime'
+      ImageIndex = 0
+      OnExecute = actSerTTimeExecute
+    end
     object actDesTMyClass: TAction
       Caption = 'TMyClass'
       ImageIndex = 1
@@ -324,6 +373,16 @@ inherited frmSerializationCustom: TfrmSerializationCustom
       Caption = 'Nullable<Integer>'
       ImageIndex = 1
       OnExecute = actDesNullableIntegerExecute
+    end
+    object actDesTGUID: TAction
+      Caption = 'TGUID'
+      ImageIndex = 1
+      OnExecute = actDesTGUIDExecute
+    end
+    object actDesTTime: TAction
+      Caption = 'TTime'
+      ImageIndex = 1
+      OnExecute = actDesTTimeExecute
     end
   end
 end

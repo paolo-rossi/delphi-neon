@@ -24,7 +24,6 @@ object MainForm: TMainForm
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
-    ExplicitWidth = 983
     object imgNeon: TImage
       Left = 746
       Top = 0
@@ -6043,6 +6042,5 @@ object MainForm: TMainForm
     Height = 400
     Align = alClient
     TabOrder = 1
-    ExplicitWidth = 983
   end
 end

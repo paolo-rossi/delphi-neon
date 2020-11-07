@@ -59,6 +59,10 @@ type
     procedure SerializeValueFrom<T>(AValue: TValue; AWhere: TStrings; AConfig: INeonConfiguration);
     function DeserializeValueTo<T>(AWhere: TStrings; AConfig: INeonConfiguration): T; overload;
     function DeserializeValueTo<T>(AValue: T; AWhere: TStrings; AConfig: INeonConfiguration): T; overload;
+
+    procedure SerializeSimple<T>(AValue: T);
+    procedure DeserializeSimple<T>; overload;
+    procedure DeserializeSimple<T>(AValue: T); overload;
   public
     constructor CreateEx(AOwner: TComponent; AConfigForm: TframeConfiguration; AColor: TColor);
   public
@@ -132,6 +136,28 @@ begin
   finally
     LJSON.Free;
   end;
+end;
+
+procedure TfrmSerializationBase.DeserializeSimple<T>;
+var
+  LVal: T;
+begin
+  LVal := DeserializeValueTo<T>(
+    memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+
+  SerializeValueFrom<T>(
+    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+end;
+
+procedure TfrmSerializationBase.DeserializeSimple<T>(AValue: T);
+var
+  LVal: T;
+begin
+  LVal := DeserializeValueTo<T>(AValue,
+    memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+
+  SerializeValueFrom<T>(
+    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
 function TfrmSerializationBase.DeserializeValueTo<T>(AValue: T; AWhere: TStrings;
@@ -217,6 +243,12 @@ begin
   finally
     LJSON.Free;
   end;
+end;
+
+procedure TfrmSerializationBase.SerializeSimple<T>(AValue: T);
+begin
+  SerializeValueFrom<T>(
+    TValue.From<T>(AValue), memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
 end.

@@ -132,6 +132,7 @@ begin
   Result.GetSerializers.RegisterSerializer(TImageSerializer);
 
   // Demo Serializers
+  Result.GetSerializers.RegisterSerializer(TTimeSerializer);
   Result.GetSerializers.RegisterSerializer(TPoint3DSerializer);
   Result.GetSerializers.RegisterSerializer(TParameterSerializer);
   Result.GetSerializers.RegisterSerializer(TFontSerializer);

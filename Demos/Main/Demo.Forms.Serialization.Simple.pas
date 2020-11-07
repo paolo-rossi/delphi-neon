@@ -47,8 +47,7 @@ type
     procedure actSerTypesClassExecute(Sender: TObject);
     procedure actSerVariantsExecute(Sender: TObject);
   private
-    procedure SerializeSimple<T>(AValue: T);
-    procedure DeserializeSimple<T>; overload;
+    { Private declarations }
   public
     { Public declarations }
   end;
@@ -189,23 +188,6 @@ begin
   finally
     LVariantObj.Free;
   end;
-end;
-
-procedure TfrmSerializationSimple.DeserializeSimple<T>;
-var
-  LVal: T;
-begin
-  LVal := DeserializeValueTo<T>(
-    memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-
-  SerializeValueFrom<T>(
-    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
-end;
-
-procedure TfrmSerializationSimple.SerializeSimple<T>(AValue: T);
-begin
-  SerializeValueFrom<T>(
-    TValue.From<T>(AValue), memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
 end.
