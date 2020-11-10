@@ -72,7 +72,7 @@ uses
 procedure TfrmSerializationDelphi.actDesBitmapExecute(Sender: TObject);
 begin
   DeserializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  ShowMessage('Click "Show details" button. I''ve deserialized the picture');
+  MessageDlg('Bitmap has been loaded from JSON. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSerializationDelphi.actDesDataSetExecute(Sender: TObject);
@@ -80,13 +80,13 @@ begin
   frmDetails.dsPersons.EmptyDataSet;
   DeserializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   SerializeObject(frmDetails.dsPersons, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
-  ShowMessage('Click "Show details" button. I deserialized the dataset');
+  MessageDlg('DataSet has been populated from JSON. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSerializationDelphi.actDesImageExecute(Sender: TObject);
 begin
   DeserializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  ShowMessage('Click "Show details" button. I''ve deserialized the picture');
+  MessageDlg('Picture has been loaded from JSON. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSerializationDelphi.actDesStringListExecute(Sender: TObject);
@@ -110,14 +110,14 @@ begin
   frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
   SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   frmDetails.ClearImage;
-  ShowMessage('Click "Show details" button. I''ve cleared the picture');
+  MessageDlg('Bitmap has been cleared. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSerializationDelphi.actSerDataSetExecute(Sender: TObject);
 begin
   SerializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   frmDetails.EmptyDataSet;
-  ShowMessage('Click "Show details" button. I emptied the dataset, you can change something in the JSON data');
+  MessageDlg('DataSet has been emptied, you can change manually the JSON. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSerializationDelphi.actSerImageExecute(Sender: TObject);
@@ -128,7 +128,7 @@ begin
   frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
   SerializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   frmDetails.ClearImage;
-  ShowMessage('Click "Show details" button. I''ve cleared the picture');
+  MessageDlg('Picture has been cleared. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSerializationDelphi.actStringListExecute(Sender: TObject);

@@ -671,6 +671,8 @@ end;
 
 procedure TNeonSerializerJSON.WriteMembers(AType: TRttiType; AInstance: Pointer; AResult: TJSONValue);
 var
+  LPairName: string;
+  LPair: TJSONPair;
   LJSONValue: TJSONValue;
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
@@ -685,7 +687,11 @@ begin
         try
           LJSONValue := WriteDataMember(LNeonMember.GetValue, LNeonMember);
           if Assigned(LJSONValue) then
-            (AResult as TJSONObject).AddPair(GetNameFromMember(LNeonMember), LJSONValue);
+          begin
+            LPairName := GetNameFromMember(LNeonMember);
+            LPair := TJSONPair.Create(LPairName, LJSONValue);
+            (AResult as TJSONObject).AddPair(LPair);
+          end;
         except
           on E: Exception do
           begin

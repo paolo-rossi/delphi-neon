@@ -10,11 +10,6 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
     ExplicitWidth = 971
   end
   inherited pnlLeft: TPanel
-    inherited pnlSerialize: TPanel
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 500
-    end
     inherited catSerialize: TCategoryButtons
       Categories = <
         item
@@ -35,15 +30,6 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
               Action = actStringList
             end>
         end>
-      ExplicitLeft = 0
-      ExplicitTop = 23
-      ExplicitHeight = 297
-    end
-    inherited memoSerialize: TMemo
-      ExplicitLeft = 153
-      ExplicitTop = 23
-      ExplicitWidth = 347
-      ExplicitHeight = 297
     end
     object btnShowDetailsLeft: TButton
       Left = 19
@@ -63,14 +49,9 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
   end
   inherited pnlRight: TPanel
     Width = 468
-    ExplicitLeft = 503
-    ExplicitTop = 0
     ExplicitWidth = 468
-    ExplicitHeight = 320
     inherited pnlDeserialize: TPanel
       Width = 468
-      ExplicitLeft = 0
-      ExplicitTop = 0
       ExplicitWidth = 468
     end
     inherited catDeserialize: TCategoryButtons
@@ -93,16 +74,10 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
               Action = actDesStringList
             end>
         end>
-      ExplicitLeft = 0
-      ExplicitTop = 23
-      ExplicitHeight = 297
     end
     inherited memoDeserialize: TMemo
       Width = 315
-      ExplicitLeft = 153
-      ExplicitTop = 23
       ExplicitWidth = 315
-      ExplicitHeight = 297
     end
     object btnShowDetails: TButton
       Left = 19
@@ -122,7 +97,7 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
   end
   inherited imlMain: TImageList
     Bitmap = {
-      494C0101020008001C0010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000800200010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
