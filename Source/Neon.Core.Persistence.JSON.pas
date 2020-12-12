@@ -1094,9 +1094,6 @@ function TNeonDeserializerJSON.ReadDataMember(const AParam: TNeonDeserializerPar
 var
   LCustom: TCustomSerializer;
 begin
-  if AParam.JSONValue is TJSONNull then
-    Exit(TValue.Empty);
-
   // if there is a custom serializer
   LCustom := FConfig.Serializers.GetSerializer(AParam.RttiType.Handle);
 
@@ -1104,6 +1101,11 @@ begin
   begin
     Result := LCustom.Deserialize(AParam.JSONValue, AData, AParam.NeonObject, Self);
     Exit(Result);
+  end
+  else
+  begin
+    if AParam.JSONValue is TJSONNull then
+      Exit(TValue.Empty);
   end;
 
   case AParam.RttiType.TypeKind of
@@ -1676,15 +1678,15 @@ var
   end;
 
 begin
+  LJSONString := AJSONValue.ToJSON;
   if not APretty then
   begin
-    AWriter.Write(AJSONValue.ToJSON);
+    AWriter.Write(LJSONString);
     Exit;
   end;
 
   LOffset := 0;
   LOutsideString := True;
-  LJSONString := AJSONValue.ToJSON;
 
   for LIndex := 0 to Length(LJSONString) - 1 do
   begin

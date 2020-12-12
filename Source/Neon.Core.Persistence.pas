@@ -661,7 +661,11 @@ end;
 procedure TNeonRttiMember.SetValue(const AValue: TValue);
 begin
   case FMemberType of
-    TNeonMemberType.Prop : MemberAsProperty.SetValue(FParent.Instance, AValue);
+    TNeonMemberType.Prop :
+    begin
+      if MemberAsProperty.IsWritable then
+        MemberAsProperty.SetValue(FParent.Instance, AValue);
+    end;
     TNeonMemberType.Field: MemberAsField.SetValue(FParent.Instance, AValue);
   end;
 end;
