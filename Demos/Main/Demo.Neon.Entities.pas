@@ -37,6 +37,14 @@ uses
 {$SCOPEDENUMS ON}
 
 type
+  TCustomDate = type TDateTime;
+
+  TDates = record
+    Date: TDateTime;
+    Time: TTime;
+    Custom: TCustomDate;
+    procedure SampleData;
+  end;
 
   [NeonEnumNames('Low Speed,Medium Speed,High Speed')]
   TEnumSpeed = (Low, Medium, High);
@@ -714,6 +722,15 @@ begin
   begin
     Result := True;
   end;
+end;
+
+{ TDates }
+
+procedure TDates.SampleData;
+begin
+  Date := Now;
+  Time := Now + 0.5;
+  Custom := Now + 2;
 end;
 
 initialization

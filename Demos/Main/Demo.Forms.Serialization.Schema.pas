@@ -5,7 +5,8 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, System.Generics.Collections,
-  System.json,
+  System.Actions, Vcl.ActnList, System.ImageList, Vcl.ImgList, Vcl.CategoryButtons,
+  System.JSON, System.Rtti,
 
   Demo.Forms.Serialization.Base,
   Demo.Frame.Configuration,
@@ -13,8 +14,7 @@ uses
   Neon.Core.Attributes,
   Neon.Core.Persistence,
   Neon.Core.Persistence.Swagger,
-  Neon.Core.Utils, System.Actions, Vcl.ActnList, System.ImageList, Vcl.ImgList,
-  Vcl.CategoryButtons;
+  Neon.Core.Utils;
 
 type
   TfrmSerializationSchema = class(TfrmSerializationBase)

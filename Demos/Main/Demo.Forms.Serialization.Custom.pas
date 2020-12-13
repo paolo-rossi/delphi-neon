@@ -57,6 +57,9 @@ type
     actSerTTime: TAction;
     actDesTGUID: TAction;
     actDesTTime: TAction;
+    actSerDates: TAction;
+    actDesDates: TAction;
+    procedure actDesDatesExecute(Sender: TObject);
     procedure actDesNeonIncludeExecute(Sender: TObject);
     procedure actDesNullableClassExecute(Sender: TObject);
     procedure actDesNullableIntegerExecute(Sender: TObject);
@@ -66,6 +69,7 @@ type
     procedure actDesTMyClassExecute(Sender: TObject);
     procedure actDesTParameterExecute(Sender: TObject);
     procedure actDesTTimeExecute(Sender: TObject);
+    procedure actSerDatesExecute(Sender: TObject);
     procedure actSerNeonIncludeExecute(Sender: TObject);
     procedure actSerNullableClassExecute(Sender: TObject);
     procedure actSerNullableIntegerExecute(Sender: TObject);
@@ -92,6 +96,13 @@ uses
   Demo.Neon.Entities;
 
 {$R *.dfm}
+
+procedure TfrmSerializationCustom.actDesDatesExecute(Sender: TObject);
+var
+  LValue: TDates;
+begin
+  DeserializeSimple<TDates>(LValue);
+end;
 
 procedure TfrmSerializationCustom.actDesNeonIncludeExecute(Sender: TObject);
 var
@@ -191,6 +202,14 @@ var
 begin
   LValue := DeserializeValueTo<TTime>(memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   SerializeValueFrom<TTime>(TValue.From<TTime>(LValue), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+end;
+
+procedure TfrmSerializationCustom.actSerDatesExecute(Sender: TObject);
+var
+  LDates: TDates;
+begin
+  LDates.SampleData;
+  SerializeValueFrom<TDates>(TValue.From<TDates>(LDates), memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
 procedure TfrmSerializationCustom.actSerNeonIncludeExecute(Sender: TObject);

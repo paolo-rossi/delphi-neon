@@ -65,6 +65,7 @@ var
 implementation
 
 uses
+  System.UITypes,
   Demo.Forms.Details;
 
 {$R *.dfm}

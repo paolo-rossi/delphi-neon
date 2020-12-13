@@ -2,8 +2,13 @@ inherited frmSerializationSchema: TfrmSerializationSchema
   Caption = 'frmSerializationSchema'
   PixelsPerInch = 96
   TextHeight = 13
+  inherited memoLog: TMemo
+    ExplicitWidth = 1003
+  end
   inherited pnlLeft: TPanel
     inherited pnlSerialize: TPanel
+      ExplicitLeft = 0
+      ExplicitTop = 0
       ExplicitWidth = 500
     end
     inherited catSerialize: TCategoryButtons
@@ -17,23 +22,44 @@ inherited frmSerializationSchema: TfrmSerializationSchema
               Action = actSerJSONSchema
             end>
         end>
+      ExplicitLeft = 0
+      ExplicitTop = 23
+      ExplicitHeight = 297
     end
     inherited memoSerialize: TMemo
-      Width = 813
-      ExplicitWidth = 813
+      ExplicitLeft = 153
+      ExplicitTop = 23
+      ExplicitWidth = 347
+      ExplicitHeight = 297
     end
   end
   inherited pnlRight: TPanel
+    ExplicitLeft = 503
+    ExplicitTop = 0
+    ExplicitWidth = 500
+    ExplicitHeight = 320
     inherited pnlDeserialize: TPanel
       Visible = False
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 500
+    end
+    inherited catDeserialize: TCategoryButtons
+      ExplicitLeft = 0
+      ExplicitTop = 23
+      ExplicitHeight = 297
     end
     inherited memoDeserialize: TMemo
       Visible = False
+      ExplicitLeft = 153
+      ExplicitTop = 23
+      ExplicitWidth = 347
+      ExplicitHeight = 297
     end
   end
   inherited imlMain: TImageList
     Bitmap = {
-      494C010102000800180010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000800200010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

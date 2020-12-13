@@ -64,6 +64,9 @@ inherited frmSerializationCustom: TfrmSerializationCustom
           Items = <
             item
               Action = actSerNeonInclude
+            end
+            item
+              Action = actSerDates
             end>
         end>
       ExplicitLeft = 0
@@ -139,6 +142,9 @@ inherited frmSerializationCustom: TfrmSerializationCustom
           Items = <
             item
               Action = actDesNeonInclude
+            end
+            item
+              Action = actDesDates
             end>
         end>
       ExplicitLeft = 0
@@ -154,7 +160,7 @@ inherited frmSerializationCustom: TfrmSerializationCustom
   end
   inherited imlMain: TImageList
     Bitmap = {
-      494C010102000800200010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000800240010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -339,6 +345,11 @@ inherited frmSerializationCustom: TfrmSerializationCustom
       ImageIndex = 0
       OnExecute = actSerTTimeExecute
     end
+    object actSerDates: TAction
+      Caption = 'Dates (record)'
+      ImageIndex = 0
+      OnExecute = actSerDatesExecute
+    end
     object actDesTMyClass: TAction
       Caption = 'TMyClass'
       ImageIndex = 1
@@ -383,6 +394,11 @@ inherited frmSerializationCustom: TfrmSerializationCustom
       Caption = 'TTime'
       ImageIndex = 1
       OnExecute = actDesTTimeExecute
+    end
+    object actDesDates: TAction
+      Caption = 'Dates (record)'
+      ImageIndex = 1
+      OnExecute = actDesDatesExecute
     end
   end
 end
