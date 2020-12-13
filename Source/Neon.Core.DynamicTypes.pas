@@ -208,6 +208,7 @@ class function TDynamicStream.GuessType(AInstance: TObject): IDynamicStream;
 var
   LType: TRttiType;
   LLoadMethod, LSaveMethod: TRttiMethod;
+  LParameters: TArray<TRttiParameter>;
 begin
   if not Assigned(AInstance) then
     Exit(nil);
@@ -218,11 +219,23 @@ begin
     Exit(nil);
 
   LLoadMethod := LType.GetMethod('LoadFromStream');
-  if not Assigned(LLoadMethod) then
+  if Assigned(LLoadMethod) then
+  begin
+    LParameters := LLoadMethod.GetParameters;
+    if Length(LParameters) <> 1 then
+      Exit(nil);
+  end
+  else
     Exit(nil);
 
   LSaveMethod := LType.GetMethod('SaveToStream');
-  if not Assigned(LSaveMethod) then
+  if Assigned(LSaveMethod) then
+  begin
+    LParameters := LSaveMethod.GetParameters;
+    if Length(LParameters) <> 1 then
+      Exit(nil);
+  end
+  else
     Exit(nil);
 
   Result := Self.Create(AInstance, LLoadMethod, LSaveMethod);
