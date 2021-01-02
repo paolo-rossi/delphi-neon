@@ -3,7 +3,7 @@
 <br />
 
 <p align="center">
-  <a href="http://wirl.delphiblocks.com/">
+  <a href="http://blog.paolorossi.net/">
     <img src="https://user-images.githubusercontent.com/4686497/54478586-175c9500-4814-11e9-98c3-09b9aca9ad66.png" alt="Neon Library" width="400" />
   </a>
 </p>
@@ -13,6 +13,8 @@
 **Neon** is a serialization library for [Delphi](https://www.embarcadero.com/products/delphi) that helps you to convert (back and forth) objects and other values to JSON. It supports simple Delphi types but also complex class and records. **Neon** has been designed with **REST** in mind, to exchange pure data between applications with no *"metadata"* or added fields, in fact **Neon** is the default JSON serialization engine for the [WiRL REST Library](https://github.com/delphi-blocks/WiRL).
 
 Please take a look at the Demos to see **Neon** in action.
+
+![Neon Mega Demo](https://user-images.githubusercontent.com/4686497/103461978-64c83000-4d22-11eb-85c5-1a829b4ec0c0.png)
 
 ## General Features
 
@@ -33,18 +35,18 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 
 
 #### Simple values
-- Basic types: string, Integer, Double, Boolean, TDateTime
+- Basic types: **string, Integer, Double, Boolean, TDateTime**
 
 #### Complex values
-- Arrays of (basic types, records, classes, etc...)
-- Records with fields of (basic types, records, classes, arrays, etc...)
-- Classes with fields of (basic types, records, classes, arrays, etc...)
-- Generic lists
-- Dictionaries (key must be of type string)
-- Streamable classes
+- **Arrays** of (basic types, records, classes, etc...)
+- **Records** with fields of (basic types, records, classes, arrays, etc...)
+- **Classes** with fields of (basic types, records, classes, arrays, etc...)
+- **Generic lists**
+- **Dictionaries** (key must be of type string)
+- **Streamable classes**
 
 #### Custom Serializers
-- Inherit from TCustomSerializer and register this new class in the configuration
+- Inherit from `TCustomSerializer` and register the new serializer class in the configuration
 
 
 ## Todo
