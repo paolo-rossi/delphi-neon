@@ -4,9 +4,10 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
-  Demo.Forms.Serialization.Base, Vcl.CategoryButtons, System.Actions,
-  Vcl.ActnList, System.ImageList, Vcl.ImgList;
+  System.Actions, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
+  Vcl.CategoryButtons, Vcl.ActnList, System.ImageList, Vcl.ImgList,
+
+  Demo.Forms.Serialization.Base;
 
 type
   TfrmSerializationRecords = class(TfrmSerializationBase)

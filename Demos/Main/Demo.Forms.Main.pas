@@ -38,7 +38,7 @@ uses
   Neon.Core.Persistence.JSON,
   Neon.Core.Utils,
   Demo.Frame.Configuration,
-  Demo.Forms.Serialization.Base;
+  Demo.Forms.Serialization.Base, System.ImageList, Vcl.ImgList;
 
 type
   TMainForm = class(TForm)
@@ -46,9 +46,10 @@ type
     imgNeon: TImage;
     pgcMain: TPageControl;
     frmConfiguration: TframeConfiguration;
+    imgMain: TImageList;
     procedure FormCreate(Sender: TObject);
   private
-    procedure CreateTab(const ACaption: string; AColor: TColor; AClass: TfrmSerializationClass);
+    procedure CreateTab(const ACaption: string; AIcon: Integer; AColor: TColor; AClass: TfrmSerializationClass);
   public
   end;
 
@@ -68,7 +69,7 @@ uses
 
 { TMainForm }
 
-procedure TMainForm.CreateTab(const ACaption: string; AColor: TColor; AClass: TfrmSerializationClass);
+procedure TMainForm.CreateTab(const ACaption: string; AIcon: Integer; AColor: TColor; AClass: TfrmSerializationClass);
 var
   LTab: TTabSheet;
   LForm: TfrmSerializationBase;
@@ -76,6 +77,7 @@ begin
   LTab := TTabSheet.Create(pgcMain);
   LTab.Caption := ACaption;
   LTab.PageControl := pgcMain;
+  LTab.ImageIndex := AIcon;
 
   LForm := AClass.CreateEx(Self, frmConfiguration, AColor);
   LForm.BorderStyle := bsNone;
@@ -88,12 +90,12 @@ procedure TMainForm.FormCreate(Sender: TObject);
 begin
   frmConfiguration.Initialize;
 
-  CreateTab('Simple Types', clGreen, TfrmSerializationSimple);
-  CreateTab('Value Types', clTeal, TfrmSerializationRecords);
-  CreateTab('Reference Types', clNavy, TfrmSerializationComplex);
-  CreateTab('Delphi Types', clOlive, TfrmSerializationDelphi);
-  CreateTab('Custom Serializers', clMaroon, TfrmSerializationCustom);
-  CreateTab('JSON Schema', clWebTan, TfrmSerializationSchema);
+  CreateTab('Simple Types', 0, clGreen, TfrmSerializationSimple);
+  CreateTab('Value Types', 11, clTeal, TfrmSerializationRecords);
+  CreateTab('Reference Types', 3, clNavy, TfrmSerializationComplex);
+  CreateTab('Delphi Types', 9, clOlive, TfrmSerializationDelphi);
+  CreateTab('Custom Serializers', 4, clMaroon, TfrmSerializationCustom);
+  CreateTab('JSON Schema', 16, clWebTan, TfrmSerializationSchema);
 end;
 
 initialization

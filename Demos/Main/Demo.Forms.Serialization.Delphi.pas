@@ -26,10 +26,10 @@ interface
 uses
   Winapi.Windows, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Data.DB,
+  Vcl.CategoryButtons, System.Actions, Vcl.ActnList, System.ImageList, Vcl.ImgList,
 
   Demo.Forms.Serialization.Base,
-  Neon.Core.Attributes, Vcl.CategoryButtons, System.Actions, Vcl.ActnList,
-  System.ImageList, Vcl.ImgList;
+  Neon.Core.Attributes;
 
 type
   TfrmSerializationDelphi = class(TfrmSerializationBase)

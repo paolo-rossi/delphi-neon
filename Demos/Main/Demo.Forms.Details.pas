@@ -69,13 +69,18 @@ var
 implementation
 
 uses
-  Vcl.Imaging.pngimage, Vcl.Imaging.jpeg;
+  System.IOUtils, Vcl.Imaging.pngimage, Vcl.Imaging.jpeg;
 
 {$R *.dfm}
 
 procedure TfrmDetails.FormCreate(Sender: TObject);
+var
+  LFileName: string;
 begin
-  dsPersons.LoadFromFile('persons.json');
+  LFilename := TDirectory.GetParent(TDirectory.GetParent(Application.ExeName));
+  LFileName := TPath.Combine(LFileName, 'Data\persons.json');
+
+  dsPersons.LoadFromFile(LFileName);
 end;
 
 procedure TfrmDetails.btnAvatarClick(Sender: TObject);

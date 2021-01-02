@@ -17136,8 +17136,6 @@ object frmDetails: TfrmDetails
     Align = alClient
     Caption = 'pnlGrid'
     TabOrder = 0
-    ExplicitWidth = 435
-    ExplicitHeight = 139
     object navPersons: TDBNavigator
       Left = 1
       Top = 1
@@ -17146,7 +17144,6 @@ object frmDetails: TfrmDetails
       DataSource = dsoPersons
       Align = alTop
       TabOrder = 0
-      ExplicitWidth = 433
     end
     object dbgPersons: TDBGrid
       Left = 1
@@ -17260,7 +17257,7 @@ object frmDetails: TfrmDetails
     Left = 608
     Top = 56
     Content = {
-      414442530F00193728030000FF00010001FF02FF030400120000006400730050
+      414442530F002B3428030000FF00010001FF02FF030400120000006400730050
       006500720073006F006E00730005000A0000005400610062006C006500060000
       000000070000080032000000090000FF0AFF0B0400080000004E0061006D0065
       000500080000004E0061006D0065000C00010000000E000D000F003200000010

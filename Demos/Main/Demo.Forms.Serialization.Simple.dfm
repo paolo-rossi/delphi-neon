@@ -45,7 +45,7 @@ inherited frmSerializationSimple: TfrmSerializationSimple
         end>
     end
     inherited memoSerialize: TMemo
-      ExplicitLeft = 150
+      ExplicitLeft = 153
       ExplicitWidth = 347
       ExplicitHeight = 297
     end
@@ -106,7 +106,7 @@ inherited frmSerializationSimple: TfrmSerializationSimple
   end
   inherited imlMain: TImageList
     Bitmap = {
-      494C010102000800240010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000800280010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
