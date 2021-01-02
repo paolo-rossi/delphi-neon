@@ -178,7 +178,8 @@ function TValueToJSONObject(AObject: TJSONObject; const AName: string; const AVa
 implementation
 
 uses
-  System.StrUtils, System.DateUtils;
+  System.StrUtils, System.DateUtils,
+  Neon.Core.Types;
 
 type
   TJSONFieldType = (NestedObject, NestedArray, SimpleValue);
@@ -1254,6 +1255,9 @@ var
   LJSONItem: TJSONObject;
   LIndex: Integer;
 begin
+  if not (AJSONValue is TJSONArray) then
+    raise ENeonException.Create('JSONToDataSet: The JSON must be an array');
+
   LJSONArray := AJSONValue as TJSONArray;
 
   for LIndex := 0 to LJSONArray.Count - 1 do
