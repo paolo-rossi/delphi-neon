@@ -1545,7 +1545,7 @@ end;
 function TNeonDeserializerJSON.JSONToTValue(AJSON: TJSONValue; AType: TRttiType): TValue;
 begin
   //FOriginalInstance := TValue.Empty;
-  Result := ReadDataMember(AJSON, AType, TValue.Empty);
+  Result := ReadDataMember(AJSON, AType, TValue.Empty.Cast(ATypeInfo));
 end;
 
 { TNeon }
