@@ -3,7 +3,12 @@ unit Neon.Data.Tests;
 interface
 
 uses
-  System.SysUtils, System.Classes, FireDAC.Stan.Intf, FireDAC.Stan.Option,
+  System.SysUtils, System.Classes,
+  {$IFDEF MSWINDOWS}
+  Winapi.Windows,
+  {$ENDIF}
+
+  FireDAC.Stan.Intf, FireDAC.Stan.Option,
   FireDAC.Stan.Param, FireDAC.Stan.Error, FireDAC.DatS, FireDAC.Phys.Intf,
   FireDAC.DApt.Intf, FireDAC.Stan.StorageBin, Data.DB, FireDAC.Comp.DataSet,
   FireDAC.Comp.Client, FireDAC.Stan.StorageJSON;

@@ -34,6 +34,8 @@ uses
 {$SCOPEDENUMS ON}
 
 type
+  TResponseType = (Ignore, Confirm, Decline);
+
   [NeonEnumNames('Low Speed,Medium Speed,Very High Speed')]
   TSpeedType = (Low, Medium, High);
   TSpeedSet = set of TSpeedType;

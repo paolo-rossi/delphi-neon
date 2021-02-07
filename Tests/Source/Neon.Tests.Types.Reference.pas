@@ -25,6 +25,9 @@ interface
 
 uses
   System.SysUtils, System.Rtti, DUnitX.TestFramework,
+  {$IFDEF MSWINDOWS}
+  Winapi.Windows,
+  {$ENDIF}
 
   Neon.Core.Persistence,
   Neon.Tests.Entities,
