@@ -27,7 +27,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs,
-  System.TypInfo, System.Generics.Collections, System.JSON,
+  System.TypInfo, System.Generics.Collections, System.JSON, REST.JsonReflect,
 
   Neon.Core.Types,
   Neon.Core.Attributes,
@@ -622,7 +622,11 @@ begin
         Exit(nil);
     end;
   end;
-  Result := TJSONString.Create(TJSONUtils.DateToJSON(AValue.AsType<TDateTime>, FConfig.UseUTCDate))
+
+  if AValue.AsType<TDateTime> <> 0 then
+    Result := TJSONString.Create(TJSONUtils.DateToJSON(AValue.AsType<TDateTime>, FConfig.UseUTCDate))
+  else
+    Result := TJSONNull.Create;
 end;
 
 function TNeonSerializerJSON.WriteEnum(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1325,6 +1329,8 @@ var
   LNeonMember: TNeonRttiMember;
   LMemberValue: TValue;
   LParam: TNeonDeserializerParam;
+  ctx: TRttiContext;
+  LNeonMemberValue: TObject;
 begin
   LMembers := GetNeonMembers(AInstance, AType);
   LMembers.FilterDeserialize;
@@ -1344,6 +1350,20 @@ begin
           Continue;
 
         try
+          if (LNeonMember.TypeKind = tkClass) then
+          begin
+            LNeonMemberValue := LNeonMember.GetValue.AsObject;
+            if not Assigned(LNeonMemberValue) and not (LParam.JSONValue is TJSONNull) then
+            begin
+              ctx := TRttiContext.Create;
+              try
+                LNeonMember.SetValue(TJSONUnMarshal.ObjectInstance(ctx,LNeonMember.RttiType.QualifiedName));
+              finally
+                ctx.Free;
+              end;
+            end;
+          end;
+
           LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue);
           LNeonMember.SetValue(LMemberValue);
         except
