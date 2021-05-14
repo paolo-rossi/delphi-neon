@@ -36,6 +36,8 @@ uses
 
 type
   TJSONUtils = class
+  private
+
   public
     class procedure Decode(const ASource: string; ADest: TStream); overload;
     class function Encode(const ASource: TStream): string; overload;
@@ -50,6 +52,7 @@ type
 
     class function BooleanToTJSON(AValue: Boolean): TJSONValue;
     class function DateToJSON(ADate: TDateTime; AInputIsUTC: Boolean = True): string; static;
+    class function TimeToJSON(ATime: TTime; AInputIsUTC: Boolean = True): string; static;
     class function JSONToDate(const ADate: string; AReturnUTC: Boolean = True): TDateTime; static;
   end;
 
@@ -728,6 +731,13 @@ begin
   Result := '';
   if ADate <> 0 then
     Result := DateToISO8601(ADate, AInputIsUTC);
+end;
+
+class function TJSONUtils.TimeToJSON(ATime: TTime; AInputIsUTC: Boolean = True): string;
+begin
+  Result := '';
+  if ATime <> 0 then
+    Result := TimeToStr(ATime);// DateToISO8601(ATime, AInputIsUTC);
 end;
 
 class procedure TJSONUtils.Decode(const ASource: string; ADest: TStream);

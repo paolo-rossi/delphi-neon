@@ -81,6 +81,12 @@ type
     /// </summary>
     function WriteDate(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
+
+    /// <summary>
+    ///   Writer for TTime* types
+    /// </summary>
+    function WriteTime(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+
     /// <summary>
     ///   Writer for Variant types
     /// </summary>
@@ -159,6 +165,7 @@ type
     /// </remarks>
     function WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject; ANullable: IDynamicNullable): TJSONValue;
     function IsNullable(const AValue: TValue; out ANullable: IDynamicNullable): Boolean;
+
   protected
     /// <summary>
     ///   Function to be called by a custom serializer method (ISerializeContext)
@@ -541,9 +548,11 @@ begin
 
     tkFloat:
     begin
+      if (AValue.TypeInfo = System.TypeInfo(TTime)) then
+        Result := WriteTime(AValue, ANeonObject)
+      else
       if (AValue.TypeInfo = System.TypeInfo(TDateTime)) or
-         (AValue.TypeInfo = System.TypeInfo(TDate)) or
-         (AValue.TypeInfo = System.TypeInfo(TTime)) then
+         (AValue.TypeInfo = System.TypeInfo(TDate)) {or         (AValue.TypeInfo = System.TypeInfo(TTime))} then
         Result := WriteDate(AValue, ANeonObject)
       else
         Result := WriteFloat(AValue, ANeonObject);
@@ -623,8 +632,24 @@ begin
     end;
   end;
 
-  if AValue.AsType<TDateTime> <> 0 then
+  if (AValue.AsType<TDateTime> <> 0) then
     Result := TJSONString.Create(TJSONUtils.DateToJSON(AValue.AsType<TDateTime>, FConfig.UseUTCDate))
+  else
+    Result := TJSONNull.Create;
+end;
+
+function TNeonSerializerJSON.WriteTime(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+begin
+  case ANeonObject.NeonInclude.Value of
+    IncludeIf.NotEmpty, IncludeIf.NotDefault:
+    begin
+      if AValue.AsExtended = 0 then
+        Exit(nil);
+    end;
+  end;
+
+  if (AValue.AsType<TTime> <> 0) then
+    Result := TJSONString.Create(TJSONUtils.TimeToJSON(AValue.AsType<TTime>, FConfig.UseUTCDate))
   else
     Result := TJSONNull.Create;
 end;
