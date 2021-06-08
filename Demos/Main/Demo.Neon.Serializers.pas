@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2019 Paolo Rossi                                         }
+{  Copyright (c) 2018-2021 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -142,13 +142,18 @@ function TParameterSerializer.Serialize(const AValue: TValue; ANeonObject:
     TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
 var
   LParam: TParameterContainer;
+  LType: TRttiType;
 begin
   LParam := AValue.AsType<TParameterContainer>;
 
-  if not LParam.ref.ref.IsEmpty then
+  if Assigned(Lparam.ref) then
     Result := AContext.WriteDataMember(LParam.ref)
   else
-    Result := AContext.WriteDataMember(LParam.par);
+  begin
+    LType := TRttiUtils.Context.GetType(AValue.TypeInfo);
+    Result := TJSONObject.Create;
+    AContext.WriteMembers(LType, LParam, Result);
+  end;
 end;
 
 class function TParameterSerializer.CanHandle(AType: PTypeInfo): Boolean;
@@ -161,6 +166,7 @@ function TParameterSerializer.Deserialize(AValue: TJSONValue; const AData:
 var
   LVal: TParameterContainer;
   LType: TRttiType;
+  LPData: Pointer;
 begin
   LVal := AData.AsType<TParameterContainer>;
 
@@ -171,8 +177,9 @@ begin
   end
   else
   begin
-    LType := TRttiUtils.Context.GetType(TParameter);
-    AContext.ReadDataMember(AValue, LType, LVal.par);
+    LPData := AData.AsObject;
+    LType := TRttiUtils.Context.GetType(TParameterContainer);
+    AContext.ReadMembers(LType, LPData, AValue as TJSONObject);
   end;
 
   Result := TValue.From<TParameterContainer>(LVal);

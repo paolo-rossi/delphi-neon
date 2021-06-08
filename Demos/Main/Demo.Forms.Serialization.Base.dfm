@@ -35,7 +35,6 @@ object frmSerializationBase: TfrmSerializationBase
     Font.Style = []
     ParentFont = False
     TabOrder = 0
-    ExplicitWidth = 969
   end
   object pnlLeft: TPanel
     Left = 0
@@ -62,9 +61,6 @@ object frmSerializationBase: TfrmSerializationBase
       ParentBackground = False
       ParentFont = False
       TabOrder = 0
-      ExplicitLeft = 19
-      ExplicitTop = 4
-      ExplicitWidth = 478
     end
     object catSerialize: TCategoryButtons
       Left = 0
@@ -86,9 +82,6 @@ object frmSerializationBase: TfrmSerializationBase
       RegularButtonColor = clWhite
       SelectedButtonColor = 15132390
       TabOrder = 1
-      ExplicitLeft = 8
-      ExplicitTop = 29
-      ExplicitHeight = 282
     end
     object memoSerialize: TMemo
       Left = 153
@@ -105,10 +98,6 @@ object frmSerializationBase: TfrmSerializationBase
       ScrollBars = ssVertical
       TabOrder = 2
       WordWrap = False
-      ExplicitLeft = 159
-      ExplicitTop = 29
-      ExplicitWidth = 315
-      ExplicitHeight = 281
     end
   end
   object pnlRight: TPanel
@@ -119,10 +108,6 @@ object frmSerializationBase: TfrmSerializationBase
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 2
-    ExplicitLeft = 488
-    ExplicitTop = 8
-    ExplicitWidth = 475
-    ExplicitHeight = 381
     object pnlDeserialize: TPanel
       Left = 0
       Top = 0
@@ -140,9 +125,6 @@ object frmSerializationBase: TfrmSerializationBase
       ParentBackground = False
       ParentFont = False
       TabOrder = 0
-      ExplicitLeft = -3
-      ExplicitTop = 3
-      ExplicitWidth = 478
     end
     object catDeserialize: TCategoryButtons
       Left = 0
@@ -164,9 +146,6 @@ object frmSerializationBase: TfrmSerializationBase
       RegularButtonColor = clWhite
       SelectedButtonColor = 15132390
       TabOrder = 1
-      ExplicitLeft = 10
-      ExplicitTop = 30
-      ExplicitHeight = 282
     end
     object memoDeserialize: TMemo
       Left = 153
@@ -183,17 +162,13 @@ object frmSerializationBase: TfrmSerializationBase
       ScrollBars = ssVertical
       TabOrder = 2
       WordWrap = False
-      ExplicitLeft = 159
-      ExplicitTop = 33
-      ExplicitWidth = 319
-      ExplicitHeight = 281
     end
   end
   object imlMain: TImageList
     Left = 480
     Top = 224
     Bitmap = {
-      494C010102000800180010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C0101020008001C0010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

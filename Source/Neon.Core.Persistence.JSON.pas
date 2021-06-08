@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2019 Paolo Rossi                                         }
+{  Copyright (c) 2018-2021 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -195,37 +195,145 @@ type
   /// </summary>
   TNeonDeserializerJSON = class(TNeonBase, IDeserializerContext)
   private
+    /// <summary>
+    ///   Reader for members of objects and records
+    /// </summary>
     procedure ReadMembers(AType: TRttiType; AInstance: Pointer; AJSONObject: TJSONObject);
   private
+    /// <summary>
+    ///   reader for string types
+    /// </summary>
     function ReadString(const AParam: TNeonDeserializerParam): TValue;
+
+    /// <summary>
+    ///   Writer for char types
+    /// </summary>
     function ReadChar(const AParam: TNeonDeserializerParam): TValue;
+
+    /// <summary>
+    ///   Writer for enum types
+    /// </summary>
     function ReadEnum(const AParam: TNeonDeserializerParam): TValue;
+
+    /// <summary>
+    ///   Writer for integer type
+    /// </summary>
     function ReadInteger(const AParam: TNeonDeserializerParam): TValue;
+
+    /// <summary>
+    ///   Writer for Int64 type
+    /// </summary>
     function ReadInt64(const AParam: TNeonDeserializerParam): TValue;
+
+    /// <summary>
+    ///   Writer for float types
+    /// </summary>
     function ReadFloat(const AParam: TNeonDeserializerParam): TValue;
+
+    /// <summary>
+    ///   Reader for set types
+    /// </summary>
+    /// <remarks>
+    ///   The input is a string with the values comma separated and enclosed by square brackets
+    /// </remarks>
+    /// <returns>[First,Second,Third]</returns>
     function ReadSet(const AParam: TNeonDeserializerParam): TValue;
+
+    /// <summary>
+    ///   Reader for Variant types
+    /// </summary>
     function ReadVariant(const AParam: TNeonDeserializerParam): TValue;
   private
+    /// <summary>
+    ///   Reader for static arrays
+    /// </summary>
     function ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+
+    /// <summary>
+    ///   Reader for dynamic arrays
+    /// </summary>
     function ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+
+    /// <summary>
+    ///   Reader for a standard TObject (descendants)  type (no list, stream or streamable)
+    /// </summary>
     function ReadObject(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+
+    /// <summary>
+    ///   Reader for an Interface type
+    /// </summary>
     function ReadInterface(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+
+    /// <summary>
+    ///   Reader for a record type
+    /// </summary>
+    /// <remarks>
+    ///   For records the engine deserialize to fields by default
+    /// </remarks>
     function ReadRecord(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 
-  	// Dynamic types
+    /// <summary>
+    ///   Reader for "Streamable" objects
+    /// </summary>
+    /// <remarks>
+    ///   Objects must have LoadFromStream and SaveToStream methods
+    /// </remarks>
     function ReadStreamable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
+
+    /// <summary>
+    ///   Writer for "Enumerable" objects (Lists, Generic Lists, TStrings, etc...)
+    /// </summary>
+    /// <remarks>
+    ///   Objects must have GetEnumerator, Clear, Add methods
+    /// </remarks>
     function ReadEnumerable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
+
+    /// <summary>
+    ///   Reader for "Dictionary" objects (TDictionary, TObjectDictionary)
+    /// </summary>
+    /// <remarks>
+    ///   Objects must have Keys, Values, GetEnumerator, Clear, Add methods
+    /// </remarks>
     function ReadEnumerableMap(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
+
+    /// <summary>
+    ///   Reader for "Nullable" records
+    /// </summary>
+    /// <remarks>
+    ///   Record must have HasValue and GetValue methods
+    /// </remarks>
     function ReadNullable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
   private
+    /// <summary>
+    ///   Function to be called by a custom serializer method (IDeserializeContext)
+    /// </summary>
     function ReadDataMember(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue; overload;
+
+    /// <summary>
+    ///   This method chooses the right Reader
+    /// </summary>
     function ReadDataMember(const AParam: TNeonDeserializerParam; const AData: TValue): TValue; overload;
   public
     constructor Create(const AConfig: INeonConfiguration);
 
+    /// <summary>
+    ///   Deserialize a JSON value into a Delphi object
+    /// </summary>
     procedure JSONToObject(AObject: TObject; AJSON: TJSONValue);
+
+    /// <summary>
+    ///   Deserialize a JSON value into any Delphi type
+    /// </summary>
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType): TValue; overload;
+
+    /// <summary>
+    ///   Deserialize a JSON value into any Delphi type
+    /// </summary>
     function JSONToTValue(AJSON: TJSONValue; AType: TRttiType; const AData: TValue): TValue; overload;
+
+    /// <summary>
+    ///   Deserialize a JSON array into any Delphi type
+    /// </summary>
     function JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
   end;
 

@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2019 Paolo Rossi                                         }
+{  Copyright (c) 2018-2021 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -112,10 +112,14 @@ type
   private
     Fpar: TParameter;
     Fref: TReference;
+    Fname: string;
+    Fcode: Integer;
   public
     constructor Create;
     destructor Destroy; override;
 
+    property name: string read Fname write Fname;
+    property code: Integer read Fcode write Fcode;
     property par: TParameter read Fpar write Fpar;
     property ref: TReference read Fref write Fref;
   end;
@@ -651,7 +655,7 @@ end;
 
 constructor TParameterContainer.Create;
 begin
-  ref := TReference.Create;
+  //ref := TReference.Create;
   par := TParameter.Create;
 end;
 

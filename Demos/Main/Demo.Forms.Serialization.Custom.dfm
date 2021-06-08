@@ -4,15 +4,9 @@ inherited frmSerializationCustom: TfrmSerializationCustom
   TextHeight = 13
   inherited memoLog: TMemo
     TabOrder = 2
-    ExplicitWidth = 1003
   end
   inherited pnlLeft: TPanel
     TabOrder = 0
-    inherited pnlSerialize: TPanel
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 500
-    end
     inherited catSerialize: TCategoryButtons
       Categories = <
         item
@@ -69,28 +63,10 @@ inherited frmSerializationCustom: TfrmSerializationCustom
               Action = actSerDates
             end>
         end>
-      ExplicitLeft = 0
-      ExplicitTop = 23
-      ExplicitHeight = 297
-    end
-    inherited memoSerialize: TMemo
-      ExplicitLeft = 153
-      ExplicitTop = 23
-      ExplicitWidth = 347
-      ExplicitHeight = 297
     end
   end
   inherited pnlRight: TPanel
     TabOrder = 1
-    ExplicitLeft = 503
-    ExplicitTop = 0
-    ExplicitWidth = 500
-    ExplicitHeight = 320
-    inherited pnlDeserialize: TPanel
-      ExplicitLeft = 0
-      ExplicitTop = 0
-      ExplicitWidth = 500
-    end
     inherited catDeserialize: TCategoryButtons
       Categories = <
         item
@@ -147,20 +123,11 @@ inherited frmSerializationCustom: TfrmSerializationCustom
               Action = actDesDates
             end>
         end>
-      ExplicitLeft = 0
-      ExplicitTop = 23
-      ExplicitHeight = 297
-    end
-    inherited memoDeserialize: TMemo
-      ExplicitLeft = 153
-      ExplicitTop = 23
-      ExplicitWidth = 347
-      ExplicitHeight = 297
     end
   end
   inherited imlMain: TImageList
     Bitmap = {
-      494C010102000800280010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C0101020008002C0010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
