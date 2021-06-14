@@ -13,7 +13,7 @@ uses
   Neon.Core.Types,
   Neon.Core.Attributes,
   Neon.Core.Persistence,
-  Neon.Core.Persistence.Swagger,
+  Neon.Core.Persistence.JSON.Schema,
   Neon.Core.Utils;
 
 type

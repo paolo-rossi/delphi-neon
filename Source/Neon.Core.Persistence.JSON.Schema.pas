@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2019 Paolo Rossi                                         }
+{  Copyright (c) 2018-2021 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -19,7 +19,7 @@
 {  limitations under the License.                                              }
 {                                                                              }
 {******************************************************************************}
-unit Neon.Core.Persistence.Swagger;
+unit Neon.Core.Persistence.JSON.Schema;
 
 interface
 
@@ -37,7 +37,7 @@ uses
 
 type
   /// <summary>
-  ///   Swagger (OpenAPI 2.0) schema generator
+  ///   JSON Schema (OpenAPI version) generator
   /// </summary>
   TNeonSchemaGenerator = class(TNeonBase)
   private

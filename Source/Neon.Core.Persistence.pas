@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2019 Paolo Rossi                                         }
+{  Copyright (c) 2018-2021 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -60,11 +60,19 @@ type
   ISerializerContext = interface(IConfigurationContext)
   ['{36A014FC-9E3F-4EBF-9545-CF9DBCBF507C}']
     function WriteDataMember(const AValue: TValue): TJSONValue;
+    /// <summary>
+    ///   Writer for members of objects and records
+    /// </summary>
+    procedure WriteMembers(AType: TRttiType; AInstance: Pointer; AResult: TJSONValue);
   end;
 
   IDeserializerContext = interface(IConfigurationContext)
   ['{5351D1F9-99B3-4826-B981-4CBF926085D6}']
     function ReadDataMember(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
+    /// <summary>
+    ///   Reader for members of objects and records
+    /// </summary>
+    procedure ReadMembers(AType: TRttiType; AInstance: Pointer; AJSONObject: TJSONObject);
   end;
 
   TCustomSerializer = class abstract(TObject)

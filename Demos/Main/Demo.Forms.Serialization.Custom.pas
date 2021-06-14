@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2019 Paolo Rossi                                         }
+{  Copyright (c) 2018-2021 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -302,8 +302,12 @@ var
 begin
   LParam := TParameterContainer.Create;
   try
+    //LParam.ref := TReference.Create;
+    //LParam.ref.ref := '#components/schemas/Pets';
+    LParam.name := 'Parameter Name';
+    LParam.code := 200;
     //LParam.ref.ref := 'http://doc.url';
-    LParam.par._in := '\pets\findByStatus?status=available';
+    LParam.par._in := '/pets/findByStatus?status=available';
     LParam.par.name := 'Host';
     LParam.par.description := 'Host Name (Server)';
 

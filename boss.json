@@ -1,0 +1,9 @@
+{
+	"name": "delphi-neon",
+	"description": "Neon is a serialization library for Delphi that helps you to convert (back and forth) objects and other values to JSON. It supports simple Delphi types but also complex class and records.",
+	"version": "1.6.1",
+	"homepage": "https://github.com/paolo-rossi/delphi-neon",
+	"mainsrc": "./Source/",
+	"projects": [],
+	"dependencies": {}
+}

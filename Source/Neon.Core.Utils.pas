@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2019 Paolo Rossi                                         }
+{  Copyright (c) 2018-2021 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -101,6 +101,7 @@ type
     class function CreateInstanceValue(AType: TRttiType): TValue; overload;
 
     // Create instance of class with parameterless constructor
+    class function CreateInstance<T: class, constructor>: TObject;  overload;
     class function CreateInstance(AClass: TClass): TObject;  overload;
     class function CreateInstance(AType: TRttiType): TObject; overload;
     class function CreateInstance(const ATypeName: string): TObject; overload;
@@ -716,6 +717,11 @@ var
 begin
   LType := Context.FindType(ATypeName);
   Result := CreateInstance(LType, Args);
+end;
+
+class function TRttiUtils.CreateInstance<T>: TObject;
+begin
+  Result := CreateInstance(TRttiUtils.Context.GetType(TClass(T)));
 end;
 
 class function TJSONUtils.BooleanToTJSON(AValue: Boolean): TJSONValue;
