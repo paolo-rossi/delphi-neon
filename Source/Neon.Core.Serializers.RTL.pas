@@ -50,6 +50,15 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  TJSONValueSerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
 procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 
 implementation
@@ -143,6 +152,83 @@ begin
   LStream.Position := soFromBeginning;
 
   TBase64.Decode(AValue.Value, LStream);
+end;
+
+{ TJSONValueSerializer }
+
+class function TJSONValueSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := TypeInfoIs(AType);
+end;
+
+function TJSONValueSerializer.Deserialize(AValue: TJSONValue;
+  const AData: TValue; ANeonObject: TNeonRttiObject;
+  AContext: IDeserializerContext): TValue;
+var
+  LJSONData: TJSONValue;
+  LPair: TJSONPair;
+  LValue: TJSONValue;
+begin
+  Result := AData;
+  LJSONData := Result.AsObject as TJSONValue;
+
+  // Check the TypeInfo of AData as TJSONValue and AValue
+  if not (LJSONData.ClassType = AValue.ClassType) then
+  begin
+    AContext.LogError(Format('TJSONValueSerializer: %s and %s not compatible',
+      [LJSONData.ClassName, AValue.ClassName]));
+    Exit;
+  end;
+
+  if LJSONData is TJSONObject then
+    for LPair in (AValue as TJSONObject) do
+      (LJSONData as TJSONObject).AddPair(LPair.Clone as TJSONPair)
+
+  else if LJSONData is TJSONArray then
+    for LValue in (AValue as TJSONArray) do
+      (LJSONData as TJSONArray).AddElement(LValue.Clone as TJSONValue)
+
+  {
+  else if LJSONData is TJSONString then
+    (LJSONData as TJSONString). Value := (AValue as TJSONString).Value
+
+  else if LJSONData is TJSONNumber then
+    (LJSONData as TJSONNumber).Value := (AValue as TJSONNumber).Value
+
+  else if LJSONData is TJSONBool then
+    (LJSONData as TJSONString).Value := (AValue as TJSONString).Value
+
+  else if LJSONData is TJSONNull then
+    (LJSONData as TJSONString).Value := (AValue as TJSONString).Value
+  }
+end;
+
+class function TJSONValueSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := TJSONValue.ClassInfo;
+end;
+
+function TJSONValueSerializer.Serialize(const AValue: TValue;
+  ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+var
+  LOriginalJSON: TJSONValue;
+  LEmpty: Boolean;
+begin
+  LEmpty := False;
+
+  LOriginalJSON := AValue.AsObject as TJSONValue;
+
+  if LOriginalJSON is TJSONObject then
+    LEmpty := (LOriginalJSON as TJSONObject).Count = 0;
+
+  if LOriginalJSON is TJSONArray then
+    LEmpty := (LOriginalJSON as TJSONArray).Count = 0;
+
+  if LEmpty then
+    if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
+      Exit(nil);
+
+  Exit(LOriginalJSON.Clone as TJSONValue);
 end;
 
 end.

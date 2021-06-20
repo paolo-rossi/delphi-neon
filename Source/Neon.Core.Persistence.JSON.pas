@@ -781,6 +781,7 @@ procedure TNeonSerializerJSON.WriteMembers(AType: TRttiType; AInstance: Pointer;
 var
   LPairName: string;
   LPair: TJSONPair;
+  LJSONObject: TJSONObject;
   LJSONValue: TJSONValue;
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
@@ -796,9 +797,20 @@ begin
           LJSONValue := WriteDataMember(LNeonMember.GetValue, LNeonMember);
           if Assigned(LJSONValue) then
           begin
-            LPairName := GetNameFromMember(LNeonMember);
-            LPair := TJSONPair.Create(LPairName, LJSONValue);
-            (AResult as TJSONObject).AddPair(LPair);
+            // if it's unwrapped add childs to the AResult JSON object
+            if LNeonMember.NeonUnwrapped and (LJSONValue is TJSONObject) then
+            begin
+              LJSONObject := LJSONValue as TJSONObject;
+              for LPair in LJSONObject do
+                (AResult as TJSONObject).AddPair(LPair.Clone as TJSONPair);
+              LJSONObject.Free;
+            end
+            else
+            begin
+              LPairName := GetNameFromMember(LNeonMember);
+              LPair := TJSONPair.Create(LPairName, LJSONValue);
+              (AResult as TJSONObject).AddPair(LPair);
+            end;
           end;
         except
           on E: Exception do
@@ -1441,6 +1453,13 @@ begin
     begin
       if LNeonMember.Serializable then
       begin
+        { TODO -opaolo -c : Finish this! 20/06/2021 16:28:14 }
+        if LNeonMember.NeonUnwrapped then
+        begin
+          { TODO -opaolo -c : Pass the actual object as source 20/06/2021 16:28:31 }
+        end;
+
+
         LParam.NeonObject := LNeonMember;
         LParam.RttiType := LNeonMember.RttiType;
 

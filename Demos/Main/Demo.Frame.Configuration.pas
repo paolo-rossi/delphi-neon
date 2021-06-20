@@ -126,6 +126,7 @@ begin
   //RTL serializers
   Result.GetSerializers.RegisterSerializer(TGUIDSerializer);
   Result.GetSerializers.RegisterSerializer(TStreamSerializer);
+  Result.GetSerializers.RegisterSerializer(TJSONValueSerializer);
   //DB serializers
   Result.GetSerializers.RegisterSerializer(TDataSetSerializer);
   //VCL serializers
@@ -137,7 +138,7 @@ begin
   Result.GetSerializers.RegisterSerializer(TPoint3DSerializer);
   Result.GetSerializers.RegisterSerializer(TParameterSerializer);
   Result.GetSerializers.RegisterSerializer(TFontSerializer);
-  Result.GetSerializers.RegisterSerializer(TCaseClassSerializer);
+  //Result.GetSerializers.RegisterSerializer(TCaseClassSerializer);
 end;
 
 procedure TframeConfiguration.Initialize;

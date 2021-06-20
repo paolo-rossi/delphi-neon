@@ -247,6 +247,7 @@ type
     //[NeonInclude, NeonMembers(TNeonMembers.Fields)]
     FirstRecord: TMyRecord;
     FNote: TNote;
+    FJSON: TJSONObject;
   public
     constructor Create;
     destructor Destroy; override;
@@ -257,6 +258,9 @@ type
     property FirstProp: Integer read FFirstProp write FFirstProp;
     property SecondXProp: string read FSecondXProp write FSecondXProp;
     property ThirdPascalCaseProp: TDateTime read FThirdPascalCaseProp write FThirdPascalCaseProp;
+    [NeonInclude(IncludeIf.NotEmpty)]
+    property JSON: TJSONObject read FJSON write FJSON;
+    [NeonUnwrapped]
     property Note: TNote read FNote write FNote;
   end;
 
@@ -572,12 +576,14 @@ end;
 
 constructor TCaseClass.Create;
 begin
+  FJSON := TJSONObject.Create;
   FNote := TNote.Create;
 end;
 
 destructor TCaseClass.Destroy;
 begin
   FNote.Free;
+  FJSON.Free;
   inherited;
 end;
 
@@ -591,6 +597,10 @@ begin
   Result.FirstProp := Random(1000);
   Result.SecondXProp := 'Metà';
   Result.ThirdPascalCaseProp := EncodeDate(2018, Random(11)+1, Random(27)+1);
+  {
+  Result.JSON.AddPair('name', 'Paolo');
+  Result.JSON.AddPair('age', '50');
+  }
   Result.Note.Date := Now;
   Result.Note.Text := 'Lorem Ipsum';
 end;
