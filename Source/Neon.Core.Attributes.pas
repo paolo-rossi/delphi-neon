@@ -73,6 +73,18 @@ type
   /// </remarks>
   NeonIgnoreAttribute = class(NeonAttribute);
 
+
+  /// <summary>
+  ///   The Neon attribute [NeonUnwrapped] is a property/field annotation used to
+  ///   define that value should be "unwrapped" when serialized (and
+  ///   wrapped again when deserializing), resulting in flattening of data structure,
+  ///   compared to PODO structure.
+  /// </summary>
+  /// <remarks>
+  ///   Must be applied only to class/record's properties/fields
+  /// </remarks>
+  NeonUnwrappedAttribute = class(NeonAttribute);
+
   /// <summary>
   ///   The Neon annotation NeonInclude tells Neon to include the property (or field)
   ///   based on the value

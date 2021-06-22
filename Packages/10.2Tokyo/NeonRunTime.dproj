@@ -98,7 +98,7 @@
         <DCCReference Include="..\..\Source\Neon.Core.Nullables.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Persistence.JSON.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Persistence.pas"/>
-        <DCCReference Include="..\..\Source\Neon.Core.Persistence.Swagger.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Persistence.JSON.Schema.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Serializers.RTL.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Serializers.DB.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.TypeInfo.pas"/>

@@ -64,6 +64,8 @@ type
     ///   Writer for members of objects and records
     /// </summary>
     procedure WriteMembers(AType: TRttiType; AInstance: Pointer; AResult: TJSONValue);
+
+    procedure LogError(const AMessage: string);
   end;
 
   IDeserializerContext = interface(IConfigurationContext)
@@ -73,6 +75,8 @@ type
     ///   Reader for members of objects and records
     /// </summary>
     procedure ReadMembers(AType: TRttiType; AInstance: Pointer; AJSONObject: TJSONObject);
+
+    procedure LogError(const AMessage: string);
   end;
 
   TCustomSerializer = class abstract(TObject)
@@ -231,6 +235,7 @@ type
     FMember: TRttiMember;
     FParent: TNeonRttiType;
     FSerializable: Boolean;
+    FNeonUnwrapped: Boolean;
 
     function MemberAsProperty: TRttiProperty; inline;
     function MemberAsField: TRttiField; inline;
@@ -252,9 +257,9 @@ type
     function Visibility: TMemberVisibility;
     function IsField: Boolean;
     function IsProperty: Boolean;
-
     property Name: string read GetName;
 
+    property NeonUnwrapped: Boolean read FNeonUnwrapped write FNeonUnwrapped;
     property NeonIncludeIf: TNeonIncludeOption read FNeonIncludeIf write FNeonIncludeIf;
     property Serializable: Boolean read FSerializable write FSerializable;
   end;
@@ -646,7 +651,13 @@ var
   LRes: TValue;
 begin
   LRes := False;
-  if AAttribute is NeonIncludeAttribute then
+
+  //Only applicable to complex types (classes, records, interfaces)
+  if AAttribute is NeonUnwrappedAttribute then
+  begin
+    FNeonUnwrapped := True;
+  end
+  else if AAttribute is NeonIncludeAttribute then
   begin
     LIncludeAttribute := AAttribute as NeonIncludeAttribute;
     if LIncludeAttribute.IncludeValue.Value = IncludeIf.CustomFunction then
