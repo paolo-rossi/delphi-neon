@@ -33,6 +33,9 @@ uses
   Neon.Core.Persistence;
 
 type
+  /// <summary>
+  ///   Sample custom serializer for the TPoint3D record type
+  /// </summary>
   TPoint3DSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -42,6 +45,11 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Sample custom serializer for the TParameterContainer class. Here I
+  ///   wanted to serialize only one part of the class based on the value of
+  ///   some property
+  /// </summary>
   TParameterSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -51,6 +59,9 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Sample custom serializer for the standard TFont class
+  /// </summary>
   TFontSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -60,6 +71,10 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Sample serializer for a class. You completely customize the
+  ///   serialization and deserialization of a specific class
+  /// </summary>
   TCaseClassSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -69,6 +84,10 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Sample serializer for TTime (not TDateTime). It's possible to register
+  ///   custom serializer for every type (TypeInfo record) Delphi has.
+  /// </summary>
   TTimeSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -78,6 +97,28 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Delphi, not having (yet) nullable types, makes hard to deal with null
+  ///   values found in JSON, and the TDateTime is the most "controversial"
+  ///   type of all. The simplest solution would be to create and register a
+  ///   custom serializer for the TDateTime type and in here write all code you
+  ///   want.
+  /// </summary>
+  TDateTimeSerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
+
+  /// <summary>
+  ///   If you have "some" DateTime that you want to manage differently from
+  ///   the standard you can create a custom TDateTime (simply as a type alias)
+  ///   type and register a custom serializer for it
+  /// </summary>
   TCustomDateSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -381,6 +422,47 @@ begin
   LDate := AValue.AsType<TCustomDate>;
   DecodeDate(LDate, LYear, LMonth, LDay);
   Result := TJSONString.Create(Format('%d|%.2d|%.2d', [LYear, LMonth, LDay]));
+end;
+
+{ TDateTimeSerializer }
+
+class function TDateTimeSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := AType = GetTargetInfo;
+end;
+
+function TDateTimeSerializer.Deserialize(AValue: TJSONValue;
+  const AData: TValue; ANeonObject: TNeonRttiObject;
+  AContext: IDeserializerContext): TValue;
+var
+  LDate: TDateTime;
+begin
+  // Here if you want you can test for special date values and act accordingly
+  if AValue is TJSONNull then
+    Exit(TValue.From<TDateTime>(LDate));
+
+  LDate := StrToDate(AValue.Value);
+  Result := TValue.From<TDateTime>(LDate);
+end;
+
+class function TDateTimeSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := System.TypeInfo(TDateTime);
+end;
+
+function TDateTimeSerializer.Serialize(const AValue: TValue;
+  ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+var
+  LDate: TDateTime;
+begin
+  LDate := AValue.AsType<TDateTime>;
+
+  // Here if you want you can test for special date values and act accordingly
+  if LDate = 0 then
+    Exit(TJSONNull.Create);
+
+  // This is where you customize the date serialization format
+  Result := TJSONString.Create(DateTimeToStr(LDate));
 end;
 
 end.

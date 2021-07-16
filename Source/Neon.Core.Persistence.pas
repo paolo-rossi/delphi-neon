@@ -59,23 +59,41 @@ type
 
   ISerializerContext = interface(IConfigurationContext)
   ['{36A014FC-9E3F-4EBF-9545-CF9DBCBF507C}']
-    function WriteDataMember(const AValue: TValue): TJSONValue;
+
     /// <summary>
-    ///   Writer for members of objects and records
+    ///   Method to write value from a custom serializer
+    /// </summary>
+    function WriteDataMember(const AValue: TValue): TJSONValue;
+
+    /// <summary>
+    ///   Writer for members of objects and records. In a custom serializer can
+    ///   be used to process the **same** object or record
     /// </summary>
     procedure WriteMembers(AType: TRttiType; AInstance: Pointer; AResult: TJSONValue);
 
+    /// <summary>
+    ///   Useful method to add serialization errors in the serializer's log
+    /// </summary>
     procedure LogError(const AMessage: string);
   end;
 
   IDeserializerContext = interface(IConfigurationContext)
   ['{5351D1F9-99B3-4826-B981-4CBF926085D6}']
-    function ReadDataMember(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
     /// <summary>
-    ///   Reader for members of objects and records
+    ///   Method to convert a TJSONValue into a TValue (from a custom
+    ///   serializer)
+    /// </summary>
+    function ReadDataMember(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
+
+    /// <summary>
+    ///   Reader for members of objects and record. In a custom serializer can
+    ///   be used to process the **same** object or record
     /// </summary>
     procedure ReadMembers(AType: TRttiType; AInstance: Pointer; AJSONObject: TJSONObject);
 
+    /// <summary>
+    ///   Useful method to add deserialization errors in the deserializer's log
+    /// </summary>
     procedure LogError(const AMessage: string);
   end;
 

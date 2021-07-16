@@ -379,6 +379,7 @@ type
     FAge: NullInteger;
     FSpeed: Nullable<TEnumSpeed>;
     FObj: TObject;
+    FBirthDate: NullDateTime;
   public
     [NeonInclude(IncludeIf.Always)]
     property Obj: TObject read FObj write FObj;
@@ -386,6 +387,8 @@ type
     property Name: NullString read FName write FName;
     [NeonInclude(IncludeIf.NotNull)]
     property Age: NullInteger read FAge write FAge;
+    [NeonInclude(IncludeIf.NotNull)]
+    property BirthDate: NullDateTime read FBirthDate write FBirthDate;
     property Speed: Nullable<TEnumSpeed> read FSpeed write FSpeed;
   end;
 

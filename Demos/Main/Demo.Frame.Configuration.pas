@@ -32,6 +32,9 @@ uses
   Neon.Core.Persistence;
 
 type
+  TSerializersType = (CustomNeon, CustomDemo);
+  TSerializersSet = set of TSerializersType;
+
   TframeConfiguration = class(TFrame)
     grpType: TGroupBox;
     grpCase: TGroupBox;
@@ -58,7 +61,13 @@ type
     FCustomCaseAlgo: TCaseFunc;
   public
     procedure Initialize;
-    function BuildSerializerConfig: INeonConfiguration;
+    function BuildSerializerConfig(ASerializers: TSerializersSet = [TSerializersType.CustomNeon]): INeonConfiguration;
+
+    procedure RegisterNeonSerializers(ARegistry: TNeonSerializerRegistry);
+    procedure UnregisterNeonSerializers(ARegistry: TNeonSerializerRegistry);
+
+    procedure RegisterDemoSerializers(ARegistry: TNeonSerializerRegistry);
+    procedure UnregisterDemoSerializers(ARegistry: TNeonSerializerRegistry);
   end;
 
 implementation
@@ -67,12 +76,13 @@ uses
   Neon.Core.Serializers.DB,
   Neon.Core.Serializers.RTL,
   Neon.Core.Serializers.VCL,
+  Neon.Core.Serializers.Nullables,
 
   Demo.Neon.Serializers;
 
 {$R *.dfm}
 
-function TframeConfiguration.BuildSerializerConfig: INeonConfiguration;
+function TframeConfiguration.BuildSerializerConfig(ASerializers: TSerializersSet): INeonConfiguration;
 var
   LVis: TNeonVisibility;
   LMembers: TNeonMembersSet;
@@ -123,22 +133,13 @@ begin
     LVis := LVis + [mvPublished];
   Result.SetVisibility(LVis);
 
-  //RTL serializers
-  Result.GetSerializers.RegisterSerializer(TGUIDSerializer);
-  Result.GetSerializers.RegisterSerializer(TStreamSerializer);
-  Result.GetSerializers.RegisterSerializer(TJSONValueSerializer);
-  //DB serializers
-  Result.GetSerializers.RegisterSerializer(TDataSetSerializer);
-  //VCL serializers
-  Result.GetSerializers.RegisterSerializer(TImageSerializer);
+  //Custom Serializers
 
-  // Demo Serializers
-  Result.GetSerializers.RegisterSerializer(TCustomDateSerializer);
-  Result.GetSerializers.RegisterSerializer(TTimeSerializer);
-  Result.GetSerializers.RegisterSerializer(TPoint3DSerializer);
-  Result.GetSerializers.RegisterSerializer(TParameterSerializer);
-  Result.GetSerializers.RegisterSerializer(TFontSerializer);
-  //Result.GetSerializers.RegisterSerializer(TCaseClassSerializer);
+  if TSerializersType.CustomNeon in ASerializers then
+    RegisterNeonSerializers(Result.GetSerializers);
+
+  if TSerializersType.CustomDemo in ASerializers then
+    RegisterDemoSerializers(Result.GetSerializers);
 end;
 
 procedure TframeConfiguration.Initialize;
@@ -149,6 +150,54 @@ begin
       Result := AString + 'X';
     end
   ;
+end;
+
+procedure TframeConfiguration.RegisterNeonSerializers(ARegistry: TNeonSerializerRegistry);
+begin
+  //RTL serializers
+  ARegistry.RegisterSerializer(TGUIDSerializer);
+  ARegistry.RegisterSerializer(TStreamSerializer);
+  ARegistry.RegisterSerializer(TJSONValueSerializer);
+  //DB serializers
+  ARegistry.RegisterSerializer(TDataSetSerializer);
+  //VCL serializers
+  ARegistry.RegisterSerializer(TImageSerializer);
+  // Nullable serializers
+  RegisterNullableSerializers(ARegistry);
+end;
+
+procedure TframeConfiguration.UnregisterNeonSerializers(ARegistry: TNeonSerializerRegistry);
+begin
+  //RTL serializers
+  ARegistry.UnregisterSerializer(TGUIDSerializer);
+  ARegistry.UnregisterSerializer(TStreamSerializer);
+  ARegistry.UnregisterSerializer(TJSONValueSerializer);
+  //DB serializers
+  ARegistry.UnregisterSerializer(TDataSetSerializer);
+  //VCL serializers
+  ARegistry.UnregisterSerializer(TImageSerializer);
+  // Nullable serializers
+  UnregisterNullableSerializers(ARegistry);
+end;
+
+procedure TframeConfiguration.RegisterDemoSerializers(ARegistry: TNeonSerializerRegistry);
+begin
+  // Demo Serializers
+  ARegistry.RegisterSerializer(TCustomDateSerializer);
+  ARegistry.RegisterSerializer(TTimeSerializer);
+  ARegistry.RegisterSerializer(TPoint3DSerializer);
+  ARegistry.RegisterSerializer(TParameterSerializer);
+  ARegistry.RegisterSerializer(TFontSerializer);
+end;
+
+procedure TframeConfiguration.UnregisterDemoSerializers(ARegistry: TNeonSerializerRegistry);
+begin
+  // Demo Serializers
+  ARegistry.UnregisterSerializer(TCustomDateSerializer);
+  ARegistry.UnregisterSerializer(TTimeSerializer);
+  ARegistry.UnregisterSerializer(TPoint3DSerializer);
+  ARegistry.UnregisterSerializer(TParameterSerializer);
+  ARegistry.UnregisterSerializer(TFontSerializer);
 end;
 
 end.
