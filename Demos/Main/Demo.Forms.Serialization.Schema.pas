@@ -19,9 +19,13 @@ uses
 type
   TfrmSerializationSchema = class(TfrmSerializationBase)
     actSerJSONSchema: TAction;
+    actSerAttrUnwrapped: TAction;
+    actDesAttrUnwrapped: TAction;
+    procedure actDesAttrUnwrappedExecute(Sender: TObject);
+    procedure actSerAttrUnwrappedExecute(Sender: TObject);
     procedure actSerJSONSchemaExecute(Sender: TObject);
   private
-    { Private declarations }
+    function BuildConfig: INeonConfiguration;
   public
     { Public declarations }
   end;
@@ -36,6 +40,31 @@ uses
 
 {$R *.dfm}
 
+procedure TfrmSerializationSchema.actDesAttrUnwrappedExecute(Sender: TObject);
+var
+  LObj: TUnwrappedClass;
+begin
+  LObj := TUnwrappedClass.Create;
+  try
+    DeserializeObject(LObj, memoSerialize.Lines, BuildConfig);
+    SerializeObject(LObj, memoDeserialize.Lines, BuildConfig);
+  finally
+    LObj.Free;
+  end;
+end;
+
+procedure TfrmSerializationSchema.actSerAttrUnwrappedExecute(Sender: TObject);
+var
+  LObj: TUnwrappedClass;
+begin
+  LObj := TUnwrappedClass.Sample1;
+  try
+    SerializeObject(LObj, memoSerialize.Lines, BuildConfig);
+  finally
+    LObj.Free;
+  end;
+end;
+
 procedure TfrmSerializationSchema.actSerJSONSchemaExecute(Sender: TObject);
 var
   LJSON: TJSONObject;
@@ -46,6 +75,11 @@ begin
   finally
     LJSON.Free;
   end;
+end;
+
+function TfrmSerializationSchema.BuildConfig: INeonConfiguration;
+begin
+  Result := frmConfiguration.BuildSerializerConfig([TSerializersType.CustomNeon]);
 end;
 
 end.

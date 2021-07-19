@@ -63,6 +63,8 @@ inherited frmSerializationCustom: TfrmSerializationCustom
               Action = actSerDates
             end>
         end>
+      ExplicitLeft = -6
+      ExplicitTop = 55
     end
   end
   inherited pnlRight: TPanel
@@ -127,7 +129,7 @@ inherited frmSerializationCustom: TfrmSerializationCustom
   end
   inherited imlMain: TImageList
     Bitmap = {
-      494C010102000800340010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000800380010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000

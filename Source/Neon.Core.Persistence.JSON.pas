@@ -1453,18 +1453,14 @@ begin
     begin
       if LNeonMember.Serializable then
       begin
-        { TODO -opaolo -c : Finish this! 20/06/2021 16:28:14 }
-        if LNeonMember.NeonUnwrapped then
-        begin
-          { TODO -opaolo -c : Pass the actual object as source 20/06/2021 16:28:31 }
-        end;
-
-
         LParam.NeonObject := LNeonMember;
         LParam.RttiType := LNeonMember.RttiType;
 
-        //Look for a JSON with the calculated Member Name
-        LParam.JSONValue := AJSONObject.GetValue(GetNameFromMember(LNeonMember));
+        if LNeonMember.NeonUnwrapped then
+          LParam.JSONValue := AJSONObject
+        else
+          //Look for a JSON with the calculated Member Name
+          LParam.JSONValue := AJSONObject.GetValue(GetNameFromMember(LNeonMember));
 
         // Property not found in JSON, continue to the next one
         if not Assigned(LParam.JSONValue) then

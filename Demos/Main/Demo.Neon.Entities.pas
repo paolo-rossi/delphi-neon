@@ -264,6 +264,33 @@ type
     property Note: TNote read FNote write FNote;
   end;
 
+  TSubObject = class
+  private
+    FFirst: Integer;
+    FSecond: TDateTime;
+  published
+    property First: Integer read FFirst write FFirst;
+    property Second: TDateTime read FSecond write FSecond;
+  end;
+
+  TUnwrappedClass = class
+  private
+    FAge: Integer;
+    FName: string;
+    FWrapped: TSubObject;
+  public
+     constructor Create;
+     destructor Destroy; override;
+
+     class function Sample1: TUnwrappedClass;
+  published
+    property Name: string read FName write FName;
+    property Age: Integer read FAge write FAge;
+    [NeonUnwrapped]
+    property Wrapped: TSubObject read FWrapped write FWrapped;
+  end;
+
+
   {$RTTI EXPLICIT METHODS([vcPrivate])}
   TFilterClass = class
   private
@@ -748,6 +775,28 @@ begin
   Date := Now;
   Time := Now + 0.5;
   Custom := Now + 2;
+end;
+
+{ TUnwrappedClass }
+
+constructor TUnwrappedClass.Create;
+begin
+  FWrapped := TSubObject.Create;
+end;
+
+destructor TUnwrappedClass.Destroy;
+begin
+  FWrapped.Free;
+  inherited;
+end;
+
+class function TUnwrappedClass.Sample1: TUnwrappedClass;
+begin
+  Result := TUnwrappedClass.Create;
+  Result.Name := 'Paolo';
+  Result.Age := 50;
+  Result.Wrapped.First := 1234;
+  Result.Wrapped.Second := Now;
 end;
 
 initialization
