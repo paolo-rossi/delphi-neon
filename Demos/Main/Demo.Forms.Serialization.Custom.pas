@@ -80,7 +80,7 @@ type
     procedure actSerTParameterExecute(Sender: TObject);
     procedure actSerTTimeExecute(Sender: TObject);
   private
-    { Private declarations }
+    function BuildConfig: INeonConfiguration;
   public
     { Public declarations }
   end;
@@ -110,8 +110,8 @@ var
 begin
   LObj := TNeonIncludeEntity.Create;
   try
-    DeserializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LObj, memoSerialize.Lines, BuildConfig);
+    SerializeObject(LObj, memoDeserialize.Lines, BuildConfig);
   finally
     LObj.Free;
   end;
@@ -123,8 +123,8 @@ var
 begin
   LObj := TClassOfNullables.Create;
   try
-    DeserializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LObj, memoSerialize.Lines, BuildConfig);
+    SerializeObject(LObj, memoDeserialize.Lines, BuildConfig);
   finally
     LObj.Free;
   end;
@@ -134,8 +134,8 @@ procedure TfrmSerializationCustom.actDesNullableIntegerExecute(Sender: TObject);
 var
   LValue: Nullable<Integer>;
 begin
-  LValue := DeserializeValueTo<Nullable<Integer>>(memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  SerializeValueFrom<Nullable<Integer>>(TValue.From<Nullable<Integer>>(LValue), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  LValue := DeserializeValueTo<Nullable<Integer>>(memoSerialize.Lines, BuildConfig);
+  SerializeValueFrom<Nullable<Integer>>(TValue.From<Nullable<Integer>>(LValue), memoDeserialize.Lines, BuildConfig);
 end;
 
 procedure TfrmSerializationCustom.actDesTCaseClassExecute(Sender: TObject);
@@ -144,8 +144,8 @@ var
 begin
   LVal := TCaseClass.Create;
   try
-    DeserializeObject(LVal, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LVal, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LVal, memoSerialize.Lines, BuildConfig);
+    SerializeObject(LVal, memoDeserialize.Lines, BuildConfig);
   finally
     LVal.Free;
   end;
@@ -157,16 +157,16 @@ var
 begin
   LFont := pnlDeserialize.Font;
 
-  DeserializeObject(LFont, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  SerializeObject(LFont, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  DeserializeObject(LFont, memoSerialize.Lines, BuildConfig);
+  SerializeObject(LFont, memoDeserialize.Lines, BuildConfig);
 end;
 
 procedure TfrmSerializationCustom.actDesTGUIDExecute(Sender: TObject);
 var
   LValue: TGUID;
 begin
-  LValue := DeserializeValueTo<TGUID>(memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  SerializeValueFrom<TGUID>(TValue.From<TGUID>(LValue), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  LValue := DeserializeValueTo<TGUID>(memoSerialize.Lines, BuildConfig);
+  SerializeValueFrom<TGUID>(TValue.From<TGUID>(LValue), memoDeserialize.Lines, BuildConfig);
 end;
 
 procedure TfrmSerializationCustom.actDesTMyClassExecute(Sender: TObject);
@@ -176,8 +176,8 @@ begin
 	// Instantiating derived class
   LSimple := TMyDerivedClass.Create;
   try
-    DeserializeObject(LSimple, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LSimple, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LSimple, memoSerialize.Lines, BuildConfig);
+    SerializeObject(LSimple, memoDeserialize.Lines, BuildConfig);
   finally
     LSimple.Free;
   end;
@@ -189,8 +189,8 @@ var
 begin
   LVal := TParameterContainer.Create;
   try
-    DeserializeObject(LVal, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LVal, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LVal, memoSerialize.Lines, BuildConfig);
+    SerializeObject(LVal, memoDeserialize.Lines, BuildConfig);
   finally
     LVal.Free;
   end;
@@ -200,8 +200,8 @@ procedure TfrmSerializationCustom.actDesTTimeExecute(Sender: TObject);
 var
   LValue: TTime;
 begin
-  LValue := DeserializeValueTo<TTime>(memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  SerializeValueFrom<TTime>(TValue.From<TTime>(LValue), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  LValue := DeserializeValueTo<TTime>(memoSerialize.Lines, BuildConfig);
+  SerializeValueFrom<TTime>(TValue.From<TTime>(LValue), memoDeserialize.Lines, BuildConfig);
 end;
 
 procedure TfrmSerializationCustom.actSerDatesExecute(Sender: TObject);
@@ -209,7 +209,7 @@ var
   LDates: TDates;
 begin
   LDates.SampleData;
-  SerializeValueFrom<TDates>(TValue.From<TDates>(LDates), memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  SerializeValueFrom<TDates>(TValue.From<TDates>(LDates), memoSerialize.Lines, BuildConfig);
 end;
 
 procedure TfrmSerializationCustom.actSerNeonIncludeExecute(Sender: TObject);
@@ -225,7 +225,7 @@ begin
     LObj.NString := '';
     LObj.NInteger := 0;
 
-    SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LObj, memoSerialize.Lines, BuildConfig);
   finally
     LObj.Free;
   end;
@@ -241,7 +241,9 @@ begin
     //LObj.Age := 50;
     LObj.Speed := TEnumSpeed.Medium;
 
-    SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    LObj.BirthDate := nil;
+
+    SerializeObject(LObj, memoSerialize.Lines, BuildConfig);
   finally
     LObj.Free;
   end;
@@ -252,7 +254,7 @@ var
   LNullInt: Nullable<Integer>;
 begin
   LNullInt := 42;
-  SerializeValueFrom<Nullable<Integer>>(TValue.From<Nullable<Integer>>(LNullInt), memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  SerializeValueFrom<Nullable<Integer>>(TValue.From<Nullable<Integer>>(LNullInt), memoSerialize.Lines, BuildConfig);
 end;
 
 procedure TfrmSerializationCustom.actSerTCaseClassExecute(Sender: TObject);
@@ -261,7 +263,7 @@ var
 begin
   LVal := TCaseClass.DefaultValues;
   try
-    SerializeObject(LVal, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LVal, memoSerialize.Lines, BuildConfig);
   finally
     LVal.Free;
   end;
@@ -272,7 +274,7 @@ var
   LFont: TFont;
 begin
   LFont := pnlSerialize.Font;
-  SerializeObject(LFont, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  SerializeObject(LFont, memoSerialize.Lines, BuildConfig);
 end;
 
 procedure TfrmSerializationCustom.actSerTGUIDExecute(Sender: TObject);
@@ -290,7 +292,7 @@ begin
   LObj := TMyDerivedClass.Create;
   try
     LObj.DefaultValues;
-    SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LObj, memoSerialize.Lines, BuildConfig);
   finally
     LObj.Free;
   end;
@@ -311,7 +313,7 @@ begin
     LParam.par.name := 'Host';
     LParam.par.description := 'Host Name (Server)';
 
-    SerializeObject(LParam, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LParam, memoSerialize.Lines, BuildConfig);
   finally
     LParam.Free;
   end;
@@ -320,6 +322,11 @@ end;
 procedure TfrmSerializationCustom.actSerTTimeExecute(Sender: TObject);
 begin
   SerializeSimple<TTime>(Now);
+end;
+
+function TfrmSerializationCustom.BuildConfig: INeonConfiguration;
+begin
+  Result := frmConfiguration.BuildSerializerConfig([TSerializersType.CustomNeon, TSerializersType.CustomDemo]);
 end;
 
 end.

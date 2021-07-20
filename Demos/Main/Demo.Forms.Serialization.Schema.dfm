@@ -13,20 +13,48 @@ inherited frmSerializationSchema: TfrmSerializationSchema
             item
               Action = actSerJSONSchema
             end>
+        end
+        item
+          Caption = 'Attributes'
+          Color = 7928316
+          Collapsed = False
+          Items = <
+            item
+              Action = actSerAttrUnwrapped
+            end
+            item
+            end
+            item
+            end>
         end>
+      ExplicitLeft = -6
+      ExplicitTop = 17
     end
   end
   inherited pnlRight: TPanel
     inherited pnlDeserialize: TPanel
       Visible = False
     end
-    inherited memoDeserialize: TMemo
-      Visible = False
+    inherited catDeserialize: TCategoryButtons
+      Categories = <
+        item
+          Caption = 'Attribute'
+          Color = 7928316
+          Collapsed = False
+          Items = <
+            item
+              Action = actDesAttrUnwrapped
+            end
+            item
+            end
+            item
+            end>
+        end>
     end
   end
   inherited imlMain: TImageList
     Bitmap = {
-      494C010102000800240010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000800280010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -170,6 +198,16 @@ inherited frmSerializationSchema: TfrmSerializationSchema
       Caption = 'To JSON Schema'
       ImageIndex = 0
       OnExecute = actSerJSONSchemaExecute
+    end
+    object actSerAttrUnwrapped: TAction
+      Caption = 'Unwrapped Attribute'
+      ImageIndex = 0
+      OnExecute = actSerAttrUnwrappedExecute
+    end
+    object actDesAttrUnwrapped: TAction
+      Caption = 'Unwrapped Attribute'
+      ImageIndex = 1
+      OnExecute = actDesAttrUnwrappedExecute
     end
   end
 end

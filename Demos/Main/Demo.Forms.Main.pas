@@ -95,7 +95,7 @@ begin
   CreateTab('Reference Types', 3, clNavy, TfrmSerializationComplex);
   CreateTab('Delphi Types', 9, clOlive, TfrmSerializationDelphi);
   CreateTab('Custom Serializers', 4, clMaroon, TfrmSerializationCustom);
-  CreateTab('JSON Schema', 16, clWebTan, TfrmSerializationSchema);
+  CreateTab('Attributes && JSON Schema', 16, clWebTan, TfrmSerializationSchema);
 end;
 
 initialization

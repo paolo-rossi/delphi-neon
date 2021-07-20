@@ -225,8 +225,11 @@ begin
     LEmpty := (LOriginalJSON as TJSONArray).Count = 0;
 
   if LEmpty then
-    if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
-      Exit(nil);
+    case ANeonObject.NeonInclude.Value of
+      IncludeIf.NotNull:    Exit(nil);
+      IncludeIf.NotEmpty:   Exit(nil);
+      IncludeIf.NotDefault: Exit(nil);
+    end;
 
   Exit(LOriginalJSON.Clone as TJSONValue);
 end;

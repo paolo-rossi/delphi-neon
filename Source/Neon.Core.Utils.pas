@@ -158,6 +158,7 @@ type
 
     class procedure JSONToRecord(AJSONObject: TJSONObject; ADataSet: TDataSet; AUseUTCDate: Boolean); static;
     class procedure JSONToDataSet(AJSONValue: TJSONValue; ADataSet: TDataSet; AUseUTCDate: Boolean); static;
+    class procedure JSONObjectToDataSet(AJSONValue: TJSONValue; ADataSet: TDataSet; AUseUTCDate: Boolean); static;
 
     class function DataSetToCSV(const ADataSet: TDataSet; AUseUTCDate: Boolean): string; static;
 
@@ -817,7 +818,7 @@ end;
 class function TJSONUtils.JSONToDate(const ADate: string; AReturnUTC: Boolean = True): TDateTime;
 begin
   Result := 0.0;
-  if ADate<>'' then
+  if ADate <> '' then
     Result := ISO8601ToDate(ADate, AReturnUTC);
 end;
 
@@ -1265,6 +1266,22 @@ begin
   end;
 end;
 
+class procedure TDataSetUtils.JSONObjectToDataSet(AJSONValue: TJSONValue; ADataSet: TDataSet; AUseUTCDate: Boolean);
+var
+  LJSONArray: TJSONArray;
+begin
+  if AJSONValue is TJSONObject then
+  begin
+    LJSONArray := TJSONArray.Create;
+    try
+      LJSONArray.AddElement(AJSONValue.Clone as TJSONValue);
+      JSONToDataSet(LJSONArray, ADataSet, AUseUTCDate);
+    finally
+      LJSONArray.Free;
+    end;
+  end;
+end;
+
 class procedure TDataSetUtils.JSONToDataSet(AJSONValue: TJSONValue; ADataSet: TDataSet; AUseUTCDate: Boolean);
 var
   LJSONArray: TJSONArray;
@@ -1297,6 +1314,12 @@ begin
     LJSONField := AJSONObject.GetValue(LField.FieldName);
     if not Assigned(LJSONField) then
       Continue;
+
+    if LJSONField is TJSONNull then
+    begin
+      LField.Clear;
+      Continue;
+    end;
 
     case LField.DataType of
       //TFieldType.ftUnknown: ;
