@@ -439,7 +439,7 @@ var
 begin
   // Here if you want you can test for special date values and act accordingly
   if AValue is TJSONNull then
-    Exit(TValue.From<TDateTime>(LDate));
+    Exit(0);
 
   LDate := StrToDate(AValue.Value);
   Result := TValue.From<TDateTime>(LDate);

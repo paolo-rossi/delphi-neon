@@ -248,6 +248,7 @@ type
     FirstRecord: TMyRecord;
     FNote: TNote;
     FJSON: TJSONObject;
+    FEnumTest: TEnumSpeed;
   public
     constructor Create;
     destructor Destroy; override;
@@ -258,6 +259,7 @@ type
     property FirstProp: Integer read FFirstProp write FFirstProp;
     property SecondXProp: string read FSecondXProp write FSecondXProp;
     property ThirdPascalCaseProp: TDateTime read FThirdPascalCaseProp write FThirdPascalCaseProp;
+    property EnumTest: TEnumSpeed read FEnumTest write FEnumTest;
     [NeonInclude(IncludeIf.NotEmpty)]
     property JSON: TJSONObject read FJSON write FJSON;
     [NeonUnwrapped]
