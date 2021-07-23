@@ -27,9 +27,7 @@ uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs, System.TypInfo,
   System.Generics.Collections, System.JSON, System.Generics.Defaults,
 
-  Neon.Core.Types,
-  Neon.Core.Attributes,
-  Neon.Core.DynamicTypes;
+  Neon.Core.Types, Neon.Core.Attributes, Neon.Core.DynamicTypes;
 
 {$SCOPEDENUMS ON}
 
@@ -45,10 +43,12 @@ type
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
+    function SetUseMongoType(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
 
     function GetPrettyPrint: Boolean;
     function GetUseUTCDate: Boolean;
+    function GetUseMongoType: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
   end;
 
@@ -169,6 +169,7 @@ type
     FUseUTCDate: Boolean;
     FPrettyPrint: Boolean;
     FSerializers: TNeonSerializerRegistry;
+    FUseMongoType: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -184,9 +185,11 @@ type
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
+    function SetUseMongoType(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
 
     function GetUseUTCDate: Boolean;
+    function GetUseMongoType: Boolean;
     function GetPrettyPrint: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
 
@@ -196,6 +199,7 @@ type
     property Visibility: TNeonVisibility read FVisibility write FVisibility;
     property IgnoreFieldPrefix: Boolean read FIgnoreFieldPrefix write FIgnoreFieldPrefix;
     property UseUTCDate: Boolean read FUseUTCDate write FUseUTCDate;
+    property UseMongoType: Boolean read FUseMongoType write FUseMongoType;
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
   end;
 
@@ -494,6 +498,11 @@ begin
   Result := FSerializers;
 end;
 
+function TNeonConfiguration.GetUseMongoType: Boolean;
+begin
+  Result := FUseMongoType;
+end;
+
 function TNeonConfiguration.GetUseUTCDate: Boolean;
 begin
   Result := FUseUTCDate;
@@ -527,6 +536,12 @@ end;
 function TNeonConfiguration.SetPrettyPrint(AValue: Boolean): INeonConfiguration;
 begin
   FPrettyPrint := AValue;
+  Result := Self;
+end;
+
+function TNeonConfiguration.SetUseMongoType(AValue: Boolean): INeonConfiguration;
+begin
+  FUseMongoType := AValue;
   Result := Self;
 end;
 

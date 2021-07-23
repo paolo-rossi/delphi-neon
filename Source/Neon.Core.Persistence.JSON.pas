@@ -23,6 +23,9 @@ unit Neon.Core.Persistence.JSON;
 
 interface
 
+
+
+
 {$I Neon.inc}
 
 uses
@@ -33,7 +36,8 @@ uses
   Neon.Core.Attributes,
   Neon.Core.Persistence,
   Neon.Core.DynamicTypes,
-  Neon.Core.Utils;
+  Neon.Core.Utils,
+  CodeSiteLogging;
 
 type
   /// <summary>
@@ -741,9 +745,12 @@ begin
   end;
 
   if (AValue.AsType<TDateTime> <> 0) then
-    Result := TJSONString.Create(TJSONUtils.DateToJSON(AValue.AsType<TDateTime>, FConfig.UseUTCDate))
-  else
-    Result := TJSONNull.Create;
+  begin
+    if FConfig.UseMongoType then
+      Result := TJSONObject.Create(TJSONPair.Create('$date',TJSONString.Create(TJSONUtils.DateToJSON(AValue.AsType<TDateTime>, FConfig.UseUTCDate))))
+    else
+      Result := TJSONString.Create(TJSONUtils.DateToJSON(AValue.AsType<TDateTime>, FConfig.UseUTCDate));
+  end;
 end;
 
 function TNeonSerializerJSON.WriteTime(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1083,7 +1090,15 @@ begin
     end;
   end;
 
-  Result := TJSONString.Create(AValue.AsString);
+
+  if (ANeonObject.NeonProperty = '_id') then
+  begin
+    Result :=  TJSONObject.Create(TJSONPair.Create('$oid',TJSONString.Create(AValue.AsType<string>)));
+  end
+  else
+    Result := TJSONString.Create(AValue.AsString);
+
+  codesite.Send(result.ToJSON);
 end;
 
 function TNeonSerializerJSON.WriteVariant(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1428,10 +1443,17 @@ begin
 
   if AParam.RttiType.Handle = System.TypeInfo(TDate) then
     Result := TValue.From<TDate>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, True))
-  else if AParam.RttiType.Handle = System.TypeInfo(TTime) then
+  else
+  if AParam.RttiType.Handle = System.TypeInfo(TTime) then
     Result := TValue.From<TTime>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, True))
-  else if AParam.RttiType.Handle = System.TypeInfo(TDateTime) then
-    Result := TValue.From<TDateTime>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, FConfig.UseUTCDate))
+  else
+  if AParam.RttiType.Handle = System.TypeInfo(TDateTime) then
+  begin
+    if(AParam.JSONValue is TJSONObject) and (TJSONObject(AParam.JSONValue).Pairs[0].JsonString.Value = '$date') then
+      Result := TValue.From<TDateTime>(TJSONUtils.JSONToDate(TJSONObject(AParam.JSONValue).Pairs[0].JsonValue.Value, FConfig.UseUTCDate))
+    else
+      Result := TValue.From<TDateTime>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, FConfig.UseUTCDate))
+  end
   else
   begin
     if AParam.JSONValue is TJSONNumber then
@@ -1558,6 +1580,8 @@ begin
 
   LJSONObject := AParam.JSONValue as TJSONObject;
 
+  codesite.send(LJSONObject.tojson);
+
   if (AParam.RttiType.TypeKind = tkClass) or (AParam.RttiType.TypeKind = tkInterface) then
     ReadMembers(AParam.RttiType, LPData, LJSONObject);
 end;
@@ -1640,22 +1664,30 @@ end;
 
 function TNeonDeserializerJSON.ReadString(const AParam: TNeonDeserializerParam): TValue;
 begin
-  case AParam.RttiType.TypeKind of
-    // AnsiString
-    tkLString: Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
-
-    //WideString
-    tkWString: Result := TValue.From<WideString>(AParam.JSONValue.Value);
-
-    //UnicodeString
-    tkUString: Result := TValue.From<string>(AParam.JSONValue.Value);
-
-    //ShortString
-    tkString:  Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
-
-  // Future string types treated as unicode strings
+  if(AParam.JSONValue is TJSONObject) then
+  begin
+    if (TJSONObject(AParam.JSONValue).Pairs[0].JsonString.Value = '$oid') then
+      Result := TValue.From<string>(TJSONObject(AParam.JSONValue).Pairs[0].JsonValue.Value)
+  end
   else
-    Result := AParam.JSONValue.Value;
+  begin
+    case AParam.RttiType.TypeKind of
+      // AnsiString
+      tkLString: Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
+
+      //WideString
+      tkWString: Result := TValue.From<WideString>(AParam.JSONValue.Value);
+
+      //UnicodeString
+      tkUString: Result := TValue.From<string>(AParam.JSONValue.Value);
+
+      //ShortString
+      tkString:  Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
+
+    // Future string types treated as unicode strings
+    else
+      Result := AParam.JSONValue.Value;
+    end;
   end;
 end;
 
