@@ -63,7 +63,7 @@ type
     /// <summary>
     ///   Method to write value from a custom serializer
     /// </summary>
-    function WriteDataMember(const AValue: TValue): TJSONValue;
+    function WriteDataMember(const AValue: TValue; ACustomProcess: Boolean = True): TJSONValue;
 
     /// <summary>
     ///   Writer for members of objects and records. In a custom serializer can
@@ -83,7 +83,7 @@ type
     ///   Method to convert a TJSONValue into a TValue (from a custom
     ///   serializer)
     /// </summary>
-    function ReadDataMember(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue): TValue;
+    function ReadDataMember(AJSONValue: TJSONValue; AType: TRttiType; const AData: TValue; ACustomProcess: Boolean = True): TValue;
 
     /// <summary>
     ///   Reader for members of objects and record. In a custom serializer can

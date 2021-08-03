@@ -45,13 +45,13 @@ type
     actSerDictionary: TAction;
     actDesClassSimple: TAction;
     actDesClassComplex: TAction;
-    actDelClassFilter: TAction;
+    actDesClassFilter: TAction;
     actDesGenericList: TAction;
     actDesGenericObjectList: TAction;
     actDesDictionary: TAction;
     actDesStreamable: TAction;
     actDesStreamableProp: TAction;
-    procedure actDelClassFilterExecute(Sender: TObject);
+    procedure actDesClassFilterExecute(Sender: TObject);
     procedure actDesClassComplexExecute(Sender: TObject);
     procedure actDesClassSimpleExecute(Sender: TObject);
     procedure actDesDictionaryExecute(Sender: TObject);
@@ -83,7 +83,7 @@ uses
 
 {$R *.dfm}
 
-procedure TfrmSerializationComplex.actDelClassFilterExecute(Sender: TObject);
+procedure TfrmSerializationComplex.actDesClassFilterExecute(Sender: TObject);
 var
   LObj: TFilterClass;
 begin

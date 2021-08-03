@@ -6,6 +6,27 @@ inherited frmSerializationSchema: TfrmSerializationSchema
     inherited catSerialize: TCategoryButtons
       Categories = <
         item
+          Caption = 'Attributes'
+          Color = 7928316
+          Collapsed = False
+          Items = <
+            item
+              Action = actSerAttrUnwrapped
+            end>
+        end
+        item
+          Caption = 'Misc'
+          Color = 16771839
+          Collapsed = False
+          Items = <
+            item
+              Action = actSerMiscTValue
+            end
+            item
+              Action = actSerMiscTValueDict
+            end>
+        end
+        item
           Caption = 'JSON Schema'
           Color = 13026810
           Collapsed = False
@@ -13,22 +34,7 @@ inherited frmSerializationSchema: TfrmSerializationSchema
             item
               Action = actSerJSONSchema
             end>
-        end
-        item
-          Caption = 'Attributes'
-          Color = 7928316
-          Collapsed = False
-          Items = <
-            item
-              Action = actSerAttrUnwrapped
-            end
-            item
-            end
-            item
-            end>
         end>
-      ExplicitLeft = -6
-      ExplicitTop = 17
     end
   end
   inherited pnlRight: TPanel
@@ -44,17 +50,25 @@ inherited frmSerializationSchema: TfrmSerializationSchema
           Items = <
             item
               Action = actDesAttrUnwrapped
+            end>
+        end
+        item
+          Caption = 'Misc'
+          Color = 16771839
+          Collapsed = False
+          Items = <
+            item
+              Action = actDesMiscTValue
             end
             item
-            end
-            item
+              Action = actDesMiscTValueDict
             end>
         end>
     end
   end
   inherited imlMain: TImageList
     Bitmap = {
-      494C010102000800280010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
+      494C010102000800380010001000FFFFFFFFFF10FFFFFFFFFFFFFFFF424D3600
       0000000000003600000028000000400000001000000001002000000000000010
       0000000000000000000000000000000000000000000000000000000000000000
       0000000000000000000000000000000000000000000000000000000000000000
@@ -208,6 +222,26 @@ inherited frmSerializationSchema: TfrmSerializationSchema
       Caption = 'Unwrapped Attribute'
       ImageIndex = 1
       OnExecute = actDesAttrUnwrappedExecute
+    end
+    object actSerMiscTValueDict: TAction
+      Caption = 'TValue Dictionary'
+      ImageIndex = 0
+      OnExecute = actSerMiscTValueDictExecute
+    end
+    object actDesMiscTValueDict: TAction
+      Caption = 'TValue Dictionary'
+      ImageIndex = 1
+      OnExecute = actDesMiscTValueDictExecute
+    end
+    object actSerMiscTValue: TAction
+      Caption = 'TValue'
+      ImageIndex = 0
+      OnExecute = actSerMiscTValueExecute
+    end
+    object actDesMiscTValue: TAction
+      Caption = 'TValue'
+      ImageIndex = 1
+      OnExecute = actDesMiscTValueExecute
     end
   end
 end

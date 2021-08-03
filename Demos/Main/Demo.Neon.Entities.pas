@@ -26,8 +26,8 @@ interface
 {$I Neon.inc}
 
 uses
-  System.SysUtils, System.Classes, System.Contnrs, System.Generics.Collections,
-  System.Math, System.Math.Vectors, System.Types, system.JSON, Vcl.Graphics,
+  System.SysUtils, System.Classes, System.Generics.Collections, System.Rtti,
+  System.Math, System.Math.Vectors, System.Types, System.JSON, Vcl.Graphics,
 
   Neon.Core.Types,
   Neon.Core.Nullables,
@@ -466,6 +466,9 @@ type
     property Prop3: Variant read FProp3 write FProp3;
     property Prop4: Variant read FProp4 write FProp4;
     property Prop5: Variant read FProp5 write FProp5;
+  end;
+
+  TExtension = class(TDictionary<string, TValue>)
   end;
 
 

@@ -21,9 +21,17 @@ type
     actSerJSONSchema: TAction;
     actSerAttrUnwrapped: TAction;
     actDesAttrUnwrapped: TAction;
+    actSerMiscTValueDict: TAction;
+    actSerMiscTValue: TAction;
+    actDesMiscTValue: TAction;
+    actDesMiscTValueDict: TAction;
     procedure actDesAttrUnwrappedExecute(Sender: TObject);
+    procedure actDesMiscTValueDictExecute(Sender: TObject);
+    procedure actDesMiscTValueExecute(Sender: TObject);
     procedure actSerAttrUnwrappedExecute(Sender: TObject);
     procedure actSerJSONSchemaExecute(Sender: TObject);
+    procedure actSerMiscTValueDictExecute(Sender: TObject);
+    procedure actSerMiscTValueExecute(Sender: TObject);
   private
     function BuildConfig: INeonConfiguration;
   public
@@ -53,6 +61,27 @@ begin
   end;
 end;
 
+procedure TfrmSerializationSchema.actDesMiscTValueDictExecute(Sender: TObject);
+var
+  LDict: TExtension;
+begin
+  LDict := TExtension.Create;
+  try
+    DeserializeObject(LDict, memoSerialize.Lines, BuildConfig);
+    SerializeObject(LDict, memoDeserialize.Lines, BuildConfig);
+  finally
+    LDict.Free;
+  end;
+end;
+
+procedure TfrmSerializationSchema.actDesMiscTValueExecute(Sender: TObject);
+var
+  LValue: TValue;
+begin
+  LValue := TValue.Empty;
+  DeserializeSimple<TValue>(LValue);
+end;
+
 procedure TfrmSerializationSchema.actSerAttrUnwrappedExecute(Sender: TObject);
 var
   LObj: TUnwrappedClass;
@@ -75,6 +104,32 @@ begin
   finally
     LJSON.Free;
   end;
+end;
+
+procedure TfrmSerializationSchema.actSerMiscTValueDictExecute(Sender: TObject);
+var
+  LExt: TExtension;
+begin
+  LExt := TExtension.Create();
+  try
+    LExt.Add('first', 'string value');
+    LExt.Add('second', 123);
+    LExt.Add('third', True);
+    SerializeObject(LExt, memoSerialize.Lines, BuildConfig);
+  finally
+    LExt.Free;
+  end;
+end;
+
+procedure TfrmSerializationSchema.actSerMiscTValueExecute(Sender: TObject);
+var
+  LValue: TValue;
+begin
+  LValue := 42;
+
+  //SerializeSimple(10);
+  SerializeSimple(LValue);
+  //SerializeSimple(TValue.From<TValue>(LValue));
 end;
 
 function TfrmSerializationSchema.BuildConfig: INeonConfiguration;

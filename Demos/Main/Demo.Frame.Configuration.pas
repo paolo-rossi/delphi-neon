@@ -158,6 +158,7 @@ begin
   ARegistry.RegisterSerializer(TGUIDSerializer);
   ARegistry.RegisterSerializer(TStreamSerializer);
   ARegistry.RegisterSerializer(TJSONValueSerializer);
+  ARegistry.RegisterSerializer(TTValueSerializer);
   //DB serializers
   ARegistry.RegisterSerializer(TDataSetSerializer);
   //VCL serializers

@@ -59,6 +59,15 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  TTValueSerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
 procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 
 implementation
@@ -232,6 +241,54 @@ begin
     end;
 
   Exit(LOriginalJSON.Clone as TJSONValue);
+end;
+
+{ TTValueSerializer }
+
+class function TTValueSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := AType = GetTargetInfo;
+end;
+
+function TTValueSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
+  ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
+var
+  LType: TRttiType;
+  LValue: TValue;
+begin
+  LValue := TValue.Empty;
+
+  if AValue is TJSONNumber then
+  begin
+    LType := TRttiUtils.Context.GetType(TypeInfo(Double));
+    LValue := AContext.ReadDataMember(AValue, LType, AData, False);
+  end
+  else if AValue is TJSONString then
+  begin
+    LType := TRttiUtils.Context.GetType(TypeInfo(string));
+    LValue := AContext.ReadDataMember(AValue, LType, AData, False);
+  end
+  else if AValue is TJSONBool then
+  begin
+    LType := TRttiUtils.Context.GetType(TypeInfo(Boolean));
+    LValue := AContext.ReadDataMember(AValue, LType, AData, False);
+  end;
+
+  Result := LValue;
+end;
+
+class function TTValueSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := TypeInfo(TValue);
+end;
+
+function TTValueSerializer.Serialize(const AValue: TValue;
+  ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+begin
+  if AValue.Kind = tkRecord then
+    Result := AContext.WriteDataMember(AValue.AsType<TValue>, False)
+  else
+    Result := nil;
 end;
 
 end.
