@@ -1604,8 +1604,10 @@ begin
     // AnsiString
     tkLString: Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
 
+    {$IFDEF WINDOWS}
     //WideString
     tkWString: Result := TValue.From<WideString>(AParam.JSONValue.Value);
+    {$ENDIF}
 
     //UnicodeString
     tkUString: Result := TValue.From<string>(AParam.JSONValue.Value);
