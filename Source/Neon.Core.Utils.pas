@@ -141,134 +141,27 @@ type
   end;
 
   TDataSetUtils = class
-  private
-    class function RecordToXML(const ADataSet: TDataSet; const ARootPath: string; AUseUTCDate: Boolean): string; static;
-    class function RecordToCSV(const ADataSet: TDataSet; AUseUTCDate: Boolean): string; static;
   public
     class function RecordToJSONSchema(const ADataSet: TDataSet; AUseUTCDate: Boolean): TJSONObject; static;
-
 
     class function FieldToJSONValue(const AField: TField; AUseUTCDate: Boolean): TJSONValue; static;
     class function RecordToJSONObject(const ADataSet: TDataSet; AUseUTCDate: Boolean): TJSONObject; static;
     class function DataSetToJSONArray(const ADataSet: TDataSet; AUseUTCDate: Boolean): TJSONArray; overload; static;
     class function DataSetToJSONArray(const ADataSet: TDataSet; const AAcceptFunc: TFunc<Boolean>; AUseUTCDate: Boolean): TJSONArray; overload; static;
 
-    class function DataSetToXML(const ADataSet: TDataSet; AUseUTCDate: Boolean): string; overload; static;
-    class function DataSetToXML(const ADataSet: TDataSet; const AAcceptFunc: TFunc<Boolean>; AUseUTCDate: Boolean): string; overload; static;
-
     class procedure JSONToRecord(AJSONObject: TJSONObject; ADataSet: TDataSet; AUseUTCDate: Boolean); static;
     class procedure JSONToDataSet(AJSONValue: TJSONValue; ADataSet: TDataSet; AUseUTCDate: Boolean); static;
     class procedure JSONObjectToDataSet(AJSONValue: TJSONValue; ADataSet: TDataSet; AUseUTCDate: Boolean); static;
 
-    class function DataSetToCSV(const ADataSet: TDataSet; AUseUTCDate: Boolean): string; static;
-
-    class function DatasetMetadataToJSONObject(const ADataSet: TDataSet; AUseUTCDate: Boolean): TJSONObject; static;
-
     class function BlobFieldToBase64(ABlobField: TBlobField): string;
     class procedure Base64ToBlobField(const ABase64: string; ABlobField: TBlobField);
   end;
-
-function ExecuteMethod(const AInstance: TValue; const AMethodName: string; const AArguments: array of TValue;
-  const ABeforeExecuteProc: TProc{ = nil}; const AAfterExecuteProc: TProc<TValue>{ = nil}): Boolean; overload;
-
-function ExecuteMethod(const AInstance: TValue; AMethod: TRttiMethod; const AArguments: array of TValue;
-  const ABeforeExecuteProc: TProc{ = nil}; const AAfterExecuteProc: TProc<TValue>{ = nil}): Boolean; overload;
-
-function ReadPropertyValue(AInstance: TObject; const APropertyName: string): TValue;
-
-function TValueToJSONObject(const AName: string; const AValue: TValue): TJSONObject; overload;
-function TValueToJSONObject(AObject: TJSONObject; const AName: string; const AValue: TValue): TJSONObject; overload;
-
 
 implementation
 
 uses
   System.StrUtils, System.DateUtils,
   Neon.Core.Types;
-
-type
-  TJSONFieldType = (NestedObject, NestedArray, SimpleValue);
-
-function TValueToJSONObject(AObject: TJSONObject; const AName: string; const AValue: TValue): TJSONObject;
-begin
-  Result := AObject;
-
-  if (AValue.Kind in [tkString])  then
-    Result.AddPair(AName, AValue.AsString)
-
-  else if (AValue.Kind in [tkInteger, tkInt64]) then
-    Result.AddPair(AName, TJSONNumber.Create(AValue.AsOrdinal))
-
-  else if (AValue.Kind in [tkFloat]) then
-    Result.AddPair(AName, TJSONNumber.Create(AValue.AsExtended))
-
-  else if (AValue.IsType<Boolean>) then
-    Result.AddPair(AName, TJSONUtils.BooleanToTJSON(AValue.AsType<Boolean>))
-
-  else if (AValue.IsType<TDateTime>) then
-    Result.AddPair(AName, TJSONUtils.DateToJSON(AValue.AsType<TDateTime>))
-  else if (AValue.IsType<TDate>) then
-    Result.AddPair(AName, TJSONUtils.DateToJSON(AValue.AsType<TDate>))
-  else if (AValue.IsType<TTime>) then
-    Result.AddPair(AName, TJSONUtils.DateToJSON(AValue.AsType<TTime>))
-
-  else
-    Result.AddPair(AName, AValue.ToString);
-end;
-
-function TValueToJSONObject(const AName: string; const AValue: TValue): TJSONObject;
-begin
-  Result := TValueToJSONObject(TJSONObject.Create(), AName, AValue);
-end;
-
-function ReadPropertyValue(AInstance: TObject; const APropertyName: string): TValue;
-var
-  LContext: TRttiContext;
-  LType: TRttiType;
-  LProperty: TRttiProperty;
-begin
-  Result := TValue.Empty;
-  LType := LContext.GetType(AInstance.ClassType);
-  if Assigned(LType) then
-  begin
-    LProperty := LType.GetProperty(APropertyName);
-    if Assigned(LProperty) then
-      Result := LProperty.GetValue(AInstance);
-  end;
-end;
-
-function ExecuteMethod(const AInstance: TValue; AMethod: TRttiMethod;
-  const AArguments: array of TValue; const ABeforeExecuteProc: TProc{ = nil};
-  const AAfterExecuteProc: TProc<TValue>{ = nil}): Boolean;
-var
-  LResult: TValue;
-begin
-  if Assigned(ABeforeExecuteProc) then
-    ABeforeExecuteProc();
-  LResult := AMethod.Invoke(AInstance, AArguments);
-  Result := True;
-  if Assigned(AAfterExecuteProc) then
-    AAfterExecuteProc(LResult);
-end;
-
-function ExecuteMethod(const AInstance: TValue; const AMethodName: string;
-  const AArguments: array of TValue; const ABeforeExecuteProc: TProc{ = nil};
-  const AAfterExecuteProc: TProc<TValue>{ = nil}): Boolean;
-var
-  LContext: TRttiContext;
-  LType: TRttiType;
-  LMethod: TRttiMethod;
-begin
-  Result := False;
-
-  LType := LContext.GetType(AInstance.TypeInfo);
-  if Assigned(LType) then
-  begin
-    LMethod := LType.GetMethod(AMethodName);
-    if Assigned(LMethod) then
-      Result := ExecuteMethod(AInstance, LMethod, AArguments, ABeforeExecuteProc, AAfterExecuteProc);
-  end;
-end;
 
 class function TRttiUtils.ClassDistanceFromRoot(AClass: TClass): Integer;
 var
@@ -908,20 +801,6 @@ begin
 {$ENDIF}
 end;
 
-class function TDataSetUtils.RecordToCSV(const ADataSet: TDataSet; AUseUTCDate: Boolean): string;
-var
-  LField: TField;
-begin
-  Result := '';
-  for LField in ADataSet.Fields do
-  begin
-    { TODO -opaolo -c : check for field type! 02/09/2021 14:53:09 }
-
-    Result := Result + LField.AsString + ',';
-  end;
-  Result := Result.TrimRight([',']);
-end;
-
 class function TDataSetUtils.RecordToJSONObject(const ADataSet: TDataSet; AUseUTCDate: Boolean): TJSONObject;
 var
   LField: TField;
@@ -1096,51 +975,9 @@ begin
   end;
 end;
 
-class function TDataSetUtils.RecordToXML(const ADataSet: TDataSet; const ARootPath: string; AUseUTCDate: Boolean): string;
-var
-  LField: TField;
-begin
-  Result := '';
-  for LField in ADataSet.Fields do
-  begin
-    Result := Result
-      + Format('<%s>%s</%s>', [LField.FieldName, LField.AsString, LField.FieldName]);
-  end;
-end;
-
 class function TDataSetUtils.DataSetToJSONArray(const ADataSet: TDataSet; AUseUTCDate: Boolean): TJSONArray;
 begin
   Result := DataSetToJSONArray(ADataSet, nil, AUseUTCDate);
-end;
-
-class function TDataSetUtils.DataSetToCSV(const ADataSet: TDataSet; AUseUTCDate: Boolean): string;
-var
-  LBookmark: TBookmark;
-begin
-  Result := '';
-  if not Assigned(ADataSet) then
-    Exit;
-
-  if not ADataSet.Active then
-    ADataSet.Open;
-
-  ADataSet.DisableControls;
-  try
-    LBookmark := ADataSet.Bookmark;
-    try
-      ADataSet.First;
-      while not ADataSet.Eof do
-      try
-        Result := Result + TDataSetUtils.RecordToCSV(ADataSet, AUseUTCDate) + sLineBreak;
-      finally
-        ADataSet.Next;
-      end;
-    finally
-      ADataSet.GotoBookmark(LBookmark);
-    end;
-  finally
-    ADataSet.EnableControls;
-  end;
 end;
 
 class function TDataSetUtils.DataSetToJSONArray(const ADataSet: TDataSet; const AAcceptFunc: TFunc<Boolean>; AUseUTCDate: Boolean): TJSONArray;
@@ -1163,42 +1000,6 @@ begin
       try
         if (not Assigned(AAcceptFunc)) or (AAcceptFunc()) then
           Result.AddElement(RecordToJSONObject(ADataSet, AUseUTCDate));
-      finally
-        ADataSet.Next;
-      end;
-    finally
-      ADataSet.GotoBookmark(LBookmark);
-    end;
-  finally
-    ADataSet.EnableControls;
-  end;
-end;
-
-class function TDataSetUtils.DataSetToXML(const ADataSet: TDataSet; AUseUTCDate: Boolean): string;
-begin
-  Result := DataSetToXML(ADataSet, nil, AUseUTCDate);
-end;
-
-class function TDataSetUtils.DataSetToXML(const ADataSet: TDataSet; const AAcceptFunc: TFunc<Boolean>; AUseUTCDate: Boolean): string;
-var
-  LBookmark: TBookmark;
-begin
-  Result := '';
-  if not Assigned(ADataSet) then
-    Exit;
-
-  if not ADataSet.Active then
-    ADataSet.Open;
-
-  ADataSet.DisableControls;
-  try
-    LBookmark := ADataSet.Bookmark;
-    try
-      ADataSet.First;
-      while not ADataSet.Eof do
-      try
-        if (not Assigned(AAcceptFunc)) or (AAcceptFunc()) then
-          Result := Result + '<row>' + RecordToXML(ADataSet, '', AUseUTCDate) + '</row>';
       finally
         ADataSet.Next;
       end;
@@ -1416,19 +1217,6 @@ begin
   finally
     LBlobStream.Free;
   end;
-end;
-
-class function TDataSetUtils.DatasetMetadataToJSONObject(const ADataSet: TDataSet; AUseUTCDate: Boolean): TJSONObject;
-  procedure AddPropertyValue(APropertyName: string);
-  begin
-    TValueToJSONObject(Result, APropertyName, ReadPropertyValue(ADataSet, APropertyName));
-  end;
-begin
-  Result := TJSONObject.Create;
-  AddPropertyValue('Eof');
-  AddPropertyValue('Bof');
-  AddPropertyValue('RecNo');
-  AddPropertyValue('Name');
 end;
 
 end.
