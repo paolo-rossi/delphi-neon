@@ -445,7 +445,6 @@ var
   LTypeData: PTypeData;
   LIndex: Integer;
   LEnumArray: TJSONArray;
-  LEnumObject: TJSONObject;
 begin
   LTypeData := GetTypeData(AType.Handle);
 
@@ -453,11 +452,9 @@ begin
   for LIndex := LTypeData.MinValue to LTypeData.MaxValue do
     LEnumArray.Add(TTypeInfoUtils.EnumToString(AType.Handle, LIndex, ANeonObject));
 
-  LEnumObject := TJSONObject.Create
-    .AddPair('enum', LEnumArray);
-
   Result := TJSONObject.Create
-    .AddPair('type', LEnumObject);
+    .AddPair('type', 'string')
+    .AddPair('enum', LEnumArray);
 end;
 
 function TNeonSchemaGenerator.WriteFloat(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
