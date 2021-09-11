@@ -1,7 +1,7 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{73418B2F-CC19-4EFB-AA13-DDD467DEF533}</ProjectGuid>
-        <MainSource>NeonRunTime_crossPlatform.dpk</MainSource>
+        <MainSource>NeonCrossPlatform.dpk</MainSource>
         <ProjectVersion>19.0</ProjectVersion>
         <FrameworkType>None</FrameworkType>
         <Base>True</Base>
@@ -81,7 +81,7 @@
         <DllSuffix>270</DllSuffix>
         <DCC_Description>Neon Serialization Library</DCC_Description>
         <DCC_UnitSearchPath>..\..\Source;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-        <SanitizedProjectName>NeonRunTime_crossPlatform</SanitizedProjectName>
+        <SanitizedProjectName>NeonCrossPlatform</SanitizedProjectName>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
         <DCC_CBuilderOutput>None</DCC_CBuilderOutput>
@@ -175,7 +175,7 @@
                     <Excluded_Packages Name="$(BDSBIN)\dclofficexp260.bpl">Microsoft Office XP Sample Automation Server Wrapper Components</Excluded_Packages>
                 </Excluded_Packages>
                 <Source>
-                    <Source Name="MainSource">NeonRunTime_crossPlatform.dpk</Source>
+                    <Source Name="MainSource">NeonCrossPlatform.dpk</Source>
                 </Source>
             </Delphi.Personality>
             <Deployment Version="3">
@@ -204,9 +204,9 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl\Win64\NeonRunTime_crossPlatform260.bpl" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl\Win64\NeonCrossPlatform260.bpl" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win64">
-                        <RemoteName>NeonRunTime_crossPlatform.bpl</RemoteName>
+                        <RemoteName>NeonCrossPlatform.bpl</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

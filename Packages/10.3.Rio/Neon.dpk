@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2019 Paolo Rossi                                         }
+{  Copyright (c) 2018-2021 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -19,7 +19,7 @@
 {  limitations under the License.                                              }
 {                                                                              }
 {******************************************************************************}
-package NeonRunTime;
+package Neon;
 
 {$R *.res}
 {$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
