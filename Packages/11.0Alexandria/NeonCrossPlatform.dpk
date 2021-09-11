@@ -47,7 +47,7 @@ package NeonCrossPlatform;
 {$DEFINE DEBUG}
 {$ENDIF IMPLICITBUILDING}
 {$DESCRIPTION 'Neon Serialization Library'}
-{$LIBSUFFIX '270'}
+{$LIBSUFFIX '280'}
 {$RUNONLY}
 {$IMPLICITBUILD ON}
 
