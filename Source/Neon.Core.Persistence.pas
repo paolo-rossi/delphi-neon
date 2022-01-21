@@ -128,6 +128,7 @@ type
   private
     FRegistryClass: SerializerClassRegistry;
     FRegistryCache: SerializerCacheRegistry;
+    FRegistryCacheLock: TCriticalSection;
     function GetCount: Integer;
 
     function InternalGetSerializer(ATypeInfo: PTypeInfo): TCustomSerializer;
@@ -1004,31 +1005,50 @@ begin
   for LInfo in ARegistry.FRegistryClass do
     FRegistryClass.Add(LInfo);
 
-  for LPair in ARegistry.FRegistryCache do
-    FRegistryCache.Add(LPair.Key, LPair.Value);
+  ARegistry.FRegistryCacheLock.Enter;
+  FRegistryCacheLock.Enter;
+  try
+    for LPair in ARegistry.FRegistryCache do
+      FRegistryCache.Add(LPair.Key, LPair.Value);
+  finally
+    FRegistryCacheLock.Leave;
+    ARegistry.FRegistryCacheLock.Leave
+  end;
 end;
 
 procedure TNeonSerializerRegistry.Clear;
 begin
   FRegistryClass.Clear;
-  FRegistryCache.Clear;
+  FRegistryCacheLock.Enter;
+  try
+    FRegistryCache.Clear;
+  finally
+    FRegistryCacheLock.Leave
+  end;
 end;
 
 procedure TNeonSerializerRegistry.ClearCache;
 begin
-  FRegistryCache.Clear;
+  FRegistryCacheLock.Enter;
+  try
+    FRegistryCache.Clear;
+  finally
+    FRegistryCacheLock.Leave
+  end;
 end;
 
 constructor TNeonSerializerRegistry.Create;
 begin
   FRegistryClass := SerializerClassRegistry.Create();
   FRegistryCache := SerializerCacheRegistry.Create([doOwnsValues]);
+  FRegistryCacheLock := TCriticalSection.Create;
 end;
 
 destructor TNeonSerializerRegistry.Destroy;
 begin
   FRegistryClass.Free;
   FRegistryCache.Free;
+  FRegistryCacheLock.Free;
   inherited;
 end;
 
@@ -1067,8 +1087,13 @@ begin
   LClass := nil;
   LDistanceMax := 0;
 
-  if FRegistryCache.TryGetValue(ATypeInfo, Result) then
-    Exit(Result);
+  FRegistryCacheLock.Enter;
+  try
+    if FRegistryCache.TryGetValue(ATypeInfo, Result) then
+      Exit(Result);
+  finally
+    FRegistryCacheLock.Leave
+  end;
 
   for LInfo in FRegistryClass do
   begin
@@ -1092,8 +1117,16 @@ begin
 
   if Assigned(LClass) then
   begin
-    Result := LClass.Create;
-    FRegistryCache.Add(ATypeInfo, Result);
+    FRegistryCacheLock.Enter;
+    try
+      if FRegistryCache.TryGetValue(ATypeInfo, Result) then
+        Exit(Result);
+
+      Result := LClass.Create;
+      FRegistryCache.Add(ATypeInfo, Result);
+    finally
+      FRegistryCacheLock.Leave
+    end;
   end;
 end;
 
