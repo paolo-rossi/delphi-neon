@@ -247,12 +247,12 @@ type
     /// <summary>
     ///   Reader for static arrays
     /// </summary>
-    function ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+    function ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
 
     /// <summary>
     ///   Reader for dynamic arrays
     /// </summary>
-    function ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+    function ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
 
     /// <summary>
     ///   Reader for a standard TObject (descendants)  type (no list, stream or streamable)
@@ -1124,12 +1124,13 @@ begin
   FOperation := TNeonOperation.Deserialize;
 end;
 
-function TNeonDeserializerJSON.ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
 var
   LIndex: NativeInt;
   LItemValue: TValue;
   LJSONArray: TJSONArray;
   LParam: TNeonDeserializerParam;
+  LCustom: TCustomSerializer;
 begin
   // TValue record copy (but the TValue only copy the reference to Data)
   Result := AData;
@@ -1143,19 +1144,34 @@ begin
   for LIndex := 0 to LJSONArray.Count - 1 do
   begin
     LParam.JSONValue := LJSONArray.Items[LIndex];
-    LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
-    LItemValue := ReadDataMember(LParam, Result, True);
-    Result.SetArrayElement(LIndex, LItemValue);
+    try
+      if ACustomProcess then
+      begin
+        // if there is a custom serializer - ask it to create value.
+        LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle);
+        if Assigned(LCustom) then
+        begin
+          LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self);
+          Continue;
+        end;
+      end;
+
+      LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
+      LItemValue := ReadDataMember(LParam, Result, True);
+    finally
+      Result.SetArrayElement(LIndex, LItemValue);
+    end;
   end;
 end;
 
-function TNeonDeserializerJSON.ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
 var
   LIndex: NativeInt;
   LItemValue: TValue;
   LArrayLength: NativeInt;
   LJSONArray: TJSONArray;
   LParam: TNeonDeserializerParam;
+  LCustom: TCustomSerializer;
 begin
   Result := AData;
 
@@ -1173,11 +1189,23 @@ begin
     for LIndex := 0 to LJSONArray.Count - 1 do
     begin
       LParam.JSONValue := LJSONArray.Items[LIndex];
+      try
+        if ACustomProcess then
+        begin
+          // if there is a custom serializer - ask it to create value.
+          LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle);
+          if Assigned(LCustom) then
+          begin
+            LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self);
+            Continue;
+          end;
+        end;
 
-      LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
-      LItemValue := ReadDataMember(LParam, LItemValue, True);
-
-      Result.SetArrayElement(LIndex, LItemValue);
+        LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
+        LItemValue := ReadDataMember(LParam, LItemValue, True);
+      finally
+        Result.SetArrayElement(LIndex, LItemValue);
+      end;
     end;
   finally
     LParam.NeonObject.Free;
@@ -1247,8 +1275,8 @@ begin
     tkString:      Result := ReadString(AParam);
     tkSet:         Result := ReadSet(AParam);
     tkVariant:     Result := ReadVariant(AParam);
-    tkArray:       Result := ReadArray(AParam, AData);
-    tkDynArray:    Result := ReadDynArray(AParam, AData);
+    tkArray:       Result := ReadArray(AParam, AData, ACustomProcess);
+    tkDynArray:    Result := ReadDynArray(AParam, AData, ACustomProcess);
 
     // Complex types
     tkClass:
