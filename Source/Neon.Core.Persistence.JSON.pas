@@ -1140,27 +1140,24 @@ begin
   LJSONArray := AParam.JSONValue as TJSONArray;
   LParam.RttiType := (AParam.RttiType as TRttiArrayType).ElementType;
 
+  if ACustomProcess then
+    LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle)
+  else
+    LCustom := nil;
+
   // Check static array bounds
   for LIndex := 0 to LJSONArray.Count - 1 do
   begin
     LParam.JSONValue := LJSONArray.Items[LIndex];
-    try
-      if ACustomProcess then
-      begin
-        // if there is a custom serializer - ask it to create value.
-        LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle);
-        if Assigned(LCustom) then
-        begin
-          LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self);
-          Continue;
-        end;
-      end;
-
+    if Assigned(LCustom) then
+      LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self)
+    else
+    begin
       LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
       LItemValue := ReadDataMember(LParam, Result, True);
-    finally
-      Result.SetArrayElement(LIndex, LItemValue);
     end;
+
+    Result.SetArrayElement(LIndex, LItemValue);
   end;
 end;
 
@@ -1180,6 +1177,11 @@ begin
   LJSONArray := AParam.JSONValue as TJSONArray;
   LParam.RttiType := (AParam.RttiType as TRttiDynamicArrayType).ElementType;
   LParam.NeonObject := TNeonRttiObject.Create(LParam.RttiType, FOperation);
+  if ACustomProcess then
+    LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle)
+  else
+    LCustom := nil;
+
   try
     LParam.NeonObject.ParseAttributes;
 
@@ -1189,23 +1191,16 @@ begin
     for LIndex := 0 to LJSONArray.Count - 1 do
     begin
       LParam.JSONValue := LJSONArray.Items[LIndex];
-      try
-        if ACustomProcess then
-        begin
-          // if there is a custom serializer - ask it to create value.
-          LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle);
-          if Assigned(LCustom) then
-          begin
-            LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self);
-            Continue;
-          end;
-        end;
 
+      if Assigned(LCustom) then
+        LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self)
+      else
+      begin
         LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
         LItemValue := ReadDataMember(LParam, LItemValue, True);
-      finally
-        Result.SetArrayElement(LIndex, LItemValue);
       end;
+
+      Result.SetArrayElement(LIndex, LItemValue);
     end;
   finally
     LParam.NeonObject.Free;
