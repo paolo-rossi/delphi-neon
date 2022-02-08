@@ -43,7 +43,8 @@ type
   public
     constructor Create(const Value: T); overload;
     constructor Create(const Value: Variant); overload;
-    function Equals(const Value: Nullable<T>): Boolean;
+    function Equals(const Value: Nullable<T>): Boolean; overload;
+    function Equals(const Value: T): Boolean; overload;
     function GetValueOrDefault: T; overload;
     function GetValueOrDefault(const Default: T): T; overload;
 
@@ -57,8 +58,14 @@ type
     class operator Implicit(const Value: Pointer): Nullable<T>;
     class operator Implicit(const Value: T): Nullable<T>;
     class operator Implicit(const Value: Variant): Nullable<T>;
-    class operator Equal(const Left, Right: Nullable<T>): Boolean;
-    class operator NotEqual(const Left, Right: Nullable<T>): Boolean;
+    class operator Equal(const Left, Right: Nullable<T>): Boolean; overload;
+    class operator Equal(const Left: Nullable<T>; Right: T): Boolean; overload;
+    class operator Equal(const Left: T; Right: Nullable<T>): Boolean; overload;
+    class operator NotEqual(const Left, Right: Nullable<T>): Boolean; overload;
+    class operator NotEqual(const Left: Nullable<T>; Right: T): Boolean; overload;
+    class operator NotEqual(const Left: T; Right: Nullable<T>): Boolean; overload;
+    class operator GreaterThan(const Left: Nullable<T>; Right: T): Boolean; overload;
+    class operator LessThan(const Left: Nullable<T>; Right: T): Boolean; overload;
   end;
 
   NullString = Nullable<string>;
@@ -67,6 +74,7 @@ type
   NullInt64 = Nullable<Int64>;
   NullDouble = Nullable<Double>;
   NullDateTime = Nullable<TDateTime>;
+  NullCurrency = Nullable<Currency>;
 
 implementation
 
@@ -97,6 +105,21 @@ begin
   FHasValue := '';
 end;
 
+class operator Nullable<T>.Equal(const Left: Nullable<T>; Right: T): Boolean;
+begin
+  Result := Left.Equals(Right);
+end;
+
+class operator Nullable<T>.Equal(const Left: T; Right: Nullable<T>): Boolean;
+begin
+  Result := Right.Equals(Left);
+end;
+
+function Nullable<T>.Equals(const Value: T): Boolean;
+begin
+  Result := HasValue and TEqualityComparer<T>.Default.Equals(Self.Value, Value)
+end;
+
 function Nullable<T>.Equals(const Value: Nullable<T>): Boolean;
 begin
   if HasValue and Value.HasValue then
@@ -113,6 +136,11 @@ end;
 function Nullable<T>.GetValueType: PTypeInfo;
 begin
   Result := TypeInfo(T);
+end;
+
+class operator Nullable<T>.GreaterThan(const Left: Nullable<T>; Right: T): Boolean;
+begin
+  Result := Left.HasValue and (TComparer<T>.Default.Compare(Left.Value, Right) > 0);
 end;
 
 function Nullable<T>.GetValue: T;
@@ -169,6 +197,21 @@ end;
 function Nullable<T>.IsNull: Boolean;
 begin
   Result := FHasValue = '';
+end;
+
+class operator Nullable<T>.LessThan(const Left: Nullable<T>; Right: T): Boolean;
+begin
+  Result := Left.HasValue and (TComparer<T>.Default.Compare(Left.Value, Right) < 0);
+end;
+
+class operator Nullable<T>.NotEqual(const Left: Nullable<T>; Right: T): Boolean;
+begin
+  Result := not Left.Equals(Right);
+end;
+
+class operator Nullable<T>.NotEqual(const Left: T; Right: Nullable<T>): Boolean;
+begin
+  Result := not Right.Equals(Left);
 end;
 
 class operator Nullable<T>.Equal(const Left, Right: Nullable<T>): Boolean;
