@@ -1472,6 +1472,13 @@ begin
           Continue;
 
         try
+          if (LNeonMember.RttiType.IsInstance) and
+              (LNeonMember.GetValue.AsObject = nil) then
+          begin
+            LNeonMember.SetValue(TRttiUtils.CreateNewValue(LNeonMember.RttiType));
+
+          end;
+
           LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue, True);
           LNeonMember.SetValue(LMemberValue);
         except
