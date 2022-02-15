@@ -1450,6 +1450,7 @@ var
   LNeonMember: TNeonRttiMember;
   LMemberValue: TValue;
   LParam: TNeonDeserializerParam;
+  LNewValue: TValue;
 begin
   LMembers := GetNeonMembers(AInstance, AType);
   LMembers.FilterDeserialize;
@@ -1475,7 +1476,8 @@ begin
           if (LNeonMember.RttiType.IsInstance) and
               (LNeonMember.GetValue.AsObject = nil) then
           begin
-            LNeonMember.SetValue(TRttiUtils.CreateNewValue(LNeonMember.RttiType));
+            LNewValue := TRttiUtils.CreateNewValue(LNeonMember.RttiType);
+            LNeonMember.SetValue(LNewValue);
 
           end;
 
