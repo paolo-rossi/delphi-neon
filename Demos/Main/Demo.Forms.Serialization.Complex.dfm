@@ -1,6 +1,5 @@
 inherited frmSerializationComplex: TfrmSerializationComplex
   Caption = 'frmSerializationComplex'
-  PixelsPerInch = 96
   TextHeight = 13
   inherited pnlLeft: TPanel
     inherited catSerialize: TCategoryButtons

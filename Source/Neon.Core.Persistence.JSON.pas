@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018-2022 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -380,6 +380,15 @@ type
     /// </summary>
     class function ValueToJSON(const AValue: TValue; AConfig: INeonConfiguration): TJSONValue; overload;
 
+    /// <summary>
+    ///   Serializes a value based type to a string with a default configuration <br />
+    /// </summary>
+    class function ValueToJSONString(const AValue: TValue): string; overload;
+
+    /// <summary>
+    ///   Serializes a vallue based type to a string with a given configuration <br />
+    /// </summary>
+    class function ValueToJSONString(const AValue: TValue; AConfig: INeonConfiguration): string; overload;
   public
     /// <summary>
     ///   Serializes an object based type into a TTStream with a default configuration
@@ -1909,6 +1918,23 @@ begin
   end;
 end;
 
+class function TNeon.ValueToJSONString(const AValue: TValue; AConfig: INeonConfiguration): string;
+var
+  LJSON: TJSONValue;
+begin
+  LJSON := ValueToJSON(AValue, AConfig);
+  try
+    Result := Print(LJSON, AConfig.GetPrettyPrint);
+  finally
+    LJSON.Free;
+  end;
+end;
+
+class function TNeon.ValueToJSONString(const AValue: TValue): string;
+begin
+  Result := ValueToJSONString(AValue, TNeonConfiguration.Default);
+end;
+
 class procedure TNeon.ValueToStream(const AValue: TValue; AStream: TStream);
 begin
   ValueToStream(AValue, AStream, TNeonConfiguration.Default);
@@ -1961,8 +1987,7 @@ begin
   Result := JSONToObject(TRttiUtils.Context.GetType(TClass(T)), AJSON, AConfig) as T;
 end;
 
-class function TNeon.JSONToValue(ARttiType: TRttiType; AJSON: TJSONValue;
-  AConfig: INeonConfiguration): TValue;
+class function TNeon.JSONToValue(ARttiType: TRttiType; AJSON: TJSONValue; AConfig: INeonConfiguration): TValue;
 var
   LDes: TNeonDeserializerJSON;
 begin
