@@ -247,12 +247,12 @@ type
     /// <summary>
     ///   Reader for static arrays
     /// </summary>
-    function ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+    function ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
 
     /// <summary>
     ///   Reader for dynamic arrays
     /// </summary>
-    function ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+    function ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
 
     /// <summary>
     ///   Reader for a standard TObject (descendants)  type (no list, stream or streamable)
@@ -1124,12 +1124,13 @@ begin
   FOperation := TNeonOperation.Deserialize;
 end;
 
-function TNeonDeserializerJSON.ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
 var
   LIndex: NativeInt;
   LItemValue: TValue;
   LJSONArray: TJSONArray;
   LParam: TNeonDeserializerParam;
+  LCustom: TCustomSerializer;
 begin
   // TValue record copy (but the TValue only copy the reference to Data)
   Result := AData;
@@ -1139,23 +1140,35 @@ begin
   LJSONArray := AParam.JSONValue as TJSONArray;
   LParam.RttiType := (AParam.RttiType as TRttiArrayType).ElementType;
 
+  if ACustomProcess then
+    LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle)
+  else
+    LCustom := nil;
+
   // Check static array bounds
   for LIndex := 0 to LJSONArray.Count - 1 do
   begin
     LParam.JSONValue := LJSONArray.Items[LIndex];
-    LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
-    LItemValue := ReadDataMember(LParam, Result, True);
+    if Assigned(LCustom) then
+      LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self)
+    else
+    begin
+      LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
+      LItemValue := ReadDataMember(LParam, Result, True);
+    end;
+
     Result.SetArrayElement(LIndex, LItemValue);
   end;
 end;
 
-function TNeonDeserializerJSON.ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
 var
   LIndex: NativeInt;
   LItemValue: TValue;
   LArrayLength: NativeInt;
   LJSONArray: TJSONArray;
   LParam: TNeonDeserializerParam;
+  LCustom: TCustomSerializer;
 begin
   Result := AData;
 
@@ -1164,6 +1177,11 @@ begin
   LJSONArray := AParam.JSONValue as TJSONArray;
   LParam.RttiType := (AParam.RttiType as TRttiDynamicArrayType).ElementType;
   LParam.NeonObject := TNeonRttiObject.Create(LParam.RttiType, FOperation);
+  if ACustomProcess then
+    LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle)
+  else
+    LCustom := nil;
+
   try
     LParam.NeonObject.ParseAttributes;
 
@@ -1174,8 +1192,13 @@ begin
     begin
       LParam.JSONValue := LJSONArray.Items[LIndex];
 
-      LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
-      LItemValue := ReadDataMember(LParam, LItemValue, True);
+      if Assigned(LCustom) then
+        LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self)
+      else
+      begin
+        LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
+        LItemValue := ReadDataMember(LParam, LItemValue, True);
+      end;
 
       Result.SetArrayElement(LIndex, LItemValue);
     end;
@@ -1247,8 +1270,8 @@ begin
     tkString:      Result := ReadString(AParam);
     tkSet:         Result := ReadSet(AParam);
     tkVariant:     Result := ReadVariant(AParam);
-    tkArray:       Result := ReadArray(AParam, AData);
-    tkDynArray:    Result := ReadDynArray(AParam, AData);
+    tkArray:       Result := ReadArray(AParam, AData, ACustomProcess);
+    tkDynArray:    Result := ReadDynArray(AParam, AData, ACustomProcess);
 
     // Complex types
     tkClass:
