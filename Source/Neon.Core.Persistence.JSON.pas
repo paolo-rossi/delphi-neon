@@ -829,6 +829,8 @@ begin
           begin
             LogError(Format('Error converting member [%s] of type [%s]: %s',
               [LNeonMember.Name, AType.Name, E.Message]));
+            if FConfig.RaiseExceptions then
+              raise;
           end;
         end;
       end;
@@ -1462,13 +1464,57 @@ end;
 
 function TNeonDeserializerJSON.ReadInteger(const AParam: TNeonDeserializerParam): TValue;
 var
-  LNumber: TJSONNumber;
+  LMin, LMax, LInt: Int64;
+  LMsg: string;
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(0);
 
-  LNumber := AParam.JSONValue as TJSONNumber;
-  Result := LNumber.AsInt;
+  LInt := (AParam.JSONValue as TJSONNumber).AsInt64;
+  LMin := 0;
+  LMax := 0;
+  case GetTypeData(AParam.RttiType.Handle)^.OrdType of
+    otSByte:
+    begin
+      LMin := Low(Int8);
+      LMax := High(Int8);
+      LMsg := 'a signed 8-bit value';
+    end;
+    otUByte:
+    begin
+      LMin := Low(UInt8);
+      LMax := High(UInt8);
+      LMsg := 'an unsigned 8-bit value';
+    end;
+    otSWord:
+    begin
+      LMin := Low(Int16);
+      LMax := High(Int16);
+      LMsg := 'a signed 16-bit value';
+    end;
+    otUWord:
+    begin
+      LMin := Low(UInt16);
+      LMax := High(UInt16);
+      LMsg := 'an unsigned 16-it value';
+    end;
+    otSLong:
+    begin
+      LMin := Low(Int32);
+      LMax := High(Int32);
+      LMsg := 'a signed 32-bit value';
+    end;
+    otULong:
+    begin
+      LMin := Low(UInt32);
+      LMax := High(UInt32);
+      LMsg := 'an unsigned 32-bit value';
+    end;
+  end;
+  if (LInt < LMin) or (LInt > LMax) then
+    raise ENeonException.CreateFmt('The value [%d] is outside the range for %s', [LInt, LMsg]);
+
+  Result := LInt;
 end;
 
 function TNeonDeserializerJSON.ReadInterface(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
@@ -1511,6 +1557,8 @@ begin
           begin
             LogError(Format('Error converting member [%s] of type [%s]: %s',
               [LNeonMember.Name, AType.Name, E.Message]));
+            if FConfig.RaiseExceptions then
+              raise;
           end;
         end;
       end;

@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018-2022 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -63,7 +63,9 @@ type
   TSetWeekDays = set of TWeekDays;
 
   TUppercase = 'A'..'Z';
+  {$WARNINGS OFF}
   TSetUppercase = set of TUppercase;
+  {$WARNINGS ON}
 
   TManagedRecord = record
     Name: string;
@@ -205,6 +207,15 @@ type
     property Text: string read FText write FText;
   end;
 
+  TExampleCMR = record
+  public
+    Info: string;
+    KeyPairs: TDictionary<string, string>;
+
+    class operator Initialize(out Dest:TExampleCMR);
+    class operator Finalize(var Dest:TExampleCMR);
+  end;
+
   TPerson = class
   private
     FAddresses: TAddresses;
@@ -216,6 +227,7 @@ type
     FOptions: TMySet;
     FSurname: string;
     FMap: TObjectDictionary<string, TNote>;
+    FCMR: TExampleCMR;
   public
     constructor Create;
     destructor Destroy; override;
@@ -226,6 +238,7 @@ type
     [NeonProperty('LastName')]
     property Surname: string read FSurname write FSurname;
 
+    property CMR: TExampleCMR read FCMR write FCMR;
     property Addresses: TAddresses read FAddresses write FAddresses;
     property DateProp: TDateTime read FDateProp write FDateProp;
     property DoubleProp: Double read FDoubleProp write FDoubleProp;
@@ -515,6 +528,8 @@ begin
   FDateProp := Now;
   FOptions := [TMyEnum.First, TMyEnum.Second, TMyEnum.Fourth];
   FMap := TObjectDictionary<string, TNote>.Create([doOwnsValues]);
+  FCMR.Info := 'Info';
+  FCMR.KeyPairs.Add('name', 'Paolo');
 end;
 
 destructor TPerson.Destroy;
@@ -802,6 +817,18 @@ begin
   Result.Age := 50;
   Result.Wrapped.First := 1234;
   Result.Wrapped.Second := Now;
+end;
+
+{ TExampleCMR }
+
+class operator TExampleCMR.Initialize(out Dest: TExampleCMR);
+begin
+  Dest.KeyPairs := TDictionary<string, string>.Create;
+end;
+
+class operator TExampleCMR.Finalize(var Dest: TExampleCMR);
+begin
+  Dest.KeyPairs.Free;
 end;
 
 initialization

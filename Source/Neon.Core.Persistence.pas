@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018-2022 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -45,10 +45,12 @@ type
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
+    function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
 
     function GetPrettyPrint: Boolean;
     function GetUseUTCDate: Boolean;
+    function GetRaiseExceptions: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
   end;
 
@@ -170,6 +172,7 @@ type
     FUseUTCDate: Boolean;
     FPrettyPrint: Boolean;
     FSerializers: TNeonSerializerRegistry;
+    FRaiseExceptions: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -185,10 +188,12 @@ type
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
+    function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
 
     function GetUseUTCDate: Boolean;
     function GetPrettyPrint: Boolean;
+    function GetRaiseExceptions: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
 
     property Members: TNeonMembersSet read FMembers write FMembers;
@@ -197,6 +202,7 @@ type
     property Visibility: TNeonVisibility read FVisibility write FVisibility;
     property IgnoreFieldPrefix: Boolean read FIgnoreFieldPrefix write FIgnoreFieldPrefix;
     property UseUTCDate: Boolean read FUseUTCDate write FUseUTCDate;
+    property RaiseExceptions: Boolean read FRaiseExceptions write FRaiseExceptions;
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
   end;
 
@@ -490,6 +496,11 @@ begin
   Result := FPrettyPrint;
 end;
 
+function TNeonConfiguration.GetRaiseExceptions: Boolean;
+begin
+  Result := FRaiseExceptions;
+end;
+
 function TNeonConfiguration.GetSerializers: TNeonSerializerRegistry;
 begin
   Result := FSerializers;
@@ -528,6 +539,12 @@ end;
 function TNeonConfiguration.SetPrettyPrint(AValue: Boolean): INeonConfiguration;
 begin
   FPrettyPrint := AValue;
+  Result := Self;
+end;
+
+function TNeonConfiguration.SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
+begin
+  FRaiseExceptions := AValue;
   Result := Self;
 end;
 
