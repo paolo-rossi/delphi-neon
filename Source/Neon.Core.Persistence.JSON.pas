@@ -72,6 +72,14 @@ type
     function WriteInteger(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
+    ///   Writer for Int64 types <br />
+    /// </summary>
+    /// <remarks>
+    ///   Delphi does not manage correctly UInt64 values in TJSONNumber
+    /// </remarks>
+    function WriteInt64(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+
+    /// <summary>
     ///   Writer for float types
     /// </summary>
     function WriteFloat(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -653,10 +661,14 @@ begin
         Result := WriteEnum(AValue, ANeonObject);
     end;
 
-    tkInteger,
-    tkInt64:
+    tkInteger:
     begin
       Result := WriteInteger(AValue, ANeonObject);
+    end;
+
+    tkInt64:
+    begin
+      Result := WriteInt64(AValue, ANeonObject);
     end;
 
     tkFloat:
@@ -764,6 +776,28 @@ begin
   end;
 
   Result := TJSONNumber.Create(AValue.AsExtended);
+end;
+
+function TNeonSerializerJSON.WriteInt64(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+var
+  LUIntStr: string;
+begin
+  case ANeonObject.NeonInclude.Value of
+    IncludeIf.NotDefault:
+    begin
+      if AValue.AsInt64 = 0 then
+        Exit(nil);
+    end;
+  end;
+
+  if AValue.TypeData^.MinInt64Value < 0 then
+    Result := TJSONNumber.Create(AValue.AsInt64)
+  else
+  begin
+    // Tries to workaround the Delphi bug on JSONNumber + UInt64
+    LUIntStr := UIntToStr(AValue.AsUInt64);
+    Result := TJSONNumber.Create(LUIntStr);
+  end;
 end;
 
 function TNeonSerializerJSON.WriteInteger(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1453,13 +1487,23 @@ end;
 
 function TNeonDeserializerJSON.ReadInt64(const AParam: TNeonDeserializerParam): TValue;
 var
-  LNumber: TJSONNumber;
+  LMin, LInt: Int64;
+  LUInt: UInt64;
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(0);
 
-  LNumber := AParam.JSONValue as TJSONNumber;
-  Result := LNumber.AsInt64
+  LMin := GetTypeData(AParam.RttiType.Handle).MinInt64Value;
+  if LMin < 0 then
+  begin
+    LInt := StrToInt64(AParam.JSONValue.Value);
+    Result := LInt;
+  end
+  else
+  begin
+    LUInt := StrToUInt64(AParam.JSONValue.Value);
+    TValue.Make<UInt64>(LUInt, Result);
+  end;
 end;
 
 function TNeonDeserializerJSON.ReadInteger(const AParam: TNeonDeserializerParam): TValue;

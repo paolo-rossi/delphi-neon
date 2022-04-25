@@ -112,7 +112,7 @@ end;
 
 procedure TfrmSerializationSimple.actDesIntegerExecute(Sender: TObject);
 begin
-  DeserializeSimple<Integer>;
+  DeserializeSimple<UInt64>;
 end;
 
 procedure TfrmSerializationSimple.actDesStringExecute(Sender: TObject);

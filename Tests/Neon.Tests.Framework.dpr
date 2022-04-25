@@ -30,9 +30,10 @@ uses
   System.SysUtils,
   {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX,
-  {$ENDIF }
+  {$ELSE}
   DUnitX.Loggers.Console,
   DUnitX.Loggers.Xml.NUnit,
+  {$ENDIF}
   DUnitX.TestFramework,
   Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule},
   Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',

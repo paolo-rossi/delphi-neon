@@ -225,9 +225,9 @@ type
     procedure InternalParseAttributes(const AAttr: TArray<TCustomAttribute>); virtual;
     procedure ProcessAttribute(AAttribute: TCustomAttribute); virtual;
 
-    function AsRttiType: TRttiType;
   public
     constructor Create(ARttiObject: TRttiObject; AOperation: TNeonOperation);
+    function AsRttiType: TRttiType;
   public
     procedure ParseAttributes; virtual;
 
@@ -946,9 +946,8 @@ end;
 
 function TNeonRttiObject.AsRttiType: TRttiType;
 begin
-  Result := nil;
-  if FRttiObject is TRttiType then
-    Result := FRttiObject as TRttiType;
+  // Trhows an exception if not (is better than returnig nil and have to check outside)
+  Result := FRttiObject as TRttiType;
 end;
 
 constructor TNeonRttiObject.Create(ARttiObject: TRttiObject; AOperation: TNeonOperation);

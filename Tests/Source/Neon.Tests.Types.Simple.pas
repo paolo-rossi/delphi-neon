@@ -45,7 +45,27 @@ type
     [TestCase('TestIntegerPos', '42,42')]
     [TestCase('TestIntegerZero', '0,0')]
     [TestCase('TestIntegerNeg', '-42,-42')]
+    [TestCase('TestIntegerSup', '2147483647,2147483647')]
+    [TestCase('TestIntegerInf', '-2147483648,-2147483648')]
     procedure TestInteger(const AValue: Integer; _Result: string);
+
+    [Test]
+    [TestCase('TestInt64Pos', '42,42')]
+    [TestCase('TestInt64Zero', '0,0')]
+    [TestCase('TestInt64Neg', '-42,-42')]
+    [TestCase('TestInt64Sup', '9223372036854775807,9223372036854775807')]
+    [TestCase('TestInt64Inf', '-9223372036854775808,-9223372036854775808')]
+    procedure TestIn64(const AValue: Int64; _Result: string);
+
+    [Test]
+    [TestCase('TestUInt64Pos', '42,42')]
+    [TestCase('TestUInt64Zero', '0,0')]
+    [TestCase('TestUInt64Int', '2147483647,2147483647')]
+    //[TestCase('TestUInt64Sup', '18446744073709551615,18446744073709551615')]
+    procedure TestUIn64(const AValue: UInt64; _Result: string);
+
+    [Test]
+    procedure TestUIn64Sup;
 
     [Test]
     [TestCase('TestByte', '42,42')]
@@ -61,7 +81,7 @@ type
     [TestCase('TestFloatPos', '123.42,123.42')]
     [TestCase('TestFloatNull', '0.0,0')]
     [TestCase('TestFloatNeg', '-123.42,-123.42')]
-    procedure TestFloat(const AValue: Double; _Result: string);
+    procedure TestDouble(const AValue: Double; _Result: string);
 
     [Test]
     [TestCase('TestBoolTrue', 'True,True')]
@@ -175,7 +195,12 @@ begin
   Assert.AreEqual(_Result, TTestUtils.SerializeValue(TValue.From<TDateTime>(AValue)));
 end;
 
-procedure TTestSimpleTypesSer.TestFloat(const AValue: Double; _Result: string);
+procedure TTestSimpleTypesSer.TestDouble(const AValue: Double; _Result: string);
+begin
+  Assert.AreEqual(_Result, TTestUtils.SerializeValue(AValue));
+end;
+
+procedure TTestSimpleTypesSer.TestIn64(const AValue: Int64; _Result: string);
 begin
   Assert.AreEqual(_Result, TTestUtils.SerializeValue(AValue));
 end;
@@ -188,6 +213,21 @@ end;
 procedure TTestSimpleTypesSer.TestString(const AValue: string);
 begin
   Assert.AreEqual('"Lorem \"Ipsum\" \\n \\\\ {}"', TTestUtils.SerializeValue(AValue));
+end;
+
+procedure TTestSimpleTypesSer.TestUIn64(const AValue: UInt64; _Result: string);
+begin
+  Assert.AreEqual(_Result, TTestUtils.SerializeValue(AValue));
+end;
+
+procedure TTestSimpleTypesSer.TestUIn64Sup;
+var
+  LNum: UInt64;
+  LStr: string;
+begin
+  LNum := 18446744073709551615;
+  LStr := '18446744073709551615';
+  Assert.AreEqual(LStr, TTestUtils.SerializeValue(LNum));
 end;
 
 { TTestSimpleTypesDes }
