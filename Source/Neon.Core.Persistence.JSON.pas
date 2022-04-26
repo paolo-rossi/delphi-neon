@@ -508,6 +508,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.DateUtils,
   System.Variants;
 
@@ -1466,6 +1467,10 @@ begin
 end;
 
 function TNeonDeserializerJSON.ReadFloat(const AParam: TNeonDeserializerParam): TValue;
+var
+  LFloat: Extended;
+  LMin, LMax: Extended;
+  LMsg: string;
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(0);
@@ -1478,10 +1483,53 @@ begin
     Result := TValue.From<TDateTime>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, FConfig.UseUTCDate))
   else
   begin
-    if AParam.JSONValue is TJSONNumber then
-      Result := (AParam.JSONValue as TJSONNumber).AsDouble
-    else
-      raise ENeonException.Create('Invalid JSON value. Float expected');
+    if not (AParam.JSONValue is TJSONNumber) then
+      raise ENeonException.Create('Invalid JSON value. Number expected');
+
+    case GetTypeData(AParam.RttiType.Handle).FloatType of
+      ftSingle:
+      begin
+        LMin := MinSingle;
+        LMax := MaxSingle;
+        LMsg := 'Single';
+      end;
+      ftDouble:
+      begin
+        LMin := MinDouble;
+        LMax := MaxDouble;
+        LMsg := 'Double';
+      end;
+      ftExtended:
+      begin
+        LMin := MinExtended;
+        LMax := MaxExtended;
+        LMsg := 'Extended';
+      end;
+      ftComp:
+      begin
+        LMin := MinComp;
+        LMax := MaxComp;
+        LMsg := 'Comp';
+      end;
+      ftCurr:
+      begin
+        LMin := MinCurrency;
+        LMax := MaxCurrency;
+        LMsg := 'Currency';
+      end;
+    end;
+
+    try
+      LFloat := (AParam.JSONValue as TJSONNumber).AsType<Extended>;
+    except
+      on E: EOverflow do
+        raise ENeonException.CreateFmt('The value [%s] is outside the range for the type [%s]', [AParam.JSONValue.Value, LMsg]);
+    end;
+
+    if (LFloat < -LMax) or (LFloat > LMax) then
+      raise ENeonException.CreateFmt('The value [%s] is outside the range for the type [%s]', [AParam.JSONValue.Value, LMsg]);
+
+    Result := LFloat;
   end;
 end;
 

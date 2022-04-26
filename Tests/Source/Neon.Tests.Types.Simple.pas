@@ -23,8 +23,10 @@ unit Neon.Tests.Types.Simple;
 
 interface
 
+//{$R+,O+}
+
 uses
-  System.Rtti, DUnitX.TestFramework,
+  System.SysUtils, System.Rtti, DUnitX.TestFramework,
 
   Neon.Core.Types,
   Neon.Core.Persistence,
@@ -35,7 +37,11 @@ type
   [TestFixture]
   [Category('simpletypes')]
   TTestSimpleTypesSer = class(TObject)
+  private
+    JSONFormatSettings: TFormatSettings;
   public
+    constructor Create;
+
     [Setup]
     procedure Setup;
     [TearDown]
@@ -78,10 +84,27 @@ type
     procedure TestString(const AValue: string);
 
     [Test]
-    [TestCase('TestFloatPos', '123.42,123.42')]
-    [TestCase('TestFloatNull', '0.0,0')]
-    [TestCase('TestFloatNeg', '-123.42,-123.42')]
+    [TestCase('TestSinglePos', '123.42,123.42')]
+    [TestCase('TestSingleNull', '0.0,0')]
+    [TestCase('TestSingleNeg', '-123.42,-123.42')]
+    [TestCase('TestSingleSup', '3.40E38,3.40E38')]
+    procedure TestSingle(const AValue: Single; _Result: string);
+
+    [Test]
+    [TestCase('TestDoublePos', '123.42,123.42')]
+    [TestCase('TestDoubleNull', '0.0,0')]
+    [TestCase('TestDoubleNeg', '-123.42,-123.42')]
+    [TestCase('TestDoubleSup', '1.79E308,1.79E308')]
     procedure TestDouble(const AValue: Double; _Result: string);
+
+    [Test]
+    [TestCase('TestNumExponentLower', '1.1232e2,112.32')]
+    [TestCase('TestNumExponentLowerPlus', '1.1232e+2,112.32')]
+    [TestCase('TestNumExponentLowerMinus', '1.1232e-2,0.011232')]
+    [TestCase('TestNumExponentUpper', '1.1232E2,112.32')]
+    [TestCase('TestNumExponentUpperPlus', '1.1232E+2,112.32')]
+    [TestCase('TestNumExponentUpperPlus', '1.1232E-2,0.011232')]
+    procedure TestNumExponent(const AValue: Double; _Result: string);
 
     [Test]
     [TestCase('TestBoolTrue', 'True,True')]
@@ -106,16 +129,16 @@ type
     procedure TearDown;
 
     [Test]
-    [TestCase('TestIntegerPos', '42,42')]
-    [TestCase('TestIntegerZero', '0,0')]
-    [TestCase('TestIntegerNeg', '-42,-42')]
-    procedure TestInteger(const AValue: string; _Result: Integer);
-
-    [Test]
     [TestCase('TestByte', '42,42')]
     [TestCase('TestByteLimit', '255,255')]
     [TestCase('TestByteZero', '0,0')]
     procedure TestByte(const AValue: string; _Result: Byte);
+
+    [Test]
+    [TestCase('TestIntegerPos', '42,42')]
+    [TestCase('TestIntegerZero', '0,0')]
+    [TestCase('TestIntegerNeg', '-42,-42')]
+    procedure TestInteger(const AValue: string; _Result: Integer);
 
     [Test]
     [TestCase('TestShortIntRangeSup', '128')]
@@ -152,10 +175,38 @@ type
     procedure TestString(const AValue, _Result: string);
 
     [Test]
-    [TestCase('TestFloatPos', '123.42,123.42')]
-    [TestCase('TestFloatNull', '0.0,0')]
-    [TestCase('TestFloatNeg', '-123.42,-123.42')]
-    procedure TestFloat(const AValue: string; _Result: Double);
+    [TestCase('TestSinglePos', '123.42,123.42')]
+    [TestCase('TestSingleNull', '0.0,0')]
+    [TestCase('TestSingleNeg', '-123.42,-123.42')]
+    [TestCase('TestSingleSup', '3.40E38,3.40E38')]
+    [TestCase('TestSingleInf', '-3.40E38,-3.40E38')]
+    procedure TestSingle(const AValue: string; _Result: Single);
+
+    [Test]
+    [TestCase('TestSingleRangeSup', '3.41E38')]
+    [TestCase('TestSingleRangeInf', '-3.41E38')]
+    procedure TestSingleRange(const AValue: string);
+
+    [Test]
+    [TestCase('TestDoublePos', '123.42,123.42')]
+    [TestCase('TestDoubleNull', '0.0,0')]
+    [TestCase('TestDoubleNeg', '-123.42,-123.42')]
+    [TestCase('TestDoubleSup', '1.79E308,1.79E308')]
+    procedure TestDouble(const AValue: string; _Result: Double);
+
+    [Test]
+    [TestCase('TestDoubleRangeSup', '1.80e+308')]
+    [TestCase('TestDoubleRangeInf', '-1.80e+308')]
+    procedure TestDoubleRange(const AValue: string);
+
+    [Test]
+    [TestCase('TestNumExponentLower', '1.1232e2,1.1232e2')]
+    [TestCase('TestNumExponentLowerPlus', '1.1232e+2,1.1232e+2')]
+    [TestCase('TestNumExponentLowerMinus', '1.1232e-2,1.1232e-2')]
+    [TestCase('TestNumExponentUpper', '1.1232E2,1.1232E2')]
+    [TestCase('TestNumExponentUpperPlus', '1.1232E+2,1.1232E+2')]
+    [TestCase('TestNumExponentUpperPlus', '1.1232E-2,1.1232E-2')]
+    procedure TestNumExponent(const AValue: string; _Result: Double);
 
     [Test]
     [TestCase('TestBoolTrue', 'true,True')]
@@ -171,6 +222,11 @@ type
   end;
 
 implementation
+
+constructor TTestSimpleTypesSer.Create;
+begin
+  JSONFormatSettings := TFormatSettings.Create('us');
+end;
 
 procedure TTestSimpleTypesSer.Setup;
 begin
@@ -208,6 +264,21 @@ end;
 procedure TTestSimpleTypesSer.TestInteger(const AValue: Integer; _Result: string);
 begin
   Assert.AreEqual(_Result, TTestUtils.SerializeValue(AValue));
+end;
+
+procedure TTestSimpleTypesSer.TestNumExponent(const AValue: Double; _Result: string);
+begin
+  Assert.AreEqual(_Result, TTestUtils.SerializeValue(AValue));
+end;
+
+procedure TTestSimpleTypesSer.TestSingle(const AValue: Single; _Result: string);
+var
+  LResult: Single;
+  LExpected: Single;
+begin
+  LResult := StrToFloat(TTestUtils.SerializeValue(AValue), JSONFormatSettings);
+  LExpected := StrToFloat(_Result, JSONFormatSettings);
+  Assert.AreEqual(LResult, LExpected, 0.000001);
 end;
 
 procedure TTestSimpleTypesSer.TestString(const AValue: string);
@@ -273,9 +344,17 @@ begin
   Assert.AreEqual(_Result, TTestUtils.DeserializeValueTo<TDateTime>(AValue));
 end;
 
-procedure TTestSimpleTypesDes.TestFloat(const AValue: string; _Result: Double);
+procedure TTestSimpleTypesDes.TestDouble(const AValue: string; _Result: Double);
 begin
   Assert.AreEqual(_Result, TTestUtils.DeserializeValueTo<Double>(AValue));
+end;
+
+procedure TTestSimpleTypesDes.TestDoubleRange(const AValue: string);
+begin
+  Assert.WillRaise(
+    procedure begin TTestUtils.DeserializeValueTo<Single>(AValue) end,
+    ENeonException
+  );
 end;
 
 procedure TTestSimpleTypesDes.TestInteger(const AValue: string; _Result: Integer);
@@ -288,13 +367,31 @@ begin
   Assert.WillRaise(
     procedure begin TTestUtils.DeserializeValueTo<Integer>(AValue) end,
     ENeonException
-  )
+  );
+end;
+
+procedure TTestSimpleTypesDes.TestNumExponent(const AValue: string; _Result: Double);
+begin
+  Assert.AreEqual(_Result, TTestUtils.DeserializeValueTo<Double>(AValue));
 end;
 
 procedure TTestSimpleTypesDes.TestShortIntRange(const AValue: string);
 begin
   Assert.WillRaise(
     procedure begin TTestUtils.DeserializeValueTo<ShortInt>(AValue) end,
+    ENeonException
+  );
+end;
+
+procedure TTestSimpleTypesDes.TestSingle(const AValue: string; _Result: Single);
+begin
+  Assert.AreEqual(_Result, TTestUtils.DeserializeValueTo<Single>(AValue));
+end;
+
+procedure TTestSimpleTypesDes.TestSingleRange(const AValue: string);
+begin
+  Assert.WillRaise(
+    procedure begin TTestUtils.DeserializeValueTo<Single>(AValue) end,
     ENeonException
   );
 end;
@@ -309,10 +406,10 @@ end;
 
 procedure TTestSimpleTypesDes.TestString(const AValue, _Result: string);
 var
-  s: string;
+  LResult: string;
 begin
-  s := TTestUtils.DeserializeValueTo<string>(AValue);
-  Assert.AreEqual(_Result, s);
+  LResult := TTestUtils.DeserializeValueTo<string>(AValue);
+  Assert.AreEqual(_Result, LResult);
 end;
 
 procedure TTestSimpleTypesDes.TestWordRange(const AValue: string);
