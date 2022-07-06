@@ -212,8 +212,8 @@ type
     Info: string;
     KeyPairs: TDictionary<string, string>;
 
-    class operator Initialize(out Dest:TExampleCMR);
-    class operator Finalize(var Dest:TExampleCMR);
+    class operator Initialize(out Dest: TExampleCMR);
+    class operator Finalize(var Dest: TExampleCMR);
   end;
 
   TPerson = class
@@ -484,9 +484,25 @@ type
   TExtension = class(TDictionary<string, TValue>)
   end;
 
+  TNodeObject = class;
+
+  TNodeObject = class
+  private
+    FNodes: TObjectDictionary<string, TNodeObject>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+  public
+    property Nodes: TObjectDictionary<string, TNodeObject> read FNodes write FNodes;
+  end;
+
 
 implementation
 
+{
+uses
+  Winapi.Windows;
+}
 
 {$IFDEF HAS_MRECORDS}
 
@@ -824,11 +840,28 @@ end;
 class operator TExampleCMR.Initialize(out Dest: TExampleCMR);
 begin
   Dest.KeyPairs := TDictionary<string, string>.Create;
+  //OutputDebugString(PChar('Initialized Record: ' + IntToHex(IntPtr(@Dest))));
+  //OutputDebugString(PChar('Created Object: ' + IntToHex(IntPtr(@Dest.KeyPairs))));
 end;
 
 class operator TExampleCMR.Finalize(var Dest: TExampleCMR);
 begin
+  //OutputDebugString(PChar('Destroying Object: ' + IntToHex(IntPtr(@Dest.KeyPairs))));
+  //OutputDebugString(PChar('Finalizing Record: ' + IntToHex(IntPtr(@Dest))));
   Dest.KeyPairs.Free;
+end;
+
+{ TNodeObject }
+
+constructor TNodeObject.Create;
+begin
+  FNodes := TObjectDictionary<string, TNodeObject>.Create([doOwnsValues]);
+end;
+
+destructor TNodeObject.Destroy;
+begin
+  FNodes.Free;
+  inherited;
 end;
 
 initialization

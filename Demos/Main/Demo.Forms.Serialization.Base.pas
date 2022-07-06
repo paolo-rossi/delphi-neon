@@ -56,13 +56,13 @@ type
     procedure SerializeObject(AObject: TObject; AWhere: TStrings; AConfig: INeonConfiguration);
     procedure DeserializeObject(AObject: TObject; AWhere: TStrings; AConfig: INeonConfiguration);
 
-    procedure SerializeValueFrom<T>(AValue: TValue; AWhere: TStrings; AConfig: INeonConfiguration);
+    procedure SerializeValueFrom<T>(const AValue: TValue; AWhere: TStrings; AConfig: INeonConfiguration);
     function DeserializeValueTo<T>(AWhere: TStrings; AConfig: INeonConfiguration): T; overload;
-    function DeserializeValueTo<T>(AValue: T; AWhere: TStrings; AConfig: INeonConfiguration): T; overload;
+    function DeserializeValueTo<T>(const AValue: T; AWhere: TStrings; AConfig: INeonConfiguration): T; overload;
 
-    procedure SerializeSimple<T>(AValue: T);
+    procedure SerializeSimple<T>(const AValue: T);
     procedure DeserializeSimple<T>; overload;
-    procedure DeserializeSimple<T>(AValue: T); overload;
+    procedure DeserializeSimple<T>(const AValue: T); overload;
   public
     constructor CreateEx(AOwner: TComponent; AConfigForm: TframeConfiguration; AColor: TColor);
   public
@@ -149,7 +149,7 @@ begin
     TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
-procedure TfrmSerializationBase.DeserializeSimple<T>(AValue: T);
+procedure TfrmSerializationBase.DeserializeSimple<T>(const AValue: T);
 var
   LVal: T;
 begin
@@ -160,7 +160,7 @@ begin
     TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
 end;
 
-function TfrmSerializationBase.DeserializeValueTo<T>(AValue: T; AWhere: TStrings;
+function TfrmSerializationBase.DeserializeValueTo<T>(const AValue: T; AWhere: TStrings;
   AConfig: INeonConfiguration): T;
 var
   LJSON: TJSONValue;
@@ -201,7 +201,7 @@ begin
   memoLog.Lines.Add(ALog);
 end;
 
-procedure TfrmSerializationBase.SerializeValueFrom<T>(AValue: TValue; AWhere: TStrings; AConfig: INeonConfiguration);
+procedure TfrmSerializationBase.SerializeValueFrom<T>(const AValue: TValue; AWhere: TStrings; AConfig: INeonConfiguration);
 var
   LJSON: TJSONValue;
   LWriter: TNeonSerializerJSON;
@@ -245,7 +245,7 @@ begin
   end;
 end;
 
-procedure TfrmSerializationBase.SerializeSimple<T>(AValue: T);
+procedure TfrmSerializationBase.SerializeSimple<T>(const AValue: T);
 begin
   SerializeValueFrom<T>(
     TValue.From<T>(AValue), memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);

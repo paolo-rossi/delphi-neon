@@ -45,7 +45,7 @@ type
     ///   Writer for members of objects and records
     /// </summary>
     procedure WriteMembers(AType: TRttiType; AResult: TJSONObject);
-  private
+
     /// <summary>
     ///   Writer for string types
     /// </summary>
