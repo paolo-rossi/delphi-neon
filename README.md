@@ -85,7 +85,7 @@ var
 begin
   LJSON := TNeon.ObjectToJSON(AObject);
   try
-    Memo1.Lines.Text := TJSONUtils.PrettyPrint(LJSON);
+    Memo1.Lines.Text := TNeon.Print(LJSON, True);
   finally
     LJSON.Free;
   end;
@@ -118,7 +118,7 @@ begin
   try
     LJSON := LWriter.ObjectToJSON(AObject);
     try
-      Memo1.Lines.Text := TJSONUtils.PrettyPrint(LJSON);
+      Memo1.Lines.Text := TNeon.Print(LJSON, True);
       MemoError.Lines.AddStrings(LWriter.Errors);
     finally
       LJSON.Free;
