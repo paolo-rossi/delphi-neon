@@ -1469,7 +1469,7 @@ end;
 function TNeonDeserializerJSON.ReadFloat(const AParam: TNeonDeserializerParam): TValue;
 var
   LFloat: Extended;
-  LMin, LMax: Extended;
+  LMax: Extended;
   LMsg: string;
 begin
   if AParam.JSONValue is TJSONNull then
@@ -1486,34 +1486,30 @@ begin
     if not (AParam.JSONValue is TJSONNumber) then
       raise ENeonException.Create('Invalid JSON value. Number expected');
 
+    LMax := 0;
     case GetTypeData(AParam.RttiType.Handle).FloatType of
       ftSingle:
       begin
-        LMin := MinSingle;
         LMax := MaxSingle;
         LMsg := 'Single';
       end;
       ftDouble:
       begin
-        LMin := MinDouble;
         LMax := MaxDouble;
         LMsg := 'Double';
       end;
       ftExtended:
       begin
-        LMin := MinExtended;
-        LMax := MaxExtended;
+        LMax := MaxExtended80;
         LMsg := 'Extended';
       end;
       ftComp:
       begin
-        LMin := MinComp;
         LMax := MaxComp;
         LMsg := 'Comp';
       end;
       ftCurr:
       begin
-        LMin := MinCurrency;
         LMax := MaxCurrency;
         LMsg := 'Currency';
       end;
