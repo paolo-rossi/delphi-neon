@@ -1516,7 +1516,7 @@ begin
     end;
 
     try
-      LFloat := (AParam.JSONValue as TJSONNumber).AsType<Extended>;
+      LFloat := (AParam.JSONValue as TJSONNumber).GetValue<Extended>;
     except
       on E: EOverflow do
         raise ENeonException.CreateFmt('The value [%s] is outside the range for the type [%s]', [AParam.JSONValue.Value, LMsg]);
@@ -1546,7 +1546,7 @@ begin
   else
   begin
     LUInt := StrToUInt64(AParam.JSONValue.Value);
-    TValue.Make<UInt64>(LUInt, Result);
+    TValue.Make(@LUInt, System.TypeInfo(UInt64), Result);
   end;
 end;
 
