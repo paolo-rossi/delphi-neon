@@ -207,6 +207,8 @@ type
     property Text: string read FText write FText;
   end;
 
+
+  {$IFDEF HAS_MRECORDS}
   TExampleCMR = record
   public
     Info: string;
@@ -215,6 +217,7 @@ type
     class operator Initialize(out Dest: TExampleCMR);
     class operator Finalize(var Dest: TExampleCMR);
   end;
+  {$ENDIF}
 
   TPerson = class
   private
@@ -227,7 +230,7 @@ type
     FOptions: TMySet;
     FSurname: string;
     FMap: TObjectDictionary<string, TNote>;
-    FCMR: TExampleCMR;
+    //FCMR: TExampleCMR;
   public
     constructor Create;
     destructor Destroy; override;
@@ -238,7 +241,7 @@ type
     [NeonProperty('LastName')]
     property Surname: string read FSurname write FSurname;
 
-    property CMR: TExampleCMR read FCMR write FCMR;
+    //property CMR: TExampleCMR read FCMR write FCMR;
     property Addresses: TAddresses read FAddresses write FAddresses;
     property DateProp: TDateTime read FDateProp write FDateProp;
     property DoubleProp: Double read FDoubleProp write FDoubleProp;
@@ -544,8 +547,8 @@ begin
   FDateProp := Now;
   FOptions := [TMyEnum.First, TMyEnum.Second, TMyEnum.Fourth];
   FMap := TObjectDictionary<string, TNote>.Create([doOwnsValues]);
-  FCMR.Info := 'Info';
-  FCMR.KeyPairs.Add('name', 'Paolo');
+  //FCMR.Info := 'Info';
+  //FCMR.KeyPairs.Add('name', 'Paolo');
 end;
 
 destructor TPerson.Destroy;
@@ -835,6 +838,9 @@ begin
   Result.Wrapped.Second := Now;
 end;
 
+
+{$IFDEF HAS_MRECORDS}
+
 { TExampleCMR }
 
 class operator TExampleCMR.Initialize(out Dest: TExampleCMR);
@@ -850,6 +856,8 @@ begin
   //OutputDebugString(PChar('Finalizing Record: ' + IntToHex(IntPtr(@Dest))));
   Dest.KeyPairs.Free;
 end;
+
+{$ENDIF}
 
 { TNodeObject }
 
