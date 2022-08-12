@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018-2022 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -205,7 +205,7 @@ begin
     tkLString:     Result := TValue.From<UTF8String>('');
     tkUString:     Result := TValue.From<string>('');
     tkClass:       Result := CreateInstance(AType);
-    tkRecord:
+    tkRecord, tkDynArray:
     begin
       LAllocatedMem := AllocMem(AType.TypeSize);
       try
