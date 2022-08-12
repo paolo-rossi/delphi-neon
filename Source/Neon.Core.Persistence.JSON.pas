@@ -372,13 +372,12 @@ type
     class procedure ValueToStream(const AValue: TValue; AStream: TStream); overload;
 
     /// <summary>
-    ///   Serializes a value based type (record, string, integer, etc...) to a TStream with a given configuration
+    ///   Serializes a value based type to a TStream with a given configuration
     /// </summary>
     class procedure ValueToStream(const AValue: TValue; AStream: TStream; AConfig: INeonConfiguration); overload;
 
     /// <summary>
-    ///   Serializes a value based type (record, string, integer, etc...) to a
-    ///   TJSONValue with a default configuration
+    ///   Serializes a value based type to a TJSONValue with a default configuration
     /// </summary>
     class function ValueToJSON(const AValue: TValue): TJSONValue; overload;
 
@@ -458,20 +457,17 @@ type
     class function JSONToObject(AType: TRttiType; const AJSON: string; AConfig: INeonConfiguration): TObject; overload;
 
     /// <summary>
-    ///   Deserializes a TJSONValue into a generic type &lt;T&gt; with a default
-    ///   configuration
+    ///   Deserializes a TJSONValue into a generic type &lt;T&gt; with a default configuration
     /// </summary>
     class function JSONToObject<T: class, constructor>(AJSON: TJSONValue): T; overload;
 
     /// <summary>
-    ///   Deserializes a TJSONValue into a generic type &lt;T&gt; with a given
-    ///   configuration <br />
+    ///   Deserializes a TJSONValue into a generic type &lt;T&gt; with a given configuration <br />
     /// </summary>
     class function JSONToObject<T: class, constructor>(AJSON: TJSONValue; AConfig: INeonConfiguration): T; overload;
 
     /// <summary>
-    ///   Deserializes a string into a generic type &lt;T&gt; with a default
-    ///   configuration <br />
+    ///   Deserializes a string into a generic type &lt;T&gt; with a default configuration <br />
     /// </summary>
     class function JSONToObject<T: class, constructor>(const AJSON: string): T; overload;
 
@@ -481,28 +477,34 @@ type
     class function JSONToObject<T: class, constructor>(const AJSON: string; AConfig: INeonConfiguration): T; overload;
   public
     /// <summary>
-    ///   Deserializes a TJSONValue into a TRttiType value based with a default
-    ///   configuration <br />
+    ///   Deserializes a TJSONValue into a TRttiType value based with a default configuration <br />
     /// </summary>
     class function JSONToValue(ARttiType: TRttiType; AJSON: TJSONValue): TValue; overload;
 
     /// <summary>
-    ///   Deserializes a TJSONValue into a TRttiType value based with a given
-    ///   configuration
+    ///   Deserializes a TJSONValue into a TRttiType value based with a given configuration
     /// </summary>
     class function JSONToValue(ARttiType: TRttiType; AJSON: TJSONValue; AConfig: INeonConfiguration): TValue; overload;
 
     /// <summary>
-    ///   Deserializes a TJSONValue into a generic type &lt;T&gt; (value based) with a
-    ///   default configuration
+    ///   Deserializes a TJSONValue into a generic type &lt;T&gt; (value based) with a default configuration
     /// </summary>
     class function JSONToValue<T>(AJSON: TJSONValue): T; overload;
 
     /// <summary>
-    ///   Deserializes a TJSONValue into a generic type &lt;T&gt; (value based) with a
-    ///   given configuration <br />
+    ///   Deserializes a TJSONValue into a generic type &lt;T&gt; (value based) with a given configuration <br />
     /// </summary>
     class function JSONToValue<T>(AJSON: TJSONValue; AConfig: INeonConfiguration): T; overload;
+
+    /// <summary>
+    ///   Deserializes a string into a generic type &lt;T&gt; (value based) with a default configuration <br />
+    /// </summary>
+    class function JSONToValue<T>(const AJSON: string): T; overload;
+
+    /// <summary>
+    ///   Deserializes a string into a generic type &lt;T&gt; (value based) with a given configuration <br />
+    /// </summary>
+    class function JSONToValue<T>(const AJSON: string; const AConfig: INeonConfiguration): T; overload;
   end;
 
 implementation
@@ -1873,7 +1875,7 @@ class procedure TNeon.JSONToObject(AObject: TObject; const AJSON: string; AConfi
 var
   LJSON: TJSONValue;
 begin
-  LJSON := TJSONObject.ParseJSONValue(AJSON);
+  LJSON := TJSONObject.ParseJSONValue(AJSON, False, True);
   try
     JSONToObject(AObject, LJSON, AConfig);
   finally
@@ -2100,11 +2102,28 @@ begin
   end;
 end;
 
+class function TNeon.JSONToValue<T>(const AJSON: string): T;
+begin
+  Result := JSONToValue<T>(AJSON, TNeonConfiguration.Default);
+end;
+
+class function TNeon.JSONToValue<T>(const AJSON: string; const AConfig: INeonConfiguration): T;
+var
+  LJSON: TJSONValue;
+begin
+  LJSON := TJSONObject.ParseJSONValue(AJSON, False, True);
+  try
+    Result := JSONToValue<T>(LJSON, AConfig);
+  finally
+    LJSON.Free;
+  end;
+end;
+
 class function TNeon.JSONToObject(AType: TRttiType; const AJSON: string; AConfig: INeonConfiguration): TObject;
 var
   LJSON: TJSONValue;
 begin
-  LJSON := TJSONObject.ParseJSONValue(AJSON);
+  LJSON := TJSONObject.ParseJSONValue(AJSON, False, True);
   try
     Result := TRttiUtils.CreateInstance(AType);
     JSONToObject(Result, LJSON, AConfig);
