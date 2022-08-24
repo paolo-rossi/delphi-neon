@@ -226,6 +226,7 @@ implementation
 constructor TTestSimpleTypesSer.Create;
 begin
   JSONFormatSettings := TFormatSettings.Create('us');
+  FormatSettings.ShortDateFormat := 'dd/mm/yyyy'; // need to explicitly specify this format so the TestCase attributes correctly pass the second value as hard-coded in the attribute.
 end;
 
 procedure TTestSimpleTypesSer.Setup;
