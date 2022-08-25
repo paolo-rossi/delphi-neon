@@ -47,7 +47,8 @@ uses
   Neon.Tests.Types.Records in 'Source\Neon.Tests.Types.Records.pas',
   Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas',
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
-  Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas';
+  Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas',
+  Neon.Tests.Config.EnumAsInt in 'Source\Neon.Tests.Config.EnumAsInt.pas';
 
 var
   LRunner : ITestRunner;

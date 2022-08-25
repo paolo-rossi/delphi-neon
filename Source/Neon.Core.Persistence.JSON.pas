@@ -764,8 +764,15 @@ function TNeonSerializerJSON.WriteEnum(const AValue: TValue; ANeonObject: TNeonR
 var
   LName: string;
 begin
-  LName := TTypeInfoUtils.EnumToString(AValue.TypeInfo, AValue.AsOrdinal, ANeonObject);
-  Result := TJSONString.Create(LName);
+  if FConfig.EnumAsInt then
+  begin
+    Result := TJSONNumber.Create(AValue.AsOrdinal);
+  end
+  else
+  begin
+    LName := TTypeInfoUtils.EnumToString(AValue.TypeInfo, AValue.AsOrdinal, ANeonObject);
+    Result := TJSONString.Create(LName);
+  end;
 end;
 
 function TNeonSerializerJSON.WriteFloat(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1372,22 +1379,34 @@ begin
   end
   else
   begin
-    LOrdinal := -1;
-    if Length(AParam.NeonObject.NeonEnumNames) > 0 then
+    if FConfig.EnumAsInt then
     begin
-      for LIndex := Low(AParam.NeonObject.NeonEnumNames) to High(AParam.NeonObject.NeonEnumNames) do
-        if AParam.JSONValue.Value = AParam.NeonObject.NeonEnumNames[LIndex] then
-          LOrdinal := LIndex;
-    end;
-    if LOrdinal = -1 then
-      LOrdinal := GetEnumValue(AParam.RttiType.Handle, AParam.JSONValue.Value);
-
-    LTypeData := GetTypeData(AParam.RttiType.Handle);
-
-    if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
-      TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
+      LTypeData := GetTypeData(AParam.RttiType.Handle);
+      LOrdinal := StrToIntDef(AParam.JSONValue.Value, -1);
+      if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
+        TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
+      else
+        raise ENeonException.Create('Invalid enum value');
+    end
     else
-      raise ENeonException.Create('No correspondence with enum names');
+    begin
+      LOrdinal := -1;
+      if Length(AParam.NeonObject.NeonEnumNames) > 0 then
+      begin
+        for LIndex := Low(AParam.NeonObject.NeonEnumNames) to High(AParam.NeonObject.NeonEnumNames) do
+          if AParam.JSONValue.Value = AParam.NeonObject.NeonEnumNames[LIndex] then
+            LOrdinal := LIndex;
+      end;
+      if LOrdinal = -1 then
+        LOrdinal := GetEnumValue(AParam.RttiType.Handle, AParam.JSONValue.Value);
+
+      LTypeData := GetTypeData(AParam.RttiType.Handle);
+
+      if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
+        TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
+      else
+        raise ENeonException.Create('No correspondence with enum names');
+    end;
   end;
 end;
 
