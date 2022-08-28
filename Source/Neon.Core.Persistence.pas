@@ -47,6 +47,7 @@ type
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
+    function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
 
     function GetPrettyPrint: Boolean;
     function GetUseUTCDate: Boolean;
@@ -173,6 +174,7 @@ type
     FPrettyPrint: Boolean;
     FSerializers: TNeonSerializerRegistry;
     FRaiseExceptions: Boolean;
+    FEnumAsInt: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -190,6 +192,7 @@ type
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
+    function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
 
     function GetUseUTCDate: Boolean;
     function GetPrettyPrint: Boolean;
@@ -203,6 +206,7 @@ type
     property IgnoreFieldPrefix: Boolean read FIgnoreFieldPrefix write FIgnoreFieldPrefix;
     property UseUTCDate: Boolean read FUseUTCDate write FUseUTCDate;
     property RaiseExceptions: Boolean read FRaiseExceptions write FRaiseExceptions;
+    property EnumAsInt: Boolean read FEnumAsInt write FEnumAsInt;
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
   end;
 
@@ -552,6 +556,12 @@ function TNeonConfiguration.SetUseUTCDate(AValue: Boolean): INeonConfiguration;
 begin
   FUseUTCDate := AValue;
   Result := Self;
+end;
+
+function TNeonConfiguration.SetEnumAsInt(AValue: Boolean): INeonConfiguration;
+begin
+  FEnumAsInt := AValue;
+  result := Self;
 end;
 
 function TNeonConfiguration.SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;

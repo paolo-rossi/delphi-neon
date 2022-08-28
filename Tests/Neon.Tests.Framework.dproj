@@ -106,6 +106,7 @@
         <DCCReference Include="Source\Neon.Tests.Types.Reference.pas"/>
         <DCCReference Include="Source\Neon.Tests.CustomSerializers.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.MemberCase.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Config.EnumAsInt.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
