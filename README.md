@@ -38,7 +38,7 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 - Basic types: **string, Integer, Double, Boolean, TDateTime**
 
 #### Complex values
-- **Arrays** of (basic types, records, classes, etc...)
+- **Dynamic Arrays** of (basic types, records, classes, etc...)
 - **Records** with fields of (basic types, records, classes, arrays, etc...)
 - **Classes** with fields of (basic types, records, classes, arrays, etc...)
 - **Generic lists**
@@ -51,14 +51,11 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 
 ## Todo
 
-##### Features
-- Better way to register (and find) a custom serializer
-
 ##### Code
-- Unit Tests
+- More Unit Tests
 
 ## Prerequisite
-This library has been tested with **Delphi 10.4 Sydney**, **Delphi 10.3 Rio**, **Delphi 10.2 Tokyo**, **Delphi 10.1 Berlin**, but with a minimum amount of work it should compile with **Delphi XE7 and higher**
+This library has been tested with **Delphi 11 Alexandria**, **Delphi 10.4 Sydney**, **Delphi 10.3 Rio**, **Delphi 10.2 Tokyo**, but with a minimum amount of work it should compile with **Delphi XE7 and higher**
 
 #### Libraries/Units dependencies
 This library has no dependencies on external libraries/units.

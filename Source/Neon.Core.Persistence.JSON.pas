@@ -348,13 +348,17 @@ type
   /// <summary>
   ///   Static utility class for serializing and deserializing Delphi types
   /// </summary>
-  TNeon = class
+  TNeon = class sealed
   private
+    /// <summary>
+    ///   ParseJSON function call for compatibility Delphi <= 10.2 Tokyo
+    /// </summary>
+    class function ParseJSON(const Data: string; UseBool: Boolean = False; RaiseExc: Boolean = False): TJSONValue;
+
     /// <summary>
     ///   Prints a TJSONValue in a single line or formatted (PrettyPrinting)
     /// </summary>
     class procedure PrintToWriter(AJSONValue: TJSONValue; AWriter: TTextWriter; APretty: Boolean); static;
-
   public
     /// <summary>
     ///   Prints a TJSONValue in a single line or formatted (PrettyPrinting)
@@ -1894,7 +1898,7 @@ class procedure TNeon.JSONToObject(AObject: TObject; const AJSON: string; AConfi
 var
   LJSON: TJSONValue;
 begin
-  LJSON := TJSONObject.ParseJSONValue(AJSON, False, True);
+  LJSON := ParseJSON(AJSON, False, True);
   try
     JSONToObject(AObject, LJSON, AConfig);
   finally
@@ -2130,7 +2134,7 @@ class function TNeon.JSONToValue<T>(const AJSON: string; const AConfig: INeonCon
 var
   LJSON: TJSONValue;
 begin
-  LJSON := TJSONObject.ParseJSONValue(AJSON, False, True);
+  LJSON := ParseJSON(AJSON, False, True);
   try
     Result := JSONToValue<T>(LJSON, AConfig);
   finally
@@ -2142,7 +2146,7 @@ class function TNeon.JSONToObject(AType: TRttiType; const AJSON: string; AConfig
 var
   LJSON: TJSONValue;
 begin
-  LJSON := TJSONObject.ParseJSONValue(AJSON, False, True);
+  LJSON := TNeon.ParseJSON(AJSON, False, True);
   try
     Result := TRttiUtils.CreateInstance(AType);
     JSONToObject(Result, LJSON, AConfig);
@@ -2205,6 +2209,17 @@ end;
 class function TNeon.JSONToValue<T>(AJSON: TJSONValue): T;
 begin
   Result := JSONToValue<T>(AJSON, TNeonConfiguration.Default);
+end;
+
+class function TNeon.ParseJSON(const Data: string; UseBool, RaiseExc: Boolean): TJSONValue;
+begin
+  {$IFDEF HAS_NEW_JSON}
+    Result := TJSONObject.ParseJSONValue(Data, UseBool, RaiseExc);
+  {$ELSE}
+    Result := TJSONObject.ParseJSONValue(Data, UseBool);
+    if RaiseExc and not Assigned(Result) then
+      raise ENeonException.Create('Error parsing JSON string');
+  {$ENDIF}
 end;
 
 { TNeonDeserializerParam }
