@@ -1374,10 +1374,8 @@ var
 begin
   if AParam.RttiType.Handle = System.TypeInfo(Boolean) then
   begin
-    if AParam.JSONValue is TJSONTrue then
-      Result := True
-    else if AParam.JSONValue is TJSONFalse then
-      Result := False
+    if AParam.JSONValue is TJSONBool then
+      Result := (AParam.JSONValue as TJSONBool).AsBoolean
     else
       raise ENeonException.Create('Invalid JSON value. Boolean expected');
   end
