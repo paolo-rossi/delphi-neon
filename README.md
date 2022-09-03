@@ -8,7 +8,17 @@
   </a>
 </p>
 
+
 ## What is Neon
+
+![Top language](https://img.shields.io/github/languages/top/paolo-rossi/delphi-neon)
+[![GitHub release](https://img.shields.io/github/release/paolo-rossi/delphi-neon)](https://github.com/paolo-rossi/delphi-neon/release)
+[![GitHub issues](https://img.shields.io/github/issues/paolo-rossi/delphi-neon)](https://github.com/paolo-rossi/delphi-neon/issues)
+[![GitHub PR](https://img.shields.io/github/issues-pr/paolo-rossi/delphi-neon)](https://github.com/paolo-rossi/delphi-neon/pulls)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/paolo-rossi/delphi-neon)
+![GitHub last commit](https://img.shields.io/github/last-commit/paolo-rossi/delphi-neon)
+![GitHub contributors](https://img.shields.io/github/contributors-anon/paolo-rossi/delphi-neon)
+[![GitHub license](https://img.shields.io/github/license/paolo-rossi/delphi-neon)](https://github.com/paolo-rossi/delphi-neon/blob/master/LICENSE)
 
 **Neon** is a serialization library for [Delphi](https://www.embarcadero.com/products/delphi) that helps you to convert (back and forth) objects and other values to JSON. It supports simple Delphi types but also complex class and records. **Neon** has been designed with **REST** in mind, to exchange pure data between applications with no *"metadata"* or added fields, in fact **Neon** is the default JSON serialization engine for the [WiRL REST Library](https://github.com/delphi-blocks/WiRL).
 
