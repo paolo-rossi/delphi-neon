@@ -435,6 +435,12 @@ type
     ///   Deserializes a TJSONValue into a TObject with a given configuration
     /// </summary>
     class procedure JSONToObject(AObject: TObject; AJSON: TJSONValue; AConfig: INeonConfiguration); overload;
+
+    /// <summary>
+    ///   Deserializes a string into a TObject with a default configuration
+    /// </summary>
+    class procedure JSONToObject(AObject: TObject; const AJSON: string); overload;
+
     /// <summary>
     ///   Deserializes a string into a TObject with a given configuration
     /// </summary>
@@ -1116,7 +1122,10 @@ begin
     end;
   end;
 
-  Result := TJSONString.Create(AValue.AsString);
+  if ANeonObject.NeonRawValue then
+    Result := TJSONObject.ParseJSONValue(AValue.AsString, False, True)
+  else
+    Result := TJSONString.Create(AValue.AsString);
 end;
 
 function TNeonSerializerJSON.WriteVariant(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1791,7 +1800,11 @@ end;
 
 function TNeonDeserializerJSON.ReadString(const AParam: TNeonDeserializerParam): TValue;
 begin
+  if AParam.NeonObject.NeonRawValue then
+    Exit(TValue.From<string>(AParam.JSONValue.ToJSON));
+
   case AParam.RttiType.TypeKind of
+
     // AnsiString
     tkLString: Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
 
@@ -1806,8 +1819,8 @@ begin
     //ShortString
     tkString:  Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
 
-  // Future string types treated as unicode strings
   else
+    // Future string types treated as unicode strings
     Result := AParam.JSONValue.Value;
   end;
 end;
@@ -2151,6 +2164,11 @@ begin
   finally
     LJSON.Free;
   end;
+end;
+
+class procedure TNeon.JSONToObject(AObject: TObject; const AJSON: string);
+begin
+  JSONToObject(AObject, AJSON, TNeonConfiguration.Default);
 end;
 
 class function TNeon.JSONToObject<T>(AJSON: TJSONValue; AConfig: INeonConfiguration): T;

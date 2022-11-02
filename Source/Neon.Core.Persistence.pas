@@ -225,6 +225,7 @@ type
     FNeonSerializerClass: TClass;
   private
     FTypeAttributes: TArray<TCustomAttribute>;
+    FNeonRawValue: Boolean;
   protected
     procedure InternalParseAttributes(const AAttr: TArray<TCustomAttribute>); virtual;
     procedure ProcessAttribute(AAttribute: TCustomAttribute); virtual;
@@ -239,6 +240,7 @@ type
     property TypeAttributes: TArray<TCustomAttribute> read FTypeAttributes write FTypeAttributes;
     // Neon-based properties
     property NeonIgnore: Boolean read FNeonIgnore write FNeonIgnore;
+    property NeonRawValue: Boolean read FNeonRawValue write FNeonRawValue;
     property NeonInclude: TIncludeValue read FNeonInclude write FNeonInclude;
     property NeonSerializerName: string read FNeonSerializerName write FNeonSerializerName;
     property NeonSerializerClass: TClass read FNeonSerializerClass write FNeonSerializerClass;
@@ -983,6 +985,8 @@ begin
     end
     else if LAttribute is NeonIgnoreAttribute then
       FNeonIgnore := True
+    else if LAttribute is NeonRawValueAttribute then
+      FNeonRawValue := True
     else if LAttribute is NeonPropertyAttribute then
       FNeonProperty := (LAttribute as NeonPropertyAttribute).Value
     else if LAttribute is NeonEnumNamesAttribute then
