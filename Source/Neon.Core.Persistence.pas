@@ -314,11 +314,14 @@ type
     procedure FilterDeserialize;
   end;
 
+  TMemberRegistry = class(TObjectDictionary<PTypeInfo, TNeonRttiMembers>);
+
   TNeonBase = class(TSingletonImplementation, IConfigurationContext)
   protected
     FConfig: TNeonConfiguration;
     FOperation: TNeonOperation;
     FOriginalInstance: TValue;
+    FMemberRegistry: TMemberRegistry;
     FErrors: TStrings;
     function IsOriginalInstance(const AValue: TValue): Boolean;
     function GetTypeMembers(AType: TRttiType): TArray<TRttiMember>;
@@ -351,12 +354,14 @@ uses
 constructor TNeonBase.Create(const AConfig: INeonConfiguration);
 begin
   FConfig := AConfig as TNeonConfiguration;
+  FMemberRegistry := TMemberRegistry.Create([doOwnsValues]);
   FErrors := TStringList.Create;
 end;
 
 destructor TNeonBase.Destroy;
 begin
   FErrors.Free;
+  FMemberRegistry.Free;
   inherited;
 end;
 
@@ -401,6 +406,9 @@ var
   LMember: TRttiMember;
   LNeonMember: TNeonRttiMember;
 begin
+  if FMemberRegistry.TryGetValue(AType.Handle, Result) then
+    Exit(Result);
+
   Result := TNeonRttiMembers.Create(FConfig, AInstance, AType, FOperation);
 
   SetLength(LFields, 0);
@@ -429,6 +437,7 @@ begin
     LNeonMember := Result.NewMember(LMember);
     Result.Add(LNeonMember);
   end;
+  FMemberRegistry.Add(AType.Handle, Result);
 end;
 
 function TNeonBase.GetTypeMembers(AType: TRttiType): TArray<TRttiMember>;
