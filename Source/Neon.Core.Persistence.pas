@@ -354,7 +354,7 @@ uses
 constructor TNeonBase.Create(const AConfig: INeonConfiguration);
 begin
   FConfig := AConfig as TNeonConfiguration;
-  FMemberRegistry := TMemberRegistry.Create([doOwnsValues]);
+  FMemberRegistry := TMemberRegistry.Create();
   FErrors := TStringList.Create;
 end;
 
