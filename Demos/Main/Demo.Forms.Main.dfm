@@ -22,6 +22,7 @@ object MainForm: TMainForm
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
+    ExplicitWidth = 1015
     object imgNeon: TImage
       Left = 746
       Top = 0
@@ -6029,8 +6030,17 @@ object MainForm: TMainForm
       Height = 137
       Align = alLeft
       TabOrder = 0
-      ExplicitWidth = 710
       ExplicitHeight = 137
+      inherited grpCase: TGroupBox
+        inherited rbCaseUnchanged: TRadioButton
+          Checked = True
+          TabStop = True
+        end
+        inherited rbCasePascal: TRadioButton
+          Checked = False
+          TabStop = False
+        end
+      end
     end
   end
   object pgcMain: TPageControl
@@ -6042,6 +6052,8 @@ object MainForm: TMainForm
     Images = imgMain
     TabHeight = 30
     TabOrder = 1
+    ExplicitWidth = 1015
+    ExplicitHeight = 419
   end
   object imgMain: TImageList
     Left = 456

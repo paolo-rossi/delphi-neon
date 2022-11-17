@@ -1,7 +1,7 @@
 object frameConfiguration: TframeConfiguration
   Left = 0
   Top = 0
-  Width = 693
+  Width = 710
   Height = 148
   TabOrder = 0
   object lblCaption: TLabel
@@ -21,80 +21,88 @@ object frameConfiguration: TframeConfiguration
   object grpCase: TGroupBox
     Left = 16
     Top = 35
-    Width = 513
+    Width = 529
     Height = 46
     Caption = 'Case '
     TabOrder = 0
-    object rbCasePascal: TRadioButton
-      Left = 8
+    object rbCaseUnchanged: TRadioButton
+      Left = 10
       Top = 16
-      Width = 80
+      Width = 90
       Height = 17
-      Caption = 'PascalCase'
+      Caption = 'Unchanged'
+      TabOrder = 6
+    end
+    object rbCasePascal: TRadioButton
+      Left = 106
+      Top = 16
+      Width = 65
+      Height = 17
+      Caption = 'Pascal'
       Checked = True
       TabOrder = 0
       TabStop = True
     end
     object rbCaseCamel: TRadioButton
-      Left = 94
+      Left = 177
       Top = 16
-      Width = 74
+      Width = 65
       Height = 17
-      Caption = 'CamelCase'
+      Caption = 'Camel'
       TabOrder = 1
     end
     object rbCaseSnake: TRadioButton
-      Left = 174
+      Left = 248
       Top = 16
-      Width = 75
+      Width = 65
       Height = 17
-      Caption = 'SnakeCase'
+      Caption = 'Snake'
       TabOrder = 2
     end
     object rbCaseLower: TRadioButton
-      Left = 257
+      Left = 319
       Top = 16
-      Width = 73
+      Width = 65
       Height = 17
-      Caption = 'LowerCase'
+      Caption = 'Lower'
       TabOrder = 3
     end
     object rbCaseUpper: TRadioButton
-      Left = 340
+      Left = 390
       Top = 16
-      Width = 74
+      Width = 65
       Height = 17
-      Caption = 'UpperCase'
+      Caption = 'Upper'
       TabOrder = 4
     end
     object rbCaseCustom: TRadioButton
-      Left = 421
+      Left = 461
       Top = 16
-      Width = 78
+      Width = 65
       Height = 17
-      Caption = 'CustomCase'
+      Caption = 'Custom'
       TabOrder = 5
     end
   end
   object grpPrefix: TGroupBox
     Left = 246
     Top = 87
-    Width = 283
+    Width = 299
     Height = 46
     Caption = 'Visibility '
     TabOrder = 1
     object chkVisibilityPrivate: TCheckBox
       Left = 7
       Top = 16
-      Width = 66
+      Width = 70
       Height = 17
       Caption = 'Private'
       TabOrder = 0
     end
     object chkVisibilityPublic: TCheckBox
-      Left = 147
+      Left = 145
       Top = 16
-      Width = 66
+      Width = 70
       Height = 17
       Caption = 'Public'
       Checked = True
@@ -102,9 +110,9 @@ object frameConfiguration: TframeConfiguration
       TabOrder = 1
     end
     object chkVisibilityPublished: TCheckBox
-      Left = 205
+      Left = 213
       Top = 16
-      Width = 66
+      Width = 76
       Height = 17
       Caption = 'Published'
       Checked = True
@@ -114,7 +122,7 @@ object frameConfiguration: TframeConfiguration
     object chkVisibilityProtected: TCheckBox
       Left = 69
       Top = 16
-      Width = 66
+      Width = 70
       Height = 17
       Caption = 'Protected'
       TabOrder = 3
@@ -151,14 +159,14 @@ object frameConfiguration: TframeConfiguration
     object chkMemberProperties: TCheckBox
       Left = 139
       Top = 16
-      Width = 68
+      Width = 82
       Height = 17
       Caption = 'Properties'
       TabOrder = 2
     end
   end
-  object GroupBox1: TGroupBox
-    Left = 535
+  object grpMisc: TGroupBox
+    Left = 551
     Top = 35
     Width = 146
     Height = 98

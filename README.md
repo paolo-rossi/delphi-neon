@@ -31,7 +31,7 @@ Please take a look at the Demos to see **Neon** in action.
 ### Configuration
 
 Extensive configuration through `INeonConfiguration` interface:
-- Word case (UPPERCASE, lowercase, PascalCase, camelCase, snake_case)
+- Word case (Unchanged, UPPERCASE, lowercase, PascalCase, camelCase, snake_case)
 - CuStOM CAse (through anonymous method)
 - Member types (Fields, Properties)
 - Option to ignore the "F" if you choose to serialize the fields

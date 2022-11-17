@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2022 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -852,45 +852,43 @@ var
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
 begin
-  LMembers := GetNeonMembers(AInstance, AType);
-  LMembers.FilterSerialize;
-  try
-    for LNeonMember in LMembers do
+  LMembers := GetNeonMembers(AType);
+  LMembers.FilterSerialize(AInstance);
+
+  for LNeonMember in LMembers do
+  begin
+
+    if LNeonMember.Serializable then
     begin
-      if LNeonMember.Serializable then
-      begin
-        try
-          LJSONValue := WriteDataMember(LNeonMember.GetValue, True, LNeonMember);
-          if Assigned(LJSONValue) then
+      try
+        LJSONValue := WriteDataMember(LNeonMember.GetValue(AInstance), True, LNeonMember);
+        if Assigned(LJSONValue) then
+        begin
+          // if it's unwrapped add childs to the AResult JSON object
+          if LNeonMember.NeonUnwrapped and (LJSONValue is TJSONObject) then
           begin
-            // if it's unwrapped add childs to the AResult JSON object
-            if LNeonMember.NeonUnwrapped and (LJSONValue is TJSONObject) then
-            begin
-              LJSONObject := LJSONValue as TJSONObject;
-              for LPair in LJSONObject do
-                (AResult as TJSONObject).AddPair(LPair.Clone as TJSONPair);
-              LJSONObject.Free;
-            end
-            else
-            begin
-              LPairName := GetNameFromMember(LNeonMember);
-              LPair := TJSONPair.Create(LPairName, LJSONValue);
-              (AResult as TJSONObject).AddPair(LPair);
-            end;
-          end;
-        except
-          on E: Exception do
+            LJSONObject := LJSONValue as TJSONObject;
+            for LPair in LJSONObject do
+              (AResult as TJSONObject).AddPair(LPair.Clone as TJSONPair);
+            LJSONObject.Free;
+          end
+          else
           begin
-            LogError(Format('Error converting member [%s] of type [%s]: %s',
-              [LNeonMember.Name, AType.Name, E.Message]));
-            if FConfig.RaiseExceptions then
-              raise;
+            LPairName := GetNameFromMember(LNeonMember);
+            LPair := TJSONPair.Create(LPairName, LJSONValue);
+            (AResult as TJSONObject).AddPair(LPair);
           end;
+        end;
+      except
+        on E: Exception do
+        begin
+          LogError(Format('Error converting member [%s] of type [%s]: %s',
+            [LNeonMember.Name, AType.Name, E.Message]));
+          if FConfig.RaiseExceptions then
+            raise;
         end;
       end;
     end;
-  finally
-    LMembers.Free;
   end;
 end;
 
@@ -1649,42 +1647,39 @@ var
   LMemberValue: TValue;
   LParam: TNeonDeserializerParam;
 begin
-  LMembers := GetNeonMembers(AInstance, AType);
-  LMembers.FilterDeserialize;
-  try
-    for LNeonMember in LMembers do
+  LMembers := GetNeonMembers(AType);
+  LMembers.FilterDeserialize(AInstance);
+
+  for LNeonMember in LMembers do
+  begin
+    if LNeonMember.Serializable then
     begin
-      if LNeonMember.Serializable then
-      begin
-        LParam.NeonObject := LNeonMember;
-        LParam.RttiType := LNeonMember.RttiType;
+      LParam.NeonObject := LNeonMember;
+      LParam.RttiType := LNeonMember.RttiType;
 
-        if LNeonMember.NeonUnwrapped then
-          LParam.JSONValue := AJSONObject
-        else
-          //Look for a JSON with the calculated Member Name
-          LParam.JSONValue := AJSONObject.GetValue(GetNameFromMember(LNeonMember));
+      if LNeonMember.NeonUnwrapped then
+        LParam.JSONValue := AJSONObject
+      else
+        //Look for a JSON with the calculated Member Name
+        LParam.JSONValue := AJSONObject.GetValue(GetNameFromMember(LNeonMember));
 
-        // Property not found in JSON, continue to the next one
-        if not Assigned(LParam.JSONValue) then
-          Continue;
+      // Property not found in JSON, continue to the next one
+      if not Assigned(LParam.JSONValue) then
+        Continue;
 
-        try
-          LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue, True);
-          LNeonMember.SetValue(LMemberValue);
-        except
-          on E: Exception do
-          begin
-            LogError(Format('Error converting member [%s] of type [%s]: %s',
-              [LNeonMember.Name, AType.Name, E.Message]));
-            if FConfig.RaiseExceptions then
-              raise;
-          end;
+      try
+        LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue(AInstance), True);
+        LNeonMember.SetValue(LMemberValue, AInstance);
+      except
+        on E: Exception do
+        begin
+          LogError(Format('Error converting member [%s] of type [%s]: %s',
+            [LNeonMember.Name, AType.Name, E.Message]));
+          if FConfig.RaiseExceptions then
+            raise;
         end;
       end;
     end;
-  finally
-    LMembers.Free;
   end;
 end;
 

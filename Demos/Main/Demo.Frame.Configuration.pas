@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2022 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -38,6 +38,7 @@ type
   TframeConfiguration = class(TFrame)
     grpType: TGroupBox;
     grpCase: TGroupBox;
+    rbCaseUnchanged: TRadioButton;
     rbCasePascal: TRadioButton;
     rbCaseCamel: TRadioButton;
     rbCaseSnake: TRadioButton;
@@ -50,7 +51,7 @@ type
     chkVisibilityPublic: TCheckBox;
     chkVisibilityPublished: TCheckBox;
     lblCaption: TLabel;
-    GroupBox1: TGroupBox;
+    grpMisc: TGroupBox;
     chkUseUTCDate: TCheckBox;
     chkPrettyPrinting: TCheckBox;
     chkIgnorePrefix: TCheckBox;
@@ -93,6 +94,10 @@ begin
 
   // Case settings
   Result.SetMemberCustomCase(nil);
+  if rbCaseUnchanged.Checked then
+    Result.SetMemberCase(TNeonCase.Unchanged);
+  if rbCasePascal.Checked then
+    Result.SetMemberCase(TNeonCase.PascalCase);
   if rbCaseCamel.Checked then
     Result.SetMemberCase(TNeonCase.CamelCase);
   if rbCaseSnake.Checked then
