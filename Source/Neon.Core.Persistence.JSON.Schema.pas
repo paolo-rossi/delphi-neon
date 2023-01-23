@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -489,25 +489,22 @@ var
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
 begin
-  LMembers := GetNeonMembers(nil, AType);
-  LMembers.FilterSerialize;
-  try
-    for LNeonMember in LMembers do
+  LMembers := GetNeonMembers(AType);
+  LMembers.FilterSerialize(nil);
+
+  for LNeonMember in LMembers do
+  begin
+    if LNeonMember.Serializable then
     begin
-      if LNeonMember.Serializable then
-      begin
-        try
-          LJSONValue := WriteDataMember(LNeonMember.RttiType, LNeonMember);
-          if Assigned(LJSONValue) then
-            (AResult as TJSONObject).AddPair(GetNameFromMember(LNeonMember), LJSONValue);
-        except
-          LogError(Format('Error converting property [%s] of object [%s]',
-            [LNeonMember.Name, AType.Name]));
-        end;
+      try
+        LJSONValue := WriteDataMember(LNeonMember.RttiType, LNeonMember);
+        if Assigned(LJSONValue) then
+          (AResult as TJSONObject).AddPair(GetNameFromMember(LNeonMember), LJSONValue);
+      except
+        LogError(Format('Error converting property [%s] of object [%s]',
+          [LNeonMember.Name, AType.Name]));
       end;
     end;
-  finally
-    LMembers.Free;
   end;
 end;
 

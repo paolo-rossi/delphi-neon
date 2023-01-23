@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -32,7 +32,7 @@ type
   ENeonException = class(Exception);
 
 type
-  TNeonCase = (LowerCase, UpperCase, PascalCase, CamelCase, SnakeCase, CustomCase);
+  TNeonCase = (Unchanged, LowerCase, UpperCase, PascalCase, CamelCase, SnakeCase, CustomCase);
   TNeonMemberType = (Unknown, Prop, Field, Indexed);
   TNeonMembers = (Standard, Fields, Properties);
   TNeonMembersSet = set of TNeonMembers;

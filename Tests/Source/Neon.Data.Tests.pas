@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2022 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -64,7 +64,6 @@ uses
 procedure TDataTests.DataModuleCreate(Sender: TObject);
 begin
   FDataPath := TDirectory.GetCurrentDirectory;
-  FDataPath := TDirectory.GetParent(FDataPath);
   FDataPath := TDirectory.GetParent(FDataPath);
   FDataPath := TPath.Combine(FDataPath, 'Data');
 end;
