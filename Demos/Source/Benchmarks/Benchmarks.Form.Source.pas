@@ -55,8 +55,8 @@ implementation
 
 procedure TfrmSource.FormCreate(Sender: TObject);
 begin
-  richSourceSimple.Lines.LoadFromFile('D:\projects\GitHub\Project Neon\delphi-neon-cache\Benchmarks\Data\benchmark-simple.rtf');
-  richSourceComplex.Lines.LoadFromFile('D:\projects\GitHub\Project Neon\delphi-neon-cache\Benchmarks\Data\benchmark-complex.rtf');
+  richSourceSimple.Lines.LoadFromFile('..\Data\Benchmarks\benchmark-simple.rtf');
+  richSourceComplex.Lines.LoadFromFile('..\Data\Benchmarks\benchmark-complex.rtf');
 end;
 
 end.

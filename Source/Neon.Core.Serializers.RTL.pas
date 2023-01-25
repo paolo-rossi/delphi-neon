@@ -79,6 +79,7 @@ procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 begin
   ARegistry.RegisterSerializer(TGUIDSerializer);
   ARegistry.RegisterSerializer(TStreamSerializer);
+  ARegistry.RegisterSerializer(TJSONValueSerializer);
 end;
 
 { TGUIDSerializer }
