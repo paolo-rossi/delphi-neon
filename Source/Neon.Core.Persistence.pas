@@ -48,6 +48,7 @@ type
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
+    function SetAutoCreate(AValue: Boolean): INeonConfiguration;
 
     function GetPrettyPrint: Boolean;
     function GetUseUTCDate: Boolean;
@@ -175,6 +176,7 @@ type
     FSerializers: TNeonSerializerRegistry;
     FRaiseExceptions: Boolean;
     FEnumAsInt: Boolean;
+    FAutoCreate: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -193,6 +195,7 @@ type
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
+    function SetAutoCreate(AValue: Boolean): INeonConfiguration;
 
     function GetUseUTCDate: Boolean;
     function GetPrettyPrint: Boolean;
@@ -207,6 +210,7 @@ type
     property UseUTCDate: Boolean read FUseUTCDate write FUseUTCDate;
     property RaiseExceptions: Boolean read FRaiseExceptions write FRaiseExceptions;
     property EnumAsInt: Boolean read FEnumAsInt write FEnumAsInt;
+    property AutoCreate: Boolean read FAutoCreate write FAutoCreate;
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
   end;
 
@@ -572,10 +576,16 @@ begin
   Result := Self;
 end;
 
+function TNeonConfiguration.SetAutoCreate(AValue: Boolean): INeonConfiguration;
+begin
+  FAutoCreate := AValue;
+  Result := Self;
+end;
+
 function TNeonConfiguration.SetEnumAsInt(AValue: Boolean): INeonConfiguration;
 begin
   FEnumAsInt := AValue;
-  result := Self;
+  Result := Self;
 end;
 
 function TNeonConfiguration.SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;

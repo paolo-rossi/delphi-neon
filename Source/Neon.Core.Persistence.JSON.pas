@@ -207,6 +207,11 @@ type
     ///   Reader for members of objects and records
     /// </summary>
     procedure ReadMembers(AType: TRttiType; AInstance: Pointer; AJSONObject: TJSONObject);
+
+    /// <summary>
+    ///   Decides to whether or not to create the object and assigning it to the reference
+    /// </summary>
+    function ManageReference(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
   private
     /// <summary>
     ///   reader for string types
@@ -1342,24 +1347,21 @@ begin
     // Complex types
     tkClass:
     begin
-      if ReadEnumerableMap(AParam, AData) then
-        Result := AData
-      else if ReadEnumerable(AParam, AData) then
-        Result := AData
-      else if ReadStreamable(AParam, AData) then
-        Result := AData
-      else
-        Result := ReadObject(AParam, AData);
+      if TJSONUtils.HasValues(AParam.JSONValue) then
+        Result := ManageReference(AParam, AData);
     end;
 
     tkInterface:   Result := ReadInterface(AParam, AData);
 
     tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
     begin
-      if ReadNullable(AParam, AData) then
-        Result := AData
-      else
-       Result := ReadRecord(AParam, AData);
+      if TJSONUtils.HasValues(AParam.JSONValue) then
+      begin
+        if ReadNullable(AParam, AData) then
+          Result := AData
+        else
+         Result := ReadRecord(AParam, AData);
+      end;
     end;
 
     // Not supported (yet)
@@ -1706,13 +1708,11 @@ var
   LPData: Pointer;
 begin
   Result := AData;
-
   LPData := AData.AsObject;
   if not Assigned(LPData) then
     Exit;
 
   LJSONObject := AParam.JSONValue as TJSONObject;
-
   if (AParam.RttiType.TypeKind = tkClass) or (AParam.RttiType.TypeKind = tkInterface) then
     ReadMembers(AParam.RttiType, LPData, LJSONObject);
 end;
@@ -1826,6 +1826,8 @@ var
   LJSONNumber: TJSONNumber;
   LJSONString: TJSONString;
 begin
+  // Because the property is a variant we have to guess the type based (only)
+  // on the information of the JSON data
   if AParam.JSONValue is TJSONNull then
     Result := TValue.FromVariant(Null)
   else if AParam.JSONValue is TJSONTrue then
@@ -1869,6 +1871,28 @@ function TNeonDeserializerJSON.JSONToTValue(AJSON: TJSONValue; AType: TRttiType;
 begin
   FOriginalInstance := AData;
   Result := ReadDataMember(AJSON, AType, AData);
+end;
+
+function TNeonDeserializerJSON.ManageReference(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+var
+  LType: TRttiType;
+  LValue: TValue;
+begin
+  LValue := AData;
+  if (AData.AsObject = nil) and FConfig.AutoCreate then
+  begin
+    LType := TRttiUtils.Context.GetType(AData.TypeInfo);
+    LValue := TRttiUtils.CreateInstance(LType);
+  end;
+
+  if ReadEnumerableMap(AParam, LValue) then
+    Result := LValue
+  else if ReadEnumerable(AParam, LValue) then
+    Result := LValue
+  else if ReadStreamable(AParam, LValue) then
+    Result := LValue
+  else
+    Result := ReadObject(AParam, LValue);
 end;
 
 function TNeonDeserializerJSON.JSONToTValue(AJSON: TJSONValue; AType: TRttiType): TValue;
