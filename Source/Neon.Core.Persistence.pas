@@ -217,6 +217,7 @@ type
   TNeonRttiObject = class
   private
     FTypeAttributes: TArray<TCustomAttribute>;
+    FNeonAutoCreate: Boolean;
   protected
     FOperation: TNeonOperation;
     FRttiObject: TRttiObject;
@@ -254,6 +255,7 @@ type
     property NeonMembers: TNeonMembersSet read FNeonMembers write FNeonMembers;
     property NeonVisibility: TNeonVisibility read FNeonVisibility write FNeonVisibility;
     property NeonUnwrapped: Boolean read FNeonUnwrapped write FNeonUnwrapped;
+    property NeonAutoCreate: Boolean read FNeonAutoCreate write FNeonAutoCreate;
   end;
 
   TNeonRttiType = class(TNeonRttiObject)
@@ -1019,7 +1021,9 @@ begin
     else if LAttribute is NeonMembersSetAttribute then
       FNeonMembers := (LAttribute as NeonMembersSetAttribute).Value
     else if LAttribute is NeonUnwrappedAttribute then
-      FNeonUnwrapped := True;  //Only applicable to complex types (classes, records, interfaces)
+      FNeonUnwrapped := True  //Only applicable to complex types (classes, records, interfaces)
+    else if LAttribute is NeonAutoCreateAttribute then
+      FNeonAutoCreate := True;  //Only applicable to class types
 
     // Further attribute processing
     ProcessAttribute(LAttribute);

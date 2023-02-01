@@ -1879,7 +1879,8 @@ var
   LValue: TValue;
 begin
   LValue := AData;
-  if (AData.AsObject = nil) and FConfig.AutoCreate then
+  if (AData.AsObject = nil) and
+     (FConfig.AutoCreate or AParam.NeonObject.NeonAutoCreate) then
   begin
     LType := TRttiUtils.Context.GetType(AData.TypeInfo);
     LValue := TRttiUtils.CreateInstance(LType);

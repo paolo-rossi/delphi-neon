@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -219,6 +219,13 @@ type
   ///   NeonRawValue property Neon won't do that.
   /// </summary>
   NeonRawValueAttribute = class(NeonAttribute);
+
+
+  /// <summary>
+  ///   The NeonAutoCreate tells Neon to create an object if it's nil. The
+  ///   class must have at least one parameterless Create constructor.
+  /// </summary>
+  NeonAutoCreateAttribute = class(NeonAttribute);
 
   {
   //Read Annotations
