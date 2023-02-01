@@ -107,7 +107,7 @@ procedure TfrmSerializationDelphi.actSerBitmapExecute(Sender: TObject);
 var
   LFileName: string;
 begin
-  LFileName := ExtractFilePath(Application.ExeName) + '..\..\neon-logo-600.bmp';
+  LFileName := ExtractFilePath(Application.ExeName) + '..\Data\neon-logo-600.bmp';
   frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
   SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   frmDetails.ClearImage;
@@ -125,7 +125,7 @@ procedure TfrmSerializationDelphi.actSerImageExecute(Sender: TObject);
 var
   LFileName: string;
 begin
-  LFileName := ExtractFilePath(Application.ExeName) + '..\..\neon-logo-600.bmp';
+  LFileName := ExtractFilePath(Application.ExeName) + '..\Data\neon-logo-600.bmp';
   frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
   SerializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
   frmDetails.ClearImage;
