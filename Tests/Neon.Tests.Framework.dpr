@@ -33,7 +33,7 @@ uses
   {$ELSE}
   DUnitX.Loggers.Console,
   DUnitX.Loggers.Xml.NUnit,
-  {$ENDIF}
+  {$ENDIF }
   DUnitX.TestFramework,
   Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule},
   Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',
@@ -48,7 +48,8 @@ uses
   Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas',
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
   Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas',
-  Neon.Tests.Config.EnumAsInt in 'Source\Neon.Tests.Config.EnumAsInt.pas';
+  Neon.Tests.Config.EnumAsInt in 'Source\Neon.Tests.Config.EnumAsInt.pas',
+  Neon.Tests.Config.AutoCreate in 'Source\Neon.Tests.Config.AutoCreate.pas';
 
 var
   LRunner : ITestRunner;

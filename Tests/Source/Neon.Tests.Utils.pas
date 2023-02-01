@@ -39,7 +39,7 @@ type
     class function SerializeObject(AObject: TObject): string; overload;
     class function SerializeObject(AObject: TObject; AConfig: INeonConfiguration): string; overload;
 
-    class function DeserializeObject(AObject: TObject; AConfig: INeonConfiguration): string;
+    class function DeserializeObject(const AValue: string; AObject: TObject; AConfig: INeonConfiguration): string;
 
     class function SerializeValue(AValue: TValue): string; overload;
     class function SerializeValue(AValue: TValue; AConfig: INeonConfiguration): string; overload;
@@ -76,12 +76,13 @@ begin
   Result := SerializeValue(AValue, TNeonConfiguration.Default);
 end;
 
-class function TTestUtils.DeserializeObject(AObject: TObject; AConfig: INeonConfiguration): string;
+class function TTestUtils.DeserializeObject(const AValue: string; AObject:
+    TObject; AConfig: INeonConfiguration): string;
 var
   LJSON: TJSONValue;
   LReader: TNeonDeserializerJSON;
 begin
-  LJSON := TJSONObject.ParseJSONValue('');
+  LJSON := TJSONObject.ParseJSONValue(AValue);
   if not Assigned(LJSON) then
     raise Exception.Create('Error parsing JSON string');
 

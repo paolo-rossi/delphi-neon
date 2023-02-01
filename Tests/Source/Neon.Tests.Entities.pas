@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2022 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -149,6 +149,24 @@ type
     property NInteger: NullInteger read FNInteger write FNInteger;
   end;
 
+  /// <summary>
+  ///   Entity to test the AutoCreate feature
+  /// </summary>
+  TAutoCreateClass = class
+  private
+    FName: string;
+    FRecursive: TAutoCreateClass;
+    FContact: TContact;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    property Name: string read FName write FName;
+    property Contact: TContact read FContact write FContact;
+    property Recursive: TAutoCreateClass read FRecursive write FRecursive;
+  end;
+
+
 implementation
 
 { TPerson }
@@ -219,4 +237,18 @@ begin
 end;
 
 {$ENDIF}
+{ TAutoCreateClass }
+
+constructor TAutoCreateClass.Create;
+begin
+  FContact := TContact.Create;
+end;
+
+destructor TAutoCreateClass.Destroy;
+begin
+  FRecursive.Free;
+  FContact.Free;
+  inherited;
+end;
+
 end.
