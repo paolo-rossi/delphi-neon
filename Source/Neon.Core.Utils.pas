@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2022 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -46,6 +46,7 @@ type
     class function DoubleArrayToJsonArray(const AValues: TArray<Double>): string; static;
     class function IntegerArrayToJsonArray(const AValues: TArray<Integer>): string; static;
 
+    class function HasValues(const AJSON: TJSONValue): Boolean;
     class procedure JSONCopyFrom(ASource, ADestination: TJSONObject); static;
 
     class function BooleanToTJSON(AValue: Boolean): TJSONValue;
@@ -686,6 +687,23 @@ begin
 {$ELSE}
   Result := TIdEncoderMIME.EncodeStream(ASource);
 {$ENDIF}
+end;
+
+class function TJSONUtils.HasValues(const AJSON: TJSONValue): Boolean;
+begin
+  if AJSON = nil then
+    Exit(False);
+
+  if AJSON is TJSONString then
+    Exit(not (AJSON as TJSONString).Value.IsEmpty);
+
+  if AJSON is TJSONObject then
+    Exit((AJSON as TJSONObject).Count > 0);
+
+  if AJSON is TJSONArray then
+    Exit((AJSON as TJSONArray).Count > 0);
+
+  raise ENeonException.Create('JSON must be array or object');
 end;
 
 class function TJSONUtils.IntegerArrayToJsonArray(const AValues: TArray<Integer>): string;
