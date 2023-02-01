@@ -1,0 +1,14 @@
+{
+  "Name": "Test",
+  "Contact": {
+    "ContactType": "Phone",
+    "Number": "111111111"
+  },
+  "Recursive": {
+    "Name": "TestSubObject",
+    "Contact": {
+      "ContactType": "Email",
+      "Number": "paolo@email.com"
+    }
+  }
+}
