@@ -24,7 +24,15 @@
 
 Please take a look at the Demos to see **Neon** in action.
 
+### Neon Main Demo
+This is the main demo where you can see how you can serialize/deserialize simple types, records, classes, Delphi specific types (TStringList, TDataSet, etc...):
+
 ![Neon Mega Demo](https://user-images.githubusercontent.com/4686497/103461978-64c83000-4d22-11eb-85c5-1a829b4ec0c0.png)
+
+### Neon Benchamerks Demo
+This new demo tries to compare the standard TJSON serialization engine with the TNeon engine, with a few changes you can compare TNeon with other serialization engines out there:
+
+![Neon Benchmarks Demo](https://user-images.githubusercontent.com/4686497/216270908-0a702077-02fe-4295-bce5-8da78ee46599.png)
 
 ## General Features
 
@@ -38,6 +46,7 @@ Extensive configuration through `INeonConfiguration` interface:
 - Member visibility (private, protected, public, published)
 - Custom serializer registration
 - Use UTC date in serialization
+- Auto creation of nil (object) members
 
 ### Delphi Types Support
 
@@ -158,8 +167,6 @@ begin
     LJSON.Free;
   end;
 ```
-
-
 
 #### Neon configuration
 It's very easy to configure **Neon**, 
