@@ -29,7 +29,7 @@ This is the main demo where you can see how you can serialize/deserialize simple
 
 ![Neon Mega Demo](https://user-images.githubusercontent.com/4686497/103461978-64c83000-4d22-11eb-85c5-1a829b4ec0c0.png)
 
-### Neon Benchamerks Demo
+### Neon Benchmarks Demo
 This new demo tries to compare the standard TJSON serialization engine with the TNeon engine, with a few changes you can compare TNeon with other serialization engines out there:
 
 ![Neon Benchmarks Demo](https://user-images.githubusercontent.com/4686497/216270908-0a702077-02fe-4295-bce5-8da78ee46599.png)
