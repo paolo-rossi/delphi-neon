@@ -983,7 +983,7 @@ end;
 
 function TNeonRttiObject.AsRttiType: TRttiType;
 begin
-  // Trhows an exception if not (is better than returnig nil and have to check outside)
+  // Throws an exception if not (is better than returnig nil and have to check outside)
   Result := FRttiObject as TRttiType;
 end;
 

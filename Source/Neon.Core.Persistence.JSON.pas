@@ -211,7 +211,12 @@ type
     /// <summary>
     ///   Decides to whether or not to create the object and assigning it to the reference
     /// </summary>
-    function ManageReference(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+    function ReadReference(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+
+    /// <summary>
+    ///   Decides to whether or not to create the object and assigning it to the reference
+    /// </summary>
+    function ManageInstance(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject): TValue;
   private
     /// <summary>
     ///   reader for string types
@@ -1312,6 +1317,7 @@ function TNeonDeserializerJSON.ReadDataMember(const AParam: TNeonDeserializerPar
   const AData: TValue; ACustomProcess: Boolean): TValue;
 var
   LCustom: TCustomSerializer;
+  LValue: TValue;
 begin
   if ACustomProcess then
   begin
@@ -1319,7 +1325,8 @@ begin
     LCustom := FConfig.Serializers.GetSerializer(AParam.RttiType.Handle);
     if Assigned(LCustom) then
     begin
-      Result := LCustom.Deserialize(AParam.JSONValue, AData, AParam.NeonObject, Self);
+      LValue := ManageInstance(AParam.JSONValue, AData, AParam.NeonObject);
+      Result := LCustom.Deserialize(AParam.JSONValue, LValue, AParam.NeonObject, Self);
       Exit(Result);
     end;
   end;
@@ -1348,7 +1355,7 @@ begin
     tkClass:
     begin
       if TJSONUtils.HasValues(AParam.JSONValue) then
-        Result := ManageReference(AParam, AData);
+        Result := ReadReference(AParam, AData);
     end;
 
     tkInterface:   Result := ReadInterface(AParam, AData);
@@ -1873,18 +1880,26 @@ begin
   Result := ReadDataMember(AJSON, AType, AData);
 end;
 
-function TNeonDeserializerJSON.ManageReference(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ManageInstance(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject): TValue;
 var
   LType: TRttiType;
-  LValue: TValue;
 begin
-  LValue := AData;
-  if (AData.AsObject = nil) and
-     (FConfig.AutoCreate or AParam.NeonObject.NeonAutoCreate) then
+  Result := AData;
+  if (AData.IsObject) and (AData.AsObject = nil) and
+     TJSONUtils.HasValues(AValue) and
+     (FConfig.AutoCreate or ANeonObject.NeonAutoCreate) then
   begin
     LType := TRttiUtils.Context.GetType(AData.TypeInfo);
-    LValue := TRttiUtils.CreateInstance(LType);
+    Result := TRttiUtils.CreateInstance(LType);
   end;
+end;
+
+function TNeonDeserializerJSON.ReadReference(const AParam:
+    TNeonDeserializerParam; const AData: TValue): TValue;
+var
+  LValue: TValue;
+begin
+  LValue := ManageInstance(AParam.JSONValue, AData, AParam.NeonObject);
 
   if ReadEnumerableMap(AParam, LValue) then
     Result := LValue
