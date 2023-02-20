@@ -46,7 +46,10 @@ type
     class function DoubleArrayToJsonArray(const AValues: TArray<Double>): string; static;
     class function IntegerArrayToJsonArray(const AValues: TArray<Integer>): string; static;
 
-    class function HasValues(const AJSON: TJSONValue): Boolean;
+    class function HasItems(const AJSON: TJSONValue): Boolean;
+    class function IsNotEmpty(const AJSON: TJSONValue): Boolean;
+    class function IsNotDefault(const AJSON: TJSONValue): Boolean;
+
     class procedure JSONCopyFrom(ASource, ADestination: TJSONObject); static;
 
     class function BooleanToTJSON(AValue: Boolean): TJSONValue;
@@ -161,7 +164,7 @@ type
 implementation
 
 uses
-  System.StrUtils, System.DateUtils,
+  System.StrUtils, System.DateUtils, System.Math,
   Neon.Core.Types;
 
 class function TRttiUtils.ClassDistanceFromRoot(AClass: TClass): Integer;
@@ -689,8 +692,52 @@ begin
 {$ENDIF}
 end;
 
-class function TJSONUtils.HasValues(const AJSON: TJSONValue): Boolean;
+class function TJSONUtils.IsNotDefault(const AJSON: TJSONValue): Boolean;
 begin
+  Result := True;
+
+  if AJSON = nil then
+    Exit(False);
+
+  if AJSON is TJSONNull then
+    Exit(False);
+
+  if AJSON is TJSONString then
+    Exit(not (AJSON as TJSONString).Value.IsEmpty);
+
+  if AJSON is TJSONNumber then
+  begin
+    if (AJSON as TJSONNumber).Value.Contains('.') then
+      Exit(not IsZero((AJSON as TJSONNumber).AsDouble));
+
+    Exit(not (AJSON as TJSONNumber).AsInt = 0);
+  end;
+
+  if AJSON is TJSONObject then
+    Exit((AJSON as TJSONObject).Count > 0);
+
+  if AJSON is TJSONArray then
+    Exit((AJSON as TJSONArray).Count > 0);
+end;
+
+class function TJSONUtils.HasItems(const AJSON: TJSONValue): Boolean;
+begin
+  Result := True;
+
+  if AJSON = nil then
+    Exit(False);
+
+  if AJSON is TJSONObject then
+    Exit((AJSON as TJSONObject).Count > 0);
+
+  if AJSON is TJSONArray then
+    Exit((AJSON as TJSONArray).Count > 0);
+end;
+
+class function TJSONUtils.IsNotEmpty(const AJSON: TJSONValue): Boolean;
+begin
+  Result := True;
+
   if AJSON = nil then
     Exit(False);
 
@@ -702,8 +749,6 @@ begin
 
   if AJSON is TJSONArray then
     Exit((AJSON as TJSONArray).Count > 0);
-
-  raise ENeonException.Create('JSON must be array or object');
 end;
 
 class function TJSONUtils.IntegerArrayToJsonArray(const AValues: TArray<Integer>): string;

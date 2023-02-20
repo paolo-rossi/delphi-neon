@@ -1354,7 +1354,7 @@ begin
     // Complex types
     tkClass:
     begin
-      if TJSONUtils.HasValues(AParam.JSONValue) then
+      if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
         Result := ReadReference(AParam, AData);
     end;
 
@@ -1362,7 +1362,7 @@ begin
 
     tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
     begin
-      if TJSONUtils.HasValues(AParam.JSONValue) then
+      if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
       begin
         if ReadNullable(AParam, AData) then
           Result := AData
@@ -1676,6 +1676,9 @@ begin
       if not Assigned(LParam.JSONValue) then
         Continue;
 
+      if not TJSONUtils.HasItems(LParam.JSONValue) then
+        Continue;
+
       try
         LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue(AInstance), True);
         LNeonMember.SetValue(LMemberValue, AInstance);
@@ -1886,7 +1889,7 @@ var
 begin
   Result := AData;
   if (AData.IsObject) and (AData.AsObject = nil) and
-     TJSONUtils.HasValues(AValue) and
+     TJSONUtils.IsNotEmpty(AValue) and
      (FConfig.AutoCreate or ANeonObject.NeonAutoCreate) then
   begin
     LType := TRttiUtils.Context.GetType(AData.TypeInfo);
