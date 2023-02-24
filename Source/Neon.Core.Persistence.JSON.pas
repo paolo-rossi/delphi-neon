@@ -1208,6 +1208,9 @@ var
   LParam: TNeonDeserializerParam;
   LCustom: TCustomSerializer;
 begin
+  if AParam.JSONValue is TJSONNull then
+    Exit(TValue.Empty);
+
   // TValue record copy (but the TValue only copy the reference to Data)
   Result := AData;
   LParam.NeonObject := AParam.NeonObject;
@@ -1246,6 +1249,9 @@ var
   LParam: TNeonDeserializerParam;
   LCustom: TCustomSerializer;
 begin
+  if AParam.JSONValue is TJSONNull then
+    Exit(TValue.Empty);
+
   Result := AData;
 
   //TODO -oPaolo -cGeneral : Clear (and Free) previous array elements?
@@ -1285,8 +1291,11 @@ end;
 
 function TNeonDeserializerJSON.ReadChar(const AParam: TNeonDeserializerParam): TValue;
 begin
-  if (AParam.JSONValue is TJSONNull) or AParam.JSONValue.Value.IsEmpty then
-    Exit(#0);
+  if AParam.JSONValue is TJSONNull then
+    Exit(TValue.Empty);
+
+  if AParam.JSONValue.Value.IsEmpty then
+    Exit(TValue.Empty);
 
   case AParam.RttiType.TypeKind of
     // AnsiChar
@@ -1330,9 +1339,6 @@ begin
       Exit(Result);
     end;
   end;
-
-  if AParam.JSONValue is TJSONNull then
-    Exit(TValue.Empty);
 
   case AParam.RttiType.TypeKind of
     // Simple types
@@ -1379,7 +1385,8 @@ begin
     tkMethod: ;
     tkProcedure: ;
     }
-    else Result := TValue.Empty;
+  else
+    Result := TValue.Empty;
   end;
 end;
 
@@ -1388,6 +1395,9 @@ var
   LIndex, LOrdinal: Integer;
   LTypeData: PTypeData;
 begin
+  if AParam.JSONValue is TJSONNull then
+    Exit(TValue.Empty);
+
   if AParam.RttiType.Handle = System.TypeInfo(Boolean) then
   begin
     if AParam.JSONValue is TJSONBool then
@@ -1512,7 +1522,7 @@ var
   LMsg: string;
 begin
   if AParam.JSONValue is TJSONNull then
-    Exit(0);
+    Exit(TValue.Empty);
 
   if AParam.RttiType.Handle = System.TypeInfo(TDate) then
     Result := TValue.From<TDate>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, True))
@@ -1574,7 +1584,7 @@ var
   LUInt: UInt64;
 begin
   if AParam.JSONValue is TJSONNull then
-    Exit(0);
+    Exit(TValue.Empty);
 
   LMin := GetTypeData(AParam.RttiType.Handle).MinInt64Value;
   if LMin < 0 then
@@ -1595,7 +1605,7 @@ var
   LMsg: string;
 begin
   if AParam.JSONValue is TJSONNull then
-    Exit(0);
+    Exit(TValue.Empty);
 
   LInt := (AParam.JSONValue as TJSONNumber).AsInt64;
   LMin := 0;
@@ -1717,6 +1727,9 @@ var
   LJSONObject: TJSONObject;
   LPData: Pointer;
 begin
+  if AParam.JSONValue is TJSONNull then
+    Exit(TValue.Empty);
+
   Result := AData;
   LPData := AData.AsObject;
   if not Assigned(LPData) then
@@ -1732,6 +1745,9 @@ var
   LJSONObject: TJSONObject;
   LPData: Pointer;
 begin
+  if AParam.JSONValue is TJSONNull then
+    Exit(TValue.Empty);
+
   Result := AData;
   LPData := AData.GetReferenceToRawData;
 
@@ -1752,7 +1768,8 @@ var
   LEnumType: TRttiType;
   LSet: Integer;
 begin
-  Result := nil;
+  if AParam.JSONValue is TJSONNull then
+    Exit(TValue.Empty);
 
   LEnumType := TRttiUtils.GetSetElementType(AParam.RttiType);
 
@@ -1764,6 +1781,9 @@ begin
   LSet := 0;
   for LJSONValue in LJSONArray do
   begin
+    if LJSONValue is TJSONNull then
+      Continue;
+
     if LJSONValue is TJSONNumber then
       LValue := (LJSONValue as TJSONNumber).AsInt
     else if LJSONValue is TJSONBool then
@@ -1805,6 +1825,9 @@ end;
 
 function TNeonDeserializerJSON.ReadString(const AParam: TNeonDeserializerParam): TValue;
 begin
+  if AParam.JSONValue is TJSONNull then
+    Exit(TValue.Empty);
+
   if AParam.NeonObject.NeonRawValue then
     Exit(TValue.From<string>(AParam.JSONValue.ToJSON));
 
@@ -1838,25 +1861,30 @@ var
 begin
   // Because the property is a variant we have to guess the type based (only)
   // on the information of the JSON data
+
   if AParam.JSONValue is TJSONNull then
-    Result := TValue.FromVariant(Null)
-  else if AParam.JSONValue is TJSONTrue then
-    Result := TValue.FromVariant(True)
-  else if AParam.JSONValue is TJSONFalse then
-    Result := TValue.FromVariant(False)
-  else if AParam.JSONValue is TJSONNumber then
+    Exit(TValue.From<Variant>(Null));
+
+  if AParam.JSONValue is TJSONTrue then
+    Exit(TValue.From<Variant>(True));
+
+  if AParam.JSONValue is TJSONFalse then
+    Exit(TValue.From<Variant>(False));
+
+  if AParam.JSONValue is TJSONNumber then
   begin
     LJSONNumber := AParam.JSONValue as TJSONNumber;
-    Result := TValue.FromVariant(LJSONNumber.AsDouble);
-  end
-  else if AParam.JSONValue is TJSONString then
+    Exit(TValue.From<Variant>(LJSONNumber.AsDouble));
+  end;
+
+  if AParam.JSONValue is TJSONString then
   begin
     LJSONString := AParam.JSONValue as TJSONString;
     try
       LDateTime := ISO8601ToDate(LJSONString.Value, FConfig.UseUTCDate);
-      Result := TValue.FromVariant(VarFromDateTime(LDateTime))
+      Exit(TValue.From<Variant>(VarFromDateTime(LDateTime)));
     except
-      Result := TValue.FromVariant(LJSONString.Value);
+      Exit(TValue.From<Variant>(LJSONString.Value));
     end;
   end;
 end;
@@ -1905,18 +1933,19 @@ begin
   LValue := ManageInstance(AParam.JSONValue, AData, AParam.NeonObject);
 
   if ReadEnumerableMap(AParam, LValue) then
-    Result := LValue
-  else if ReadEnumerable(AParam, LValue) then
-    Result := LValue
-  else if ReadStreamable(AParam, LValue) then
-    Result := LValue
-  else
-    Result := ReadObject(AParam, LValue);
+    Exit(LValue);
+
+  if ReadEnumerable(AParam, LValue) then
+    Exit(LValue);
+
+  if ReadStreamable(AParam, LValue) then
+    Exit(LValue);
+
+  Result := ReadObject(AParam, LValue);
 end;
 
 function TNeonDeserializerJSON.JSONToTValue(AJSON: TJSONValue; AType: TRttiType): TValue;
 begin
-  //FOriginalInstance := TValue.Empty;
   Result := ReadDataMember(AJSON, AType, TValue.Empty.Cast(AType.Handle));
 end;
 

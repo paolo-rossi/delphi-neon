@@ -164,7 +164,7 @@ type
 implementation
 
 uses
-  System.StrUtils, System.DateUtils, System.Math,
+  System.StrUtils, System.DateUtils, System.Math, System.Variants,
   Neon.Core.Types;
 
 class function TRttiUtils.ClassDistanceFromRoot(AClass: TClass): Integer;
@@ -208,6 +208,8 @@ begin
     tkWString:     Result := TValue.From<string>('');
     tkLString:     Result := TValue.From<UTF8String>('');
     tkUString:     Result := TValue.From<string>('');
+    tkVariant:     Result := TValue.From<Variant>(Null);
+
     tkClass:       Result := CreateInstance(AType);
     tkRecord, tkDynArray:
     begin
