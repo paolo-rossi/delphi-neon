@@ -263,14 +263,9 @@ type
     function ReadVariant(const AParam: TNeonDeserializerParam): TValue;
   private
     /// <summary>
-    ///   Reader for static arrays
+    ///   Reader for static and dynamic arrays
     /// </summary>
-    function ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
-
-    /// <summary>
-    ///   Reader for dynamic arrays
-    /// </summary>
-    function ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
+    function ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 
     /// <summary>
     ///   Reader for a standard TObject (descendants)  type (no list, stream or streamable)
@@ -1200,92 +1195,55 @@ begin
   FOperation := TNeonOperation.Deserialize;
 end;
 
-function TNeonDeserializerJSON.ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
+function TNeonDeserializerJSON.ReadArray(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 var
   LIndex: NativeInt;
-  LItemValue: TValue;
-  LJSONArray: TJSONArray;
-  LParam: TNeonDeserializerParam;
-  LCustom: TCustomSerializer;
-begin
-  if AParam.JSONValue is TJSONNull then
-    Exit(TValue.Empty);
-
-  // TValue record copy (but the TValue only copy the reference to Data)
-  Result := AData;
-  LParam.NeonObject := AParam.NeonObject;
-
-  // Clear (and Free) previous elements?
-  LJSONArray := AParam.JSONValue as TJSONArray;
-  LParam.RttiType := (AParam.RttiType as TRttiArrayType).ElementType;
-
-  if ACustomProcess then
-    LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle)
-  else
-    LCustom := nil;
-
-  // Check static array bounds
-  for LIndex := 0 to LJSONArray.Count - 1 do
-  begin
-    LParam.JSONValue := LJSONArray.Items[LIndex];
-    if Assigned(LCustom) then
-      LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self)
-    else
-    begin
-      LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
-      LItemValue := ReadDataMember(LParam, Result, True);
-    end;
-
-    Result.SetArrayElement(LIndex, LItemValue);
-  end;
-end;
-
-function TNeonDeserializerJSON.ReadDynArray(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue;
-var
-  LIndex: NativeInt;
-  LItemValue: TValue;
   LArrayLength: NativeInt;
   LJSONArray: TJSONArray;
-  LParam: TNeonDeserializerParam;
-  LCustom: TCustomSerializer;
+  LItemValue: TValue;
+  LItemParam: TNeonDeserializerParam;
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.Empty);
 
+  // We don't need to free items (objects) because the array to deserialize
+  // to is always a new value
+  //TRttiUtils.FreeArrayItems(AData);
+
   Result := AData;
-
-  //TODO -oPaolo -cGeneral : Clear (and Free) previous array elements?
-
   LJSONArray := AParam.JSONValue as TJSONArray;
-  LParam.RttiType := (AParam.RttiType as TRttiDynamicArrayType).ElementType;
-  LParam.NeonObject := TNeonRttiObject.Create(LParam.RttiType, FOperation);
-  if ACustomProcess then
-    LCustom := FConfig.Serializers.GetSerializer(LParam.RttiType.Handle)
-  else
-    LCustom := nil;
+  LArrayLength := LJSONArray.Count;
 
-  try
-    LParam.NeonObject.ParseAttributes;
-
-    LArrayLength := LJSONArray.Count;
+  if AParam.RttiType.TypeKind = tkArray then
+    LItemParam.RttiType := (AParam.RttiType as TRttiArrayType).ElementType
+  else //tkDynArray
+  begin
+    LItemParam.RttiType := (AParam.RttiType as TRttiDynamicArrayType).ElementType;
     DynArraySetLength(PPointer(Result.GetReferenceToRawData)^, Result.TypeInfo, 1, @LArrayLength);
+  end;
+
+  LItemParam.NeonObject := TNeonRttiObject.Create(LItemParam.RttiType, FOperation);
+  try
+    LItemParam.NeonObject.ParseAttributes;
 
     for LIndex := 0 to LJSONArray.Count - 1 do
     begin
-      LParam.JSONValue := LJSONArray.Items[LIndex];
-
-      if Assigned(LCustom) then
-        LItemValue := LCustom.Deserialize(LParam.JSONValue, TValue.Empty, LParam.NeonObject, Self)
-      else
+      if AParam.RttiType.TypeKind = tkArray then
       begin
-        LItemValue := TRttiUtils.CreateNewValue(LParam.RttiType);
-        LItemValue := ReadDataMember(LParam, LItemValue, True);
-      end;
+        LItemValue := Result.GetArrayElement(LIndex);
+        if LItemParam.RttiType.TypeKind = tkClass then
+          LItemValue := TRttiUtils.CreateInstance(LItemParam.RttiType);
+      end
+      else //tkDynArray
+        LItemValue := TRttiUtils.CreateNewValue(LItemParam.RttiType);
 
+      LItemParam.JSONValue := LJSONArray.Items[LIndex];
+      LItemValue := ReadDataMember(LItemParam, LItemValue, True);
       Result.SetArrayElement(LIndex, LItemValue);
     end;
+
   finally
-    LParam.NeonObject.Free;
+    LItemParam.NeonObject.Free;
   end;
 end;
 
@@ -1354,17 +1312,16 @@ begin
     tkString:      Result := ReadString(AParam);
     tkSet:         Result := ReadSet(AParam);
     tkVariant:     Result := ReadVariant(AParam);
-    tkArray:       Result := ReadArray(AParam, AData, ACustomProcess);
-    tkDynArray:    Result := ReadDynArray(AParam, AData, ACustomProcess);
 
-    // Complex types
+    tkArray:       Result := ReadArray(AParam, AData);
+    tkDynArray:    Result := ReadArray(AParam, AData);
+    tkInterface:   Result := ReadInterface(AParam, AData);
+
     tkClass:
     begin
       if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
         Result := ReadReference(AParam, AData);
     end;
-
-    tkInterface:   Result := ReadInterface(AParam, AData);
 
     tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
     begin
@@ -1377,14 +1334,6 @@ begin
       end;
     end;
 
-    // Not supported (yet)
-    {
-    tkUnknown: ;
-    tkClassRef: ;
-    tkPointer: ;
-    tkMethod: ;
-    tkProcedure: ;
-    }
   else
     Result := TValue.Empty;
   end;

@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2022 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -30,45 +30,95 @@ uses
   Neon.Tests.Utils;
 
 type
-  TStringArray = TArray<string>;
-  TIntegerArray = TArray<Integer>;
+  // Dynamic Arrays
+  TStringDynArray = TArray<string>;
+  TIntegerDynArray = TArray<Integer>;
+
+  // Static Arrays
+  TIntegerArray = array [0..4] of Integer;
+  TContactArray = array [0..1] of TContact;
 
   [TestFixture]
   [Category('arraytypes')]
-  TTestArrayTypes = class(TObject)
+  TTestArrayTypesSer = class(TObject)
   public
-    [Setup]
-    procedure Setup;
-    [TearDown]
-    procedure TearDown;
-
+    // Static Array Tests
     [Test]
-    [TestCase('TestManagedRecord', '[0,-10,20,-30,42]', '|')]
+    [TestCase('TestArrayInteger', '[0,10,-2,12344545,30]', '|')]
     procedure TestArrayInteger(_Result: string);
 
     [Test]
-    [TestCase('TestManagedRecord', '[[0,1,2,3],[-10,22,1230000000],[20,-30,42],[]]', '|')]
-    procedure TestMatrixInteger(_Result: string);
+    [TestCase('TestArrayContacts', '[{"ContactType":"Phone","Number":"123456789"},{"ContactType":"Skype","Number":"987654321"}]', '|')]
+    procedure TestArrayContacts(_Result: string);
+
+    // Dynamic Array Tests
+    [Test]
+    [TestCase('TestDynArrayInteger', '[0,-10,20,-30,42]', '|')]
+    procedure TestDynArrayInteger(_Result: string);
 
     [Test]
-    [TestCase('TestManagedRecord', '[["Zero","Uno","Due"],["","\u00E7\u00B0\u00E8\u00E9"],[]]', '|')]
-    procedure TestMatrixIntegerString(_Result: string);
+    [TestCase('TestDynMatrixInteger', '[[0,1,2,3],[-10,22,1230000000],[20,-30,42],[]]', '|')]
+    procedure TestDynMatrixInteger(_Result: string);
+
+    [Test]
+    [TestCase('TestDynMatrixIntegerString', '[["Zero","Uno","Due"],["","\u00E7\u00B0\u00E8\u00E9"],[]]', '|')]
+    procedure TestDynMatrixIntegerString(_Result: string);
   end;
+
+
+  [TestFixture]
+  [Category('arraytypes')]
+  TTestArrayTypesDes = class(TObject)
+  public
+    [Test]
+    [TestCase('TestArrayInteger', '[0,10,-2,12344545,30]|[0,10,-2,12344545,30]', '|')]
+    procedure TestArrayInteger(const AValue: string; _Result: TIntegerDynArray);
+  end;
+
 
 implementation
 
 uses
   System.DateUtils;
 
-procedure TTestArrayTypes.Setup;
+procedure TTestArrayTypesSer.TestArrayContacts(_Result: string);
+var
+  LContact: TContact;
+  LValue: TContactArray;
+  LResult: string;
 begin
+  LValue[0] := TContact.Create;
+  LValue[0].ContactType := TContactType.Phone;
+  LValue[0].Number := '123456789';
+
+  LValue[1] := TContact.Create;
+  LValue[1].ContactType := TContactType.Skype;
+  LValue[1].Number := '987654321';
+  try
+    LResult := TTestUtils.SerializeValue(TValue.From<TContactArray>(LValue));
+  finally
+    for LContact in LValue do
+      LContact.Free;
+  end;
+  Assert.AreEqual(_Result, LResult);
 end;
 
-procedure TTestArrayTypes.TearDown;
+procedure TTestArrayTypesSer.TestArrayInteger(_Result: string);
+var
+  LValue: TIntegerArray;
+  LResult: string;
 begin
+  //'[0,10,-2,12344545,30]'
+  LValue[0] := 0;
+  LValue[1] := 10;
+  LValue[2] := -2;
+  LValue[3] := 12344545;
+  LValue[4] := 30;
+  LResult := TTestUtils.SerializeValue(TValue.From<TIntegerArray>(LValue));
+  Assert.AreEqual(_Result, LResult);
 end;
 
-procedure TTestArrayTypes.TestArrayInteger(_Result: string);
+procedure TTestArrayTypesSer.TestDynArrayInteger(_Result: string);
 var
   LValue: TArray<Integer>;
   LResult: string;
@@ -78,27 +128,41 @@ begin
   Assert.AreEqual(_Result, LResult);
 end;
 
-procedure TTestArrayTypes.TestMatrixInteger(_Result: string);
+procedure TTestArrayTypesSer.TestDynMatrixInteger(_Result: string);
 var
-  LValue: TArray<TIntegerArray>;
+  LValue: TArray<TIntegerDynArray>;
   LResult: string;
 begin
   LValue := [[0,1,2,3], [-10,22,1230000000], [20,-30,42], []];
-  LResult := TTestUtils.SerializeValue(TValue.From<TArray<TIntegerArray>>(LValue));
+  LResult := TTestUtils.SerializeValue(TValue.From<TArray<TIntegerDynArray>>(LValue));
   Assert.AreEqual(_Result, LResult);
 end;
 
-procedure TTestArrayTypes.TestMatrixIntegerString(_Result: string);
+procedure TTestArrayTypesSer.TestDynMatrixIntegerString(_Result: string);
 var
-  LValue: TArray<TStringArray>;
+  LValue: TArray<TStringDynArray>;
   LResult: string;
 begin
   LValue := [['Zero','Uno','Due'], ['', 'η°θι'],[]];
-  LResult := TTestUtils.SerializeValue(TValue.From<TArray<TStringArray>>(LValue));
+  LResult := TTestUtils.SerializeValue(TValue.From<TArray<TStringDynArray>>(LValue));
   Assert.AreEqual(_Result, LResult);
 end;
 
+{ TTestArrayTypesDes }
+
+procedure TTestArrayTypesDes.TestArrayInteger(const AValue: string; _Result: TIntegerDynArray);
+var
+  LRes: TIntegerArray;
+  LIndex: Integer;
+begin
+  LRes := TTestUtils.DeserializeValueTo<TIntegerArray>(AValue);
+
+  for LIndex := 0 to Length(_Result) - 1 do
+    Assert.AreEqual(_Result[LIndex], LRes[LIndex]);
+end;
+
 initialization
-  TDUnitX.RegisterTestFixture(TTestArrayTypes);
+  TDUnitX.RegisterTestFixture(TTestArrayTypesSer);
+  TDUnitX.RegisterTestFixture(TTestArrayTypesDes);
 
 end.

@@ -96,10 +96,19 @@ type
     class function IsObjectOfType(ARttiType: TRttiType; const AClass: TClass;
       const AAllowInherithance: Boolean = True): Boolean; overload; static;
 
-    // Create new value data
+    /// <summary>
+    ///   Free array items (only if these are object)
+    /// </summary>
+    class procedure FreeArrayItems(const AData: TValue); static;
+
+    /// <summary>
+    ///   Create new value data
+    /// </summary>
     class function CreateNewValue(AType: TRttiType): TValue; static;
 
-    // Create instance of class with parameterless constructor
+    /// <summary>
+    ///   Create instance of class with parameterless constructor
+    /// </summary>
     class function CreateInstanceValue(AType: TRttiType): TValue; overload;
 
     // Create instance of class with parameterless constructor
@@ -191,7 +200,22 @@ begin
     Result := TRttiUtils.ClassDistanceFromRoot(LType.AsInstance.MetaclassType);
 end;
 
-{ TRttiUtils }
+class procedure TRttiUtils.FreeArrayItems(const AData: TValue);
+var
+  LIndex: NativeInt;
+  LItemValue: TValue;
+  LArrayLength: NativeInt;
+begin
+  // Free Array Items (if objects)
+  LArrayLength := AData.GetArrayLength;
+  for LIndex := 0 to LArrayLength - 1 do
+  begin
+    LItemValue := AData.GetArrayElement(LIndex);
+    if LItemValue.IsObject then
+      if Assigned(LItemValue.AsObject()) then
+        LItemValue.AsObject.Free;
+  end;
+end;
 
 class function TRttiUtils.CreateNewValue(AType: TRttiType): TValue;
 var
