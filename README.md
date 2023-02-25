@@ -1,4 +1,4 @@
-# Neon - Serialization Library for Delphi
+# Neon - JSON Serialization Library for Delphi
 
 <br />
 
