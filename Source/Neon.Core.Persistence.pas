@@ -732,7 +732,6 @@ end;
 procedure TNeonRttiMember.ProcessAttribute(AAttribute: TCustomAttribute);
 var
   LIncludeAttribute: NeonIncludeAttribute;
-  LContext: TNeonIgnoreIfContext;
   LMethodName: string;
 begin
   if AAttribute is NeonIncludeAttribute then
@@ -746,7 +745,7 @@ begin
         raise ENeonException.CreateFmt('NeonInclude Method name [%s] not found in class [%s]',
           [LMethodName, FParent.AsRttiType.Name]);
 
-      LContext := TNeonIgnoreIfContext.Create(Self.Name, FOperation);
+      FMethodIfContext := TNeonIgnoreIfContext.Create(Self.Name, FOperation);
     end;
   end;
 end;
@@ -903,6 +902,7 @@ begin
       end;
       TNeonIncludeOption.Exclude:
       begin
+        LMember.Serializable := False;
         Continue;
       end;
     end;
