@@ -1331,9 +1331,10 @@ begin
           Result := AData
         else
          Result := ReadRecord(AParam, AData);
-      end;
+      end
+      else
+        Result := TValue.Empty;
     end;
-
   else
     Result := TValue.Empty;
   end;
