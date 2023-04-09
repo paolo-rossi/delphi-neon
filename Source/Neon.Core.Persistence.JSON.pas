@@ -1286,6 +1286,8 @@ var
   LCustom: TCustomSerializer;
   LValue: TValue;
 begin
+  Result := TValue.Empty;
+
   if ACustomProcess then
   begin
     // if there is a custom serializer
@@ -1312,7 +1314,6 @@ begin
     tkString:      Result := ReadString(AParam);
     tkSet:         Result := ReadSet(AParam);
     tkVariant:     Result := ReadVariant(AParam);
-
     tkArray:       Result := ReadArray(AParam, AData);
     tkDynArray:    Result := ReadArray(AParam, AData);
     tkInterface:   Result := ReadInterface(AParam, AData);
@@ -1334,8 +1335,6 @@ begin
       end;
     end;
 
-  else
-    Result := TValue.Empty;
   end;
 end;
 
