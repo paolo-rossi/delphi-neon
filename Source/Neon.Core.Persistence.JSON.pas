@@ -1320,7 +1320,9 @@ begin
     tkClass:
     begin
       if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
-        Result := ReadReference(AParam, AData);
+        Result := ReadReference(AParam, AData)
+      else
+        Result := TValue.Empty;
     end;
 
     tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:

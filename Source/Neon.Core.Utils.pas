@@ -767,6 +767,9 @@ begin
   if AJSON = nil then
     Exit(False);
 
+  if AJSON is TJSONNull then
+    Exit(False);
+
   if AJSON is TJSONString then
     Exit(not (AJSON as TJSONString).Value.IsEmpty);
 
