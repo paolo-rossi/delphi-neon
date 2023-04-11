@@ -1286,6 +1286,8 @@ var
   LCustom: TCustomSerializer;
   LValue: TValue;
 begin
+  Result := TValue.Empty;
+
   if ACustomProcess then
   begin
     // if there is a custom serializer
@@ -1312,7 +1314,6 @@ begin
     tkString:      Result := ReadString(AParam);
     tkSet:         Result := ReadSet(AParam);
     tkVariant:     Result := ReadVariant(AParam);
-
     tkArray:       Result := ReadArray(AParam, AData);
     tkDynArray:    Result := ReadArray(AParam, AData);
     tkInterface:   Result := ReadInterface(AParam, AData);
@@ -1320,9 +1321,7 @@ begin
     tkClass:
     begin
       if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
-        Result := ReadReference(AParam, AData)
-      else
-        Result := TValue.Empty;
+        Result := ReadReference(AParam, AData);
     end;
 
     tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
@@ -1333,12 +1332,9 @@ begin
           Result := AData
         else
          Result := ReadRecord(AParam, AData);
-      end
-      else
-        Result := TValue.Empty;
+      end;
     end;
-  else
-    Result := TValue.Empty;
+
   end;
 end;
 

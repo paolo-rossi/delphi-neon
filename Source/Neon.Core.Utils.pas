@@ -980,7 +980,7 @@ begin
 
       TFieldType.ftTime:
       begin
-        LJSONField.AddPair('type', 'string').AddPair('format', 'date-time');
+        LJSONField.AddPair('type', 'string').AddPair('format', 'time');
       end;
 
       TFieldType.ftDateTime:
@@ -988,15 +988,15 @@ begin
         LJSONField.AddPair('type', 'string').AddPair('format', 'date-time');
       end;
 
-//        ftBytes: ;
-//        ftVarBytes: ;
+//      TFieldType.ftBytes: ;
+//      TFieldType.ftVarBytes: ;
 
       TFieldType.ftAutoInc:
       begin
         LJSONField.AddPair('type', 'integer').AddPair('format', 'int32');
       end;
 
-      //        ftBlob: ;
+//      TFieldType.ftBlob: ;
 
       TFieldType.ftMemo,
       TFieldType.ftWideMemo:
@@ -1004,12 +1004,12 @@ begin
         LJSONField.AddPair('type', 'string');
       end;
 
-//        ftGraphic: ;
-//        ftFmtMemo: ;
-//        ftParadoxOle: ;
-//        ftDBaseOle: ;
-//        ftTypedBinary: ;
-//        ftCursor: ;
+//      TFieldType.ftGraphic: ;
+//      TFieldType.ftFmtMemo: ;
+//      TFieldType.ftParadoxOle: ;
+//      TFieldType.ftDBaseOle: ;
+//      TFieldType.ftTypedBinary: ;
+//      TFieldType.ftCursor: ;
       TFieldType.ftFixedChar,
       TFieldType.ftFixedWideChar,
       TFieldType.ftWideString:
@@ -1022,20 +1022,20 @@ begin
         LJSONField.AddPair('type', 'integer').AddPair('format', 'int64');
       end;
 
-//        ftADT: ;
-//        ftArray: ;
-//        ftReference: ;
-//        ftDataSet: ;
-//        ftOraBlob: ;
-//        ftOraClob: ;
+//      TFieldType.ftADT: ;
+//      TFieldType.ftArray: ;
+//      TFieldType.ftReference: ;
+//      TFieldType.ftDataSet: ;
+//      TFieldType.ftOraBlob: ;
+//      TFieldType.ftOraClob: ;
 
       TFieldType.ftVariant:
       begin
         LJSONField.AddPair('type', 'string');
       end;
 
-//        ftInterface: ;
-//        ftIDispatch: ;
+//      TFieldType.ftInterface: ;
+//      TFieldType.ftIDispatch: ;
 
       TFieldType.ftGuid:
       begin
@@ -1053,13 +1053,13 @@ begin
       end;
 
 
-//        ftOraTimeStamp: ;
-//        ftOraInterval: ;
-//        ftConnection: ;
-//        ftParams: ;
-//        ftStream: ;
-//        ftTimeStampOffset: ;
-//        ftObject: ;
+//      TFieldType.ftOraTimeStamp: ;
+//      TFieldType.ftOraInterval: ;
+//      TFieldType.ftConnection: ;
+//      TFieldType.ftParams: ;
+//      TFieldType.ftStream: ;
+//      TFieldType.ftTimeStampOffset: ;
+//      TFieldType.ftObject: ;
     end;
   end;
 end;
