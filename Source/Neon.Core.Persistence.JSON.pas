@@ -1320,8 +1320,11 @@ begin
 
     tkClass:
     begin
+      LValue := ManageInstance(AParam.JSONValue, AData, AParam.NeonObject);
       if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
-        Result := ReadReference(AParam, AData);
+        Result := ReadReference(AParam, LValue)
+      else
+        Result := LValue;
     end;
 
     tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
@@ -1864,9 +1867,7 @@ var
   LType: TRttiType;
 begin
   Result := AData;
-  if (AData.IsObject) and (AData.AsObject = nil) and
-     TJSONUtils.IsNotEmpty(AValue) and
-     (FConfig.AutoCreate or ANeonObject.NeonAutoCreate) then
+  if (AData.IsObject) and (AData.AsObject = nil) and (FConfig.AutoCreate or ANeonObject.NeonAutoCreate) then
   begin
     LType := TRttiUtils.Context.GetType(AData.TypeInfo);
     Result := TRttiUtils.CreateInstance(LType);
@@ -1875,21 +1876,17 @@ end;
 
 function TNeonDeserializerJSON.ReadReference(const AParam:
     TNeonDeserializerParam; const AData: TValue): TValue;
-var
-  LValue: TValue;
 begin
-  LValue := ManageInstance(AParam.JSONValue, AData, AParam.NeonObject);
+  if ReadEnumerableMap(AParam, AData) then
+    Exit(AData);
 
-  if ReadEnumerableMap(AParam, LValue) then
-    Exit(LValue);
+  if ReadEnumerable(AParam, AData) then
+    Exit(AData);
 
-  if ReadEnumerable(AParam, LValue) then
-    Exit(LValue);
+  if ReadStreamable(AParam, AData) then
+    Exit(AData);
 
-  if ReadStreamable(AParam, LValue) then
-    Exit(LValue);
-
-  Result := ReadObject(AParam, LValue);
+  Result := ReadObject(AParam, AData);
 end;
 
 function TNeonDeserializerJSON.JSONToTValue(AJSON: TJSONValue; AType: TRttiType): TValue;
