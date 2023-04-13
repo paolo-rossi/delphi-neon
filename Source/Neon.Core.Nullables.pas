@@ -58,6 +58,7 @@ type
     class operator Implicit(const Value: Pointer): Nullable<T>;
     class operator Implicit(const Value: T): Nullable<T>;
     class operator Implicit(const Value: Variant): Nullable<T>;
+    class operator Implicit(const Value: TValue): Nullable<T>;
     class operator Equal(const Left, Right: Nullable<T>): Boolean; overload;
     class operator Equal(const Left: Nullable<T>; Right: T): Boolean; overload;
     class operator Equal(const Left: T; Right: Nullable<T>): Boolean; overload;
@@ -228,6 +229,11 @@ procedure Nullable<T>.SetValue(const AValue: T);
 begin
   FValue := AValue;
   FHasValue := DefaultTrueBoolStr;
+end;
+
+class operator Nullable<T>.Implicit(const Value: TValue): Nullable<T>;
+begin
+  Result := Nullable<T>.Create(Value.AsType<T>);
 end;
 
 end.

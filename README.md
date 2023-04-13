@@ -1,4 +1,4 @@
-# Neon - Serialization Library for Delphi
+# Neon - JSON Serialization Library for Delphi
 
 <br />
 
@@ -8,26 +8,45 @@
   </a>
 </p>
 
+
 ## What is Neon
+
+![Top language](https://img.shields.io/github/languages/top/paolo-rossi/delphi-neon)
+[![GitHub release](https://img.shields.io/github/release/paolo-rossi/delphi-neon)](https://github.com/paolo-rossi/delphi-neon/release)
+[![GitHub issues](https://img.shields.io/github/issues/paolo-rossi/delphi-neon)](https://github.com/paolo-rossi/delphi-neon/issues)
+[![GitHub PR](https://img.shields.io/github/issues-pr/paolo-rossi/delphi-neon)](https://github.com/paolo-rossi/delphi-neon/pulls)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/paolo-rossi/delphi-neon)
+![GitHub last commit](https://img.shields.io/github/last-commit/paolo-rossi/delphi-neon)
+![GitHub contributors](https://img.shields.io/github/contributors-anon/paolo-rossi/delphi-neon)
+[![GitHub license](https://img.shields.io/github/license/paolo-rossi/delphi-neon)](https://github.com/paolo-rossi/delphi-neon/blob/master/LICENSE)
 
 **Neon** is a serialization library for [Delphi](https://www.embarcadero.com/products/delphi) that helps you to convert (back and forth) objects and other values to JSON. It supports simple Delphi types but also complex class and records. **Neon** has been designed with **REST** in mind, to exchange pure data between applications with no *"metadata"* or added fields, in fact **Neon** is the default JSON serialization engine for the [WiRL REST Library](https://github.com/delphi-blocks/WiRL).
 
 Please take a look at the Demos to see **Neon** in action.
 
+### Neon Main Demo
+This is the main demo where you can see how you can serialize/deserialize simple types, records, classes, Delphi specific types (TStringList, TDataSet, etc...):
+
 ![Neon Mega Demo](https://user-images.githubusercontent.com/4686497/103461978-64c83000-4d22-11eb-85c5-1a829b4ec0c0.png)
+
+### Neon Benchmarks Demo
+This new demo tries to compare the standard TJSON serialization engine with the TNeon engine, with a few changes you can compare TNeon with other serialization engines out there:
+
+![Neon Benchmarks Demo](https://user-images.githubusercontent.com/4686497/216270908-0a702077-02fe-4295-bce5-8da78ee46599.png)
 
 ## General Features
 
 ### Configuration
 
 Extensive configuration through `INeonConfiguration` interface:
-- Word case (UPPERCASE, lowercase, PascalCase, camelCase, snake_case)
+- Word case (Unchanged, UPPERCASE, lowercase, PascalCase, camelCase, snake_case)
 - CuStOM CAse (through anonymous method)
 - Member types (Fields, Properties)
 - Option to ignore the "F" if you choose to serialize the fields
 - Member visibility (private, protected, public, published)
 - Custom serializer registration
 - Use UTC date in serialization
+- Auto creation of nil (object) members
 
 ### Delphi Types Support
 
@@ -38,7 +57,7 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 - Basic types: **string, Integer, Double, Boolean, TDateTime**
 
 #### Complex values
-- **Arrays** of (basic types, records, classes, etc...)
+- **Dynamic Arrays** of (basic types, records, classes, etc...)
 - **Records** with fields of (basic types, records, classes, arrays, etc...)
 - **Classes** with fields of (basic types, records, classes, arrays, etc...)
 - **Generic lists**
@@ -51,14 +70,11 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 
 ## Todo
 
-##### Features
-- Better way to register (and find) a custom serializer
-
 ##### Code
-- Unit Tests
+- More Unit Tests
 
 ## Prerequisite
-This library has been tested with **Delphi 10.4 Sydney**, **Delphi 10.3 Rio**, **Delphi 10.2 Tokyo**, **Delphi 10.1 Berlin**, but with a minimum amount of work it should compile with **Delphi XE7 and higher**
+This library has been tested with **Delphi 11 Alexandria**, **Delphi 10.4 Sydney**, **Delphi 10.3 Rio**, **Delphi 10.2 Tokyo**, but with a minimum amount of work it should compile with **Delphi XE7 and higher**
 
 #### Libraries/Units dependencies
 This library has no dependencies on external libraries/units.
@@ -85,7 +101,7 @@ var
 begin
   LJSON := TNeon.ObjectToJSON(AObject);
   try
-    Memo1.Lines.Text := TJSONUtils.PrettyPrint(LJSON);
+    Memo1.Lines.Text := TNeon.Print(LJSON, True);
   finally
     LJSON.Free;
   end;
@@ -118,7 +134,7 @@ begin
   try
     LJSON := LWriter.ObjectToJSON(AObject);
     try
-      Memo1.Lines.Text := TJSONUtils.PrettyPrint(LJSON);
+      Memo1.Lines.Text := TNeon.Print(LJSON, True);
       MemoError.Lines.AddStrings(LWriter.Errors);
     finally
       LJSON.Free;
@@ -151,8 +167,6 @@ begin
     LJSON.Free;
   end;
 ```
-
-
 
 #### Neon configuration
 It's very easy to configure **Neon**, 

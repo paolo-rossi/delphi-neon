@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018-2023 Paolo Rossi                                         }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -45,6 +45,10 @@ type
     class function StringArrayToJsonArray(const AValues: TArray<string>): string; static;
     class function DoubleArrayToJsonArray(const AValues: TArray<Double>): string; static;
     class function IntegerArrayToJsonArray(const AValues: TArray<Integer>): string; static;
+
+    class function HasItems(const AJSON: TJSONValue): Boolean;
+    class function IsNotEmpty(const AJSON: TJSONValue): Boolean;
+    class function IsNotDefault(const AJSON: TJSONValue): Boolean;
 
     class procedure JSONCopyFrom(ASource, ADestination: TJSONObject); static;
 
@@ -92,10 +96,19 @@ type
     class function IsObjectOfType(ARttiType: TRttiType; const AClass: TClass;
       const AAllowInherithance: Boolean = True): Boolean; overload; static;
 
-    // Create new value data
+    /// <summary>
+    ///   Free array items (only if these are object)
+    /// </summary>
+    class procedure FreeArrayItems(const AData: TValue); static;
+
+    /// <summary>
+    ///   Create new value data
+    /// </summary>
     class function CreateNewValue(AType: TRttiType): TValue; static;
 
-    // Create instance of class with parameterless constructor
+    /// <summary>
+    ///   Create instance of class with parameterless constructor
+    /// </summary>
     class function CreateInstanceValue(AType: TRttiType): TValue; overload;
 
     // Create instance of class with parameterless constructor
@@ -160,7 +173,7 @@ type
 implementation
 
 uses
-  System.StrUtils, System.DateUtils,
+  System.StrUtils, System.DateUtils, System.Math, System.Variants,
   Neon.Core.Types;
 
 class function TRttiUtils.ClassDistanceFromRoot(AClass: TClass): Integer;
@@ -187,7 +200,22 @@ begin
     Result := TRttiUtils.ClassDistanceFromRoot(LType.AsInstance.MetaclassType);
 end;
 
-{ TRttiUtils }
+class procedure TRttiUtils.FreeArrayItems(const AData: TValue);
+var
+  LIndex: NativeInt;
+  LItemValue: TValue;
+  LArrayLength: NativeInt;
+begin
+  // Free Array Items (if objects)
+  LArrayLength := AData.GetArrayLength;
+  for LIndex := 0 to LArrayLength - 1 do
+  begin
+    LItemValue := AData.GetArrayElement(LIndex);
+    if LItemValue.IsObject then
+      if Assigned(LItemValue.AsObject()) then
+        LItemValue.AsObject.Free;
+  end;
+end;
 
 class function TRttiUtils.CreateNewValue(AType: TRttiType): TValue;
 var
@@ -204,8 +232,10 @@ begin
     tkWString:     Result := TValue.From<string>('');
     tkLString:     Result := TValue.From<UTF8String>('');
     tkUString:     Result := TValue.From<string>('');
+    tkVariant:     Result := TValue.From<Variant>(Null);
+
     tkClass:       Result := CreateInstance(AType);
-    tkRecord:
+    tkRecord, tkDynArray:
     begin
       LAllocatedMem := AllocMem(AType.TypeSize);
       try
@@ -688,6 +718,68 @@ begin
 {$ENDIF}
 end;
 
+class function TJSONUtils.IsNotDefault(const AJSON: TJSONValue): Boolean;
+begin
+  Result := True;
+
+  if AJSON = nil then
+    Exit(False);
+
+  if AJSON is TJSONNull then
+    Exit(False);
+
+  if AJSON is TJSONString then
+    Exit(not (AJSON as TJSONString).Value.IsEmpty);
+
+  if AJSON is TJSONNumber then
+  begin
+    if (AJSON as TJSONNumber).Value.Contains('.') then
+      Exit(not IsZero((AJSON as TJSONNumber).AsDouble));
+
+    Exit(not (AJSON as TJSONNumber).AsInt = 0);
+  end;
+
+  if AJSON is TJSONObject then
+    Exit((AJSON as TJSONObject).Count > 0);
+
+  if AJSON is TJSONArray then
+    Exit((AJSON as TJSONArray).Count > 0);
+end;
+
+class function TJSONUtils.HasItems(const AJSON: TJSONValue): Boolean;
+begin
+  Result := True;
+
+  if AJSON = nil then
+    Exit(False);
+
+  if AJSON is TJSONObject then
+    Exit((AJSON as TJSONObject).Count > 0);
+
+  if AJSON is TJSONArray then
+    Exit((AJSON as TJSONArray).Count > 0);
+end;
+
+class function TJSONUtils.IsNotEmpty(const AJSON: TJSONValue): Boolean;
+begin
+  Result := True;
+
+  if AJSON = nil then
+    Exit(False);
+
+  if AJSON is TJSONNull then
+    Exit(False);
+
+  if AJSON is TJSONString then
+    Exit(not (AJSON as TJSONString).Value.IsEmpty);
+
+  if AJSON is TJSONObject then
+    Exit((AJSON as TJSONObject).Count > 0);
+
+  if AJSON is TJSONArray then
+    Exit((AJSON as TJSONArray).Count > 0);
+end;
+
 class function TJSONUtils.IntegerArrayToJsonArray(const AValues: TArray<Integer>): string;
 var
   LArray: TJSONArray;
@@ -888,7 +980,7 @@ begin
 
       TFieldType.ftTime:
       begin
-        LJSONField.AddPair('type', 'string').AddPair('format', 'date-time');
+        LJSONField.AddPair('type', 'string').AddPair('format', 'time');
       end;
 
       TFieldType.ftDateTime:
@@ -896,15 +988,15 @@ begin
         LJSONField.AddPair('type', 'string').AddPair('format', 'date-time');
       end;
 
-//        ftBytes: ;
-//        ftVarBytes: ;
+//      TFieldType.ftBytes: ;
+//      TFieldType.ftVarBytes: ;
 
       TFieldType.ftAutoInc:
       begin
         LJSONField.AddPair('type', 'integer').AddPair('format', 'int32');
       end;
 
-      //        ftBlob: ;
+//      TFieldType.ftBlob: ;
 
       TFieldType.ftMemo,
       TFieldType.ftWideMemo:
@@ -912,12 +1004,12 @@ begin
         LJSONField.AddPair('type', 'string');
       end;
 
-//        ftGraphic: ;
-//        ftFmtMemo: ;
-//        ftParadoxOle: ;
-//        ftDBaseOle: ;
-//        ftTypedBinary: ;
-//        ftCursor: ;
+//      TFieldType.ftGraphic: ;
+//      TFieldType.ftFmtMemo: ;
+//      TFieldType.ftParadoxOle: ;
+//      TFieldType.ftDBaseOle: ;
+//      TFieldType.ftTypedBinary: ;
+//      TFieldType.ftCursor: ;
       TFieldType.ftFixedChar,
       TFieldType.ftFixedWideChar,
       TFieldType.ftWideString:
@@ -930,20 +1022,20 @@ begin
         LJSONField.AddPair('type', 'integer').AddPair('format', 'int64');
       end;
 
-//        ftADT: ;
-//        ftArray: ;
-//        ftReference: ;
-//        ftDataSet: ;
-//        ftOraBlob: ;
-//        ftOraClob: ;
+//      TFieldType.ftADT: ;
+//      TFieldType.ftArray: ;
+//      TFieldType.ftReference: ;
+//      TFieldType.ftDataSet: ;
+//      TFieldType.ftOraBlob: ;
+//      TFieldType.ftOraClob: ;
 
       TFieldType.ftVariant:
       begin
         LJSONField.AddPair('type', 'string');
       end;
 
-//        ftInterface: ;
-//        ftIDispatch: ;
+//      TFieldType.ftInterface: ;
+//      TFieldType.ftIDispatch: ;
 
       TFieldType.ftGuid:
       begin
@@ -961,13 +1053,13 @@ begin
       end;
 
 
-//        ftOraTimeStamp: ;
-//        ftOraInterval: ;
-//        ftConnection: ;
-//        ftParams: ;
-//        ftStream: ;
-//        ftTimeStampOffset: ;
-//        ftObject: ;
+//      TFieldType.ftOraTimeStamp: ;
+//      TFieldType.ftOraInterval: ;
+//      TFieldType.ftConnection: ;
+//      TFieldType.ftParams: ;
+//      TFieldType.ftStream: ;
+//      TFieldType.ftTimeStampOffset: ;
+//      TFieldType.ftObject: ;
     end;
   end;
 end;
