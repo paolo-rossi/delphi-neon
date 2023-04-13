@@ -785,9 +785,9 @@ begin
   end
   else
   begin
-  LName := TTypeInfoUtils.EnumToString(AValue.TypeInfo, AValue.AsOrdinal, ANeonObject);
-  Result := TJSONString.Create(LName);
-end;
+    LName := TTypeInfoUtils.EnumToString(AValue.TypeInfo, AValue.AsOrdinal, ANeonObject);
+    Result := TJSONString.Create(LName);
+  end;
 end;
 
 function TNeonSerializerJSON.WriteFloat(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -860,41 +860,41 @@ begin
   LMembers := GetNeonMembers(AType);
   LMembers.FilterSerialize(AInstance);
 
-    for LNeonMember in LMembers do
-    begin
+  for LNeonMember in LMembers do
+  begin
 
-      if LNeonMember.Serializable then
-      begin
-        try
+    if LNeonMember.Serializable then
+    begin
+      try
         LJSONValue := WriteDataMember(LNeonMember.GetValue(AInstance), True, LNeonMember);
-          if Assigned(LJSONValue) then
+        if Assigned(LJSONValue) then
+        begin
+          // if it's unwrapped add childs to the AResult JSON object
+          if LNeonMember.NeonUnwrapped and (LJSONValue is TJSONObject) then
           begin
-            // if it's unwrapped add childs to the AResult JSON object
-            if LNeonMember.NeonUnwrapped and (LJSONValue is TJSONObject) then
-            begin
-              LJSONObject := LJSONValue as TJSONObject;
-              for LPair in LJSONObject do
-                (AResult as TJSONObject).AddPair(LPair.Clone as TJSONPair);
-              LJSONObject.Free;
-            end
-            else
-            begin
-              LPairName := GetNameFromMember(LNeonMember);
-              LPair := TJSONPair.Create(LPairName, LJSONValue);
-              (AResult as TJSONObject).AddPair(LPair);
-            end;
+            LJSONObject := LJSONValue as TJSONObject;
+            for LPair in LJSONObject do
+              (AResult as TJSONObject).AddPair(LPair.Clone as TJSONPair);
+            LJSONObject.Free;
+          end
+          else
+          begin
+            LPairName := GetNameFromMember(LNeonMember);
+            LPair := TJSONPair.Create(LPairName, LJSONValue);
+            (AResult as TJSONObject).AddPair(LPair);
           end;
-        except
-          on E: Exception do
-          begin
-            LogError(Format('Error converting member [%s] of type [%s]: %s',
-              [LNeonMember.Name, AType.Name, E.Message]));
+        end;
+      except
+        on E: Exception do
+        begin
+          LogError(Format('Error converting member [%s] of type [%s]: %s',
+            [LNeonMember.Name, AType.Name, E.Message]));
           if FConfig.RaiseExceptions then
             raise;
-          end;
         end;
       end;
     end;
+  end;
 end;
 
 function TNeonSerializerJSON.WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject; ANullable: IDynamicNullable): TJSONValue;
@@ -1128,7 +1128,7 @@ begin
   if ANeonObject.NeonRawValue then
     Result := TJSONObject.ParseJSONValue(AValue.AsString, False, True)
   else
-  Result := TJSONString.Create(AValue.AsString);
+    Result := TJSONString.Create(AValue.AsString);
 end;
 
 function TNeonSerializerJSON.WriteVariant(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1220,7 +1220,7 @@ begin
   begin
     LItemParam.RttiType := (AParam.RttiType as TRttiDynamicArrayType).ElementType;
     DynArraySetLength(PPointer(Result.GetReferenceToRawData)^, Result.TypeInfo, 1, @LArrayLength);
-end;
+  end;
 
   LItemParam.NeonObject := TNeonRttiObject.Create(LItemParam.RttiType, FOperation);
   try
@@ -1328,11 +1328,11 @@ begin
     begin
       if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
       begin
-      if ReadNullable(AParam, AData) then
-        Result := AData
-      else
-       Result := ReadRecord(AParam, AData);
-    end;
+        if ReadNullable(AParam, AData) then
+          Result := AData
+        else
+          Result := ReadRecord(AParam, AData);
+      end;
     end;
 
   end;
@@ -1366,24 +1366,24 @@ begin
     end
     else
     begin
-    LOrdinal := -1;
-    if Length(AParam.NeonObject.NeonEnumNames) > 0 then
-    begin
-      for LIndex := Low(AParam.NeonObject.NeonEnumNames) to High(AParam.NeonObject.NeonEnumNames) do
-        if AParam.JSONValue.Value = AParam.NeonObject.NeonEnumNames[LIndex] then
-          LOrdinal := LIndex;
+      LOrdinal := -1;
+      if Length(AParam.NeonObject.NeonEnumNames) > 0 then
+      begin
+        for LIndex := Low(AParam.NeonObject.NeonEnumNames) to High(AParam.NeonObject.NeonEnumNames) do
+          if AParam.JSONValue.Value = AParam.NeonObject.NeonEnumNames[LIndex] then
+            LOrdinal := LIndex;
+      end;
+      if LOrdinal = -1 then
+        LOrdinal := GetEnumValue(AParam.RttiType.Handle, AParam.JSONValue.Value);
+
+      LTypeData := GetTypeData(AParam.RttiType.Handle);
+
+      if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
+        TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
+      else
+        raise ENeonException.Create('No correspondence with enum names');
     end;
-    if LOrdinal = -1 then
-      LOrdinal := GetEnumValue(AParam.RttiType.Handle, AParam.JSONValue.Value);
-
-    LTypeData := GetTypeData(AParam.RttiType.Handle);
-
-    if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
-      TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
-    else
-      raise ENeonException.Create('No correspondence with enum names');
   end;
-end;
 end;
 
 function TNeonDeserializerJSON.ReadEnumerable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
@@ -1617,40 +1617,40 @@ begin
   LMembers := GetNeonMembers(AType);
   LMembers.FilterDeserialize(AInstance);
 
-    for LNeonMember in LMembers do
+  for LNeonMember in LMembers do
+  begin
+    if LNeonMember.Serializable then
     begin
-      if LNeonMember.Serializable then
-      begin
-        LParam.NeonObject := LNeonMember;
-        LParam.RttiType := LNeonMember.RttiType;
+      LParam.NeonObject := LNeonMember;
+      LParam.RttiType := LNeonMember.RttiType;
 
-        if LNeonMember.NeonUnwrapped then
-          LParam.JSONValue := AJSONObject
-        else
-          //Look for a JSON with the calculated Member Name
-          LParam.JSONValue := AJSONObject.GetValue(GetNameFromMember(LNeonMember));
+      if LNeonMember.NeonUnwrapped then
+        LParam.JSONValue := AJSONObject
+      else
+        //Look for a JSON with the calculated Member Name
+        LParam.JSONValue := AJSONObject.GetValue(GetNameFromMember(LNeonMember));
 
-        // Property not found in JSON, continue to the next one
-        if not Assigned(LParam.JSONValue) then
-          Continue;
+      // Property not found in JSON, continue to the next one
+      if not Assigned(LParam.JSONValue) then
+        Continue;
 
       if not TJSONUtils.HasItems(LParam.JSONValue) then
         Continue;
 
-        try
+      try
         LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue(AInstance), True);
         LNeonMember.SetValue(LMemberValue, AInstance);
-        except
-          on E: Exception do
-          begin
-            LogError(Format('Error converting member [%s] of type [%s]: %s',
-              [LNeonMember.Name, AType.Name, E.Message]));
+      except
+        on E: Exception do
+        begin
+          LogError(Format('Error converting member [%s] of type [%s]: %s',
+            [LNeonMember.Name, AType.Name, E.Message]));
           if FConfig.RaiseExceptions then
             raise;
-          end;
         end;
       end;
     end;
+  end;
 end;
 
 function TNeonDeserializerJSON.ReadNullable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
