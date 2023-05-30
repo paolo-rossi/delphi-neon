@@ -146,6 +146,7 @@ type
   end;
 
   TBase64 = class
+  public
     class function Encode(const ASource: TBytes): string; overload;
     class function Encode(const ASource: TStream): string; overload;
 
