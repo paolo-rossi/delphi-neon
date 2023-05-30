@@ -49,6 +49,7 @@ type
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
+    function SetStrictTypes(AValue: Boolean): INeonConfiguration;
 
     function GetPrettyPrint: Boolean;
     function GetUseUTCDate: Boolean;
@@ -177,6 +178,7 @@ type
     FRaiseExceptions: Boolean;
     FEnumAsInt: Boolean;
     FAutoCreate: Boolean;
+    FStrictTypes: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -196,6 +198,7 @@ type
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
+    function SetStrictTypes(AValue: Boolean): INeonConfiguration;
 
     function GetUseUTCDate: Boolean;
     function GetPrettyPrint: Boolean;
@@ -211,6 +214,7 @@ type
     property RaiseExceptions: Boolean read FRaiseExceptions write FRaiseExceptions;
     property EnumAsInt: Boolean read FEnumAsInt write FEnumAsInt;
     property AutoCreate: Boolean read FAutoCreate write FAutoCreate;
+    property StrictTypes: Boolean read FStrictTypes write FStrictTypes;
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
   end;
 
@@ -500,6 +504,7 @@ begin
   SetVisibility([mvPublic, mvPublished]);
   SetUseUTCDate(True);
   SetPrettyPrint(False);
+  SetStrictTypes(True);
 end;
 
 class function TNeonConfiguration.Default: INeonConfiguration;
@@ -596,6 +601,12 @@ begin
   Result := Self;
 end;
 
+function TNeonConfiguration.SetStrictTypes(AValue: Boolean): INeonConfiguration;
+begin
+  FStrictTypes := AValue;
+  Result := Self;
+end;
+
 function TNeonConfiguration.SetMemberCase(AValue: TNeonCase): INeonConfiguration;
 begin
   FMemberCase := AValue;
@@ -662,7 +673,7 @@ end;
 function TNeonRttiMember.GetValue(AInstance: Pointer): TValue;
 begin
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create('Member type must be Field or Property');
+    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
     TNeonMemberType.Prop   : Result := MemberAsProperty.GetValue(AInstance);
     TNeonMemberType.Field  : Result := MemberAsField.GetValue(AInstance);
   end;
@@ -688,7 +699,7 @@ function TNeonRttiMember.IsReadable: Boolean;
 begin
   Result := False;
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create('Member type must be Field or Property');
+    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
     TNeonMemberType.Prop   : Result := MemberAsProperty.IsReadable;
     TNeonMemberType.Field  : Result := True;
   end;
@@ -698,7 +709,7 @@ function TNeonRttiMember.IsWritable: Boolean;
 begin
   Result := False;
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create('Member type must be Field or Property');
+    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
     TNeonMemberType.Prop   : Result := MemberAsProperty.IsWritable;
     TNeonMemberType.Field  : Result := True;
   end;
@@ -723,7 +734,7 @@ function TNeonRttiMember.RttiType: TRttiType;
 begin
   Result := nil;
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create('Member type must be Field or Property');
+    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
     TNeonMemberType.Prop   : Result := MemberAsProperty.PropertyType;
     TNeonMemberType.Field  : Result := MemberAsField.FieldType;
   end;
@@ -742,8 +753,7 @@ begin
       LMethodName := LIncludeAttribute.IncludeValue.IncludeFunction;
       FMethodIf := FParent.FType.GetMethod(LMethodName);
       if not Assigned(FMethodIf) then
-        raise ENeonException.CreateFmt('NeonInclude Method name [%s] not found in class [%s]',
-          [LMethodName, FParent.AsRttiType.Name]);
+        raise ENeonException.CreateFmt(TNeonError.NO_METHOD_F2, [LMethodName, FParent.AsRttiType.Name]);
 
       FMethodIfContext := TNeonIgnoreIfContext.Create(Self.Name, FOperation);
     end;
@@ -766,7 +776,7 @@ function TNeonRttiMember.TypeKind: TTypeKind;
 begin
   Result := tkUnknown;
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create('Member type must be Field or Property');
+    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
     TNeonMemberType.Prop   : Result := MemberAsProperty.PropertyType.TypeKind;
     TNeonMemberType.Field  : Result := MemberAsField.FieldType.TypeKind;
   end;
@@ -1280,7 +1290,7 @@ begin
     end;
   end
   else
-    raise ENeonException.Create('Enum value out of bound: ' + AValue.ToString);
+    raise ENeonException.CreateFmt(TNeonError.ENUM_VALUE_F1, [AValue]);
 end;
 
 end.

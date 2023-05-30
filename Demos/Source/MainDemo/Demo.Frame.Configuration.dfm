@@ -2,7 +2,7 @@ object frameConfiguration: TframeConfiguration
   Left = 0
   Top = 0
   Width = 710
-  Height = 148
+  Height = 157
   TabOrder = 0
   object lblCaption: TLabel
     Left = 16
@@ -86,7 +86,7 @@ object frameConfiguration: TframeConfiguration
   end
   object grpPrefix: TGroupBox
     Left = 246
-    Top = 87
+    Top = 99
     Width = 299
     Height = 46
     Caption = 'Visibility '
@@ -130,7 +130,7 @@ object frameConfiguration: TframeConfiguration
   end
   object grpType: TGroupBox
     Left = 16
-    Top = 87
+    Top = 99
     Width = 224
     Height = 46
     Hint = 'Standard: FIelds for records, Properties for Objects'
@@ -167,9 +167,9 @@ object frameConfiguration: TframeConfiguration
   end
   object grpMisc: TGroupBox
     Left = 551
-    Top = 35
+    Top = 3
     Width = 146
-    Height = 98
+    Height = 142
     Caption = 'Misc Options '
     TabOrder = 3
     object chkUseUTCDate: TCheckBox
@@ -197,6 +197,24 @@ object frameConfiguration: TframeConfiguration
       Height = 17
       Caption = 'Ignore Prefix "F"'
       TabOrder = 2
+    end
+    object chkAutoCreate: TCheckBox
+      Left = 7
+      Top = 95
+      Width = 107
+      Height = 17
+      Caption = 'AutoCreate'
+      TabOrder = 3
+    end
+    object chkStrictTypes: TCheckBox
+      Left = 7
+      Top = 118
+      Width = 107
+      Height = 17
+      Caption = 'Strict Types'
+      Checked = True
+      State = cbChecked
+      TabOrder = 4
     end
   end
 end

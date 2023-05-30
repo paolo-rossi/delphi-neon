@@ -51,6 +51,24 @@ type
   TNeonIgnoreCallback = function(const AContext: TNeonIgnoreIfContext): Boolean of object;
   TCaseFunc = reference to function (const AString: string): string;
 
+type
+  TNeonError = class
+  public const
+    PARSE = 'Error parsing JSON string';
+    NUM_EXPECTED = 'Invalid JSON value. Number expected';
+    BOOL_EXPECTED = 'Invalid JSON value. Number expected';
+    ARR_EXPECTED = 'Set deserialization: Expected JSON Array';
+    DICT_KEY_INVALID = 'Dictionary [Key]: type not supported';
+    FIELD_PROP = 'Member type must be Field or Property';
+    ENUM_INVALID = 'Invalid enum value';
+    ENUM_NAMES = 'No correspondence with enum names';
+    ENUM_VALUE_F1 = 'Enum value [%d] out of bound';
+    EMPTY_TYPE = 'Empty RttiType in JSONToValue';
+    RANGE_OUT_F2 = 'The value [%s] is outside the range for the type [%s]';
+    NO_METHOD_F2 = 'NeonInclude Method name [%s] not found in class [%s]';
+    CONVERT_NUM_F3 = 'Error converting member [%s] of type [%s]: %s';
+  end;
+
 implementation
 
 { TNeonIgnoreIfContext }

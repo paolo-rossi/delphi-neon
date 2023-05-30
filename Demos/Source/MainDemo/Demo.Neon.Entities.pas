@@ -265,6 +265,7 @@ type
     FNote: TNote;
     FJSON: TJSONObject;
     FEnumTest: TEnumSpeed;
+    FBoolProp: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -275,6 +276,7 @@ type
     property FirstProp: Integer read FFirstProp write FFirstProp;
     property SecondXProp: string read FSecondXProp write FSecondXProp;
     property ThirdPascalCaseProp: TDateTime read FThirdPascalCaseProp write FThirdPascalCaseProp;
+    property BoolProp: Boolean read FBoolProp write FBoolProp;
     property EnumTest: TEnumSpeed read FEnumTest write FEnumTest;
     [NeonInclude(IncludeIf.NotEmpty)]
     property JSON: TJSONObject read FJSON write FJSON;
@@ -666,6 +668,7 @@ begin
   Result.FirstProp := Random(1000);
   Result.SecondXProp := 'Metà';
   Result.ThirdPascalCaseProp := EncodeDate(2018, Random(11)+1, Random(27)+1);
+  Result.BoolProp := True;
   {
   Result.JSON.AddPair('name', 'Paolo');
   Result.JSON.AddPair('age', '50');

@@ -18,16 +18,15 @@ object MainForm: TMainForm
     Left = 0
     Top = 0
     Width = 1019
-    Height = 137
+    Height = 153
     Align = alTop
     BevelOuter = bvNone
     TabOrder = 0
-    ExplicitWidth = 1015
     object imgNeon: TImage
-      Left = 746
+      Left = 716
       Top = 0
-      Width = 273
-      Height = 137
+      Width = 303
+      Height = 153
       Align = alRight
       Picture.Data = {
         0954506E67496D61676589504E470D0A1A0A0000000D49484452000002580000
@@ -6020,14 +6019,12 @@ object MainForm: TMainForm
         9A490000000049454E44AE426082}
       Proportional = True
       Stretch = True
-      ExplicitLeft = 782
-      ExplicitTop = 7
     end
     inline frmConfiguration: TframeConfiguration
       Left = 0
       Top = 0
       Width = 710
-      Height = 137
+      Height = 153
       Align = alLeft
       TabOrder = 0
       ExplicitHeight = 137
@@ -6045,15 +6042,14 @@ object MainForm: TMainForm
   end
   object pgcMain: TPageControl
     Left = 0
-    Top = 137
+    Top = 153
     Width = 1019
-    Height = 420
+    Height = 404
     Align = alClient
     Images = imgMain
     TabHeight = 30
     TabOrder = 1
-    ExplicitWidth = 1015
-    ExplicitHeight = 419
+    ExplicitTop = 151
   end
   object imgMain: TImageList
     Left = 456

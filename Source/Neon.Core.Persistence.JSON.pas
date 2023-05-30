@@ -1014,7 +1014,7 @@ begin
         (Result as TJSONObject).AddPair(LName, LJSONValue);
 
         if LName.IsEmpty then
-          raise ENeonException.Create('Dictionary [Key]: type not supported');
+          raise ENeonException.Create(TNeonError.DICT_KEY_INVALID);
       finally
         LJSONName.Free;
       end;
@@ -1350,8 +1350,10 @@ begin
   begin
     if AParam.JSONValue is TJSONBool then
       Result := (AParam.JSONValue as TJSONBool).AsBoolean
+    else if not FConfig.StrictTypes  then
+      Result := AParam.JSONValue.GetValue<Boolean>
     else
-      raise ENeonException.Create('Invalid JSON value. Boolean expected');
+      raise ENeonException.Create(TNeonError.BOOL_EXPECTED);
   end
   else
   begin
@@ -1362,7 +1364,7 @@ begin
       if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
         TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
       else
-        raise ENeonException.Create('Invalid enum value');
+        raise ENeonException.Create(TNeonError.ENUM_INVALID);
     end
     else
     begin
@@ -1381,7 +1383,7 @@ begin
       if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
         TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
       else
-        raise ENeonException.Create('No correspondence with enum names');
+        raise ENeonException.Create(TNeonError.ENUM_NAMES);
     end;
   end;
 end;
@@ -1480,8 +1482,8 @@ begin
     Result := TValue.From<TDateTime>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, FConfig.UseUTCDate))
   else
   begin
-    if not (AParam.JSONValue is TJSONNumber) then
-      raise ENeonException.Create('Invalid JSON value. Number expected');
+    if FConfig.StrictTypes and not (AParam.JSONValue is TJSONNumber) then
+      raise ENeonException.Create(TNeonError.NUM_EXPECTED);
 
     LMax := 0;
     case GetTypeData(AParam.RttiType.Handle).FloatType of
@@ -1513,14 +1515,14 @@ begin
     end;
 
     try
-      LFloat := (AParam.JSONValue as TJSONNumber).GetValue<Extended>;
+      LFloat := AParam.JSONValue.GetValue<Extended>;
     except
       on E: EOverflow do
-        raise ENeonException.CreateFmt('The value [%s] is outside the range for the type [%s]', [AParam.JSONValue.Value, LMsg]);
+        raise ENeonException.CreateFmt(TNeonError.RANGE_OUT_F2, [AParam.JSONValue.Value, LMsg]);
     end;
 
     if (LFloat < -LMax) or (LFloat > LMax) then
-      raise ENeonException.CreateFmt('The value [%s] is outside the range for the type [%s]', [AParam.JSONValue.Value, LMsg]);
+      raise ENeonException.CreateFmt(TNeonError.RANGE_OUT_F2, [AParam.JSONValue.Value, LMsg]);
 
     Result := LFloat;
   end;
@@ -1533,6 +1535,9 @@ var
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.Empty);
+
+  if FConfig.StrictTypes and not (AParam.JSONValue is TJSONNumber) then
+    raise ENeonException.Create(TNeonError.NUM_EXPECTED);
 
   LMin := GetTypeData(AParam.RttiType.Handle).MinInt64Value;
   if LMin < 0 then
@@ -1555,7 +1560,11 @@ begin
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.Empty);
 
-  LInt := (AParam.JSONValue as TJSONNumber).AsInt64;
+  if FConfig.StrictTypes and not (AParam.JSONValue is TJSONNumber) then
+    raise ENeonException.Create(TNeonError.NUM_EXPECTED);
+
+  LInt := StrToInt64(AParam.JSONValue.Value);
+
   LMin := 0;
   LMax := 0;
   case GetTypeData(AParam.RttiType.Handle)^.OrdType of
@@ -1597,7 +1606,7 @@ begin
     end;
   end;
   if (LInt < LMin) or (LInt > LMax) then
-    raise ENeonException.CreateFmt('The value [%d] is outside the range for %s', [LInt, LMsg]);
+    raise ENeonException.CreateFmt(TNeonError.RANGE_OUT_F2, [LInt, LMsg]);
 
   Result := LInt;
 end;
@@ -1643,8 +1652,7 @@ begin
       except
         on E: Exception do
         begin
-          LogError(Format('Error converting member [%s] of type [%s]: %s',
-            [LNeonMember.Name, AType.Name, E.Message]));
+          LogError(Format(TNeonError.CONVERT_NUM_F3, [LNeonMember.Name, AType.Name, E.Message]));
           if FConfig.RaiseExceptions then
             raise;
         end;
@@ -1724,7 +1732,7 @@ begin
   if AParam.JSONValue is TJSONArray then
     LJSONArray := AParam.JSONValue as TJSONArray
   else
-    raise ENeonException.Create('Set deserialization: Expected JSON Array');
+    raise ENeonException.Create(TNeonError.ARR_EXPECTED);
 
   LSet := 0;
   for LJSONValue in LJSONArray do
@@ -1804,8 +1812,6 @@ end;
 function TNeonDeserializerJSON.ReadVariant(const AParam: TNeonDeserializerParam): TValue;
 var
   LDateTime: TDateTime;
-  LJSONNumber: TJSONNumber;
-  LJSONString: TJSONString;
 begin
   // Because the property is a variant we have to guess the type based (only)
   // on the information of the JSON data
@@ -1820,19 +1826,15 @@ begin
     Exit(TValue.From<Variant>(False));
 
   if AParam.JSONValue is TJSONNumber then
-  begin
-    LJSONNumber := AParam.JSONValue as TJSONNumber;
-    Exit(TValue.From<Variant>(LJSONNumber.AsDouble));
-  end;
+    Exit(TValue.From<Variant>(JsonToFloat(AParam.JSONValue.Value)));
 
   if AParam.JSONValue is TJSONString then
   begin
-    LJSONString := AParam.JSONValue as TJSONString;
     try
-      LDateTime := ISO8601ToDate(LJSONString.Value, FConfig.UseUTCDate);
+      LDateTime := ISO8601ToDate(AParam.JSONValue.Value, FConfig.UseUTCDate);
       Exit(TValue.From<Variant>(VarFromDateTime(LDateTime)));
     except
-      Exit(TValue.From<Variant>(LJSONString.Value));
+      Exit(TValue.From<Variant>(AParam.JSONValue.Value));
     end;
   end;
 end;
@@ -2223,7 +2225,7 @@ begin
   try
     LType := TRttiUtils.Context.GetType(TypeInfo(T));
     if not Assigned(LType) then
-      raise ENeonException.Create('Empty RttiType in JSONToValue');
+      raise ENeonException.Create(TNeonError.EMPTY_TYPE);
 
     case LType.TypeKind of
       tkArray, tkRecord, tkDynArray: TValue.Make(nil, TypeInfo(T), LValue);
@@ -2249,7 +2251,7 @@ begin
   {$ELSE}
     Result := TJSONObject.ParseJSONValue(Data, UseBool);
     if RaiseExc and not Assigned(Result) then
-      raise ENeonException.Create('Error parsing JSON string');
+      raise ENeonException.Create(TNeonError.PARSE);
   {$ENDIF}
 end;
 

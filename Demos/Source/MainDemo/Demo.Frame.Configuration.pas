@@ -58,6 +58,8 @@ type
     chkMemberStandard: TCheckBox;
     chkMemberFields: TCheckBox;
     chkMemberProperties: TCheckBox;
+    chkAutoCreate: TCheckBox;
+    chkStrictTypes: TCheckBox;
   private
     FCustomCaseAlgo: TCaseFunc;
   public
@@ -118,15 +120,6 @@ begin
     LMembers := LMembers + [TNeonMembers.Properties];
   Result.SetMembers(LMembers);
 
-  // F Prefix setting
-  Result.SetIgnoreFieldPrefix(chkIgnorePrefix.Checked);
-
-  // Use UTC Date
-  Result.SetUseUTCDate(chkUseUTCDate.Checked);
-
-  // Pretty Printing
-  Result.SetPrettyPrint(chkPrettyPrinting.Checked);
-
   // Visibility settings
   if chkVisibilityPrivate.Checked then
     LVis := LVis + [mvPrivate];
@@ -138,8 +131,22 @@ begin
     LVis := LVis + [mvPublished];
   Result.SetVisibility(LVis);
 
-  //Custom Serializers
+  // F Prefix setting
+  Result.SetIgnoreFieldPrefix(chkIgnorePrefix.Checked);
 
+  // Use UTC Date
+  Result.SetUseUTCDate(chkUseUTCDate.Checked);
+
+  // Pretty Printing
+  Result.SetPrettyPrint(chkPrettyPrinting.Checked);
+
+  // AutoCreate
+  Result.SetAutoCreate(chkAutoCreate.Checked);
+
+  // Strict Types
+  Result.SetStrictTypes(chkStrictTypes.Checked);
+
+  //Custom Serializers
   if TSerializersType.CustomNeon in ASerializers then
     RegisterNeonSerializers(Result.GetSerializers);
 
