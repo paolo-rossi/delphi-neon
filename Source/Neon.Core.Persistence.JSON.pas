@@ -1331,7 +1331,7 @@ begin
         if ReadNullable(AParam, AData) then
           Result := AData
         else
-         Result := ReadRecord(AParam, AData);
+          Result := ReadRecord(AParam, AData);
       end;
     end;
 
