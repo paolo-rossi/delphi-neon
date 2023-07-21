@@ -36,10 +36,15 @@ uses
   Neon.Core.Utils;
 
 type
+  TWriteDataMemberEvent = reference to procedure(const ATypeKind: TTypeKind; var ACanWrite: Boolean);
+  TReadDataMemberEvent = reference to procedure(const ATypeKind: TTypeKind; var ACanRead: Boolean);
+
   /// <summary>
   ///   JSON Serializer class
   /// </summary>
   TNeonSerializerJSON = class(TNeonBase, ISerializerContext)
+  private
+    FWriteDataMemberEvent: TWriteDataMemberEvent;
   private
     /// <summary>
     ///   Writer for members of objects and records
@@ -178,7 +183,9 @@ type
     /// </summary>
     function WriteDataMember(const AValue: TValue; ACustomProcess: Boolean; ANeonObject: TNeonRttiObject): TJSONValue; overload;
   public
-    constructor Create(const AConfig: INeonConfiguration);
+    constructor Create(const AConfig: INeonConfiguration); overload;
+    constructor Create(const AConfig: INeonConfiguration;
+      const AWriteDataMemberEvent: TWriteDataMemberEvent); overload;
 
     /// <summary>
     ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TValue
@@ -202,6 +209,8 @@ type
   ///   JSON Deserializer class
   /// </summary>
   TNeonDeserializerJSON = class(TNeonBase, IDeserializerContext)
+  private
+    FReadDataMemberEvent: TReadDataMemberEvent;
   private
     /// <summary>
     ///   Reader for members of objects and records
@@ -327,7 +336,9 @@ type
     /// </summary>
     function ReadDataMember(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue; overload;
   public
-    constructor Create(const AConfig: INeonConfiguration);
+    constructor Create(const AConfig: INeonConfiguration); overload;
+    constructor Create(const AConfig: INeonConfiguration;
+      const AReadDataMemberEvent: TReadDataMemberEvent); overload;
 
     /// <summary>
     ///   Deserialize a JSON value into a Delphi object
@@ -354,6 +365,10 @@ type
   ///   Static utility class for serializing and deserializing Delphi types
   /// </summary>
   TNeon = class sealed
+  private
+    class var
+      FOnWriteDataMember: TWriteDataMemberEvent;
+      FOnReadDataMember: TReadDataMemberEvent;
   private
     /// <summary>
     ///   ParseJSON function call for compatibility Delphi <= 10.2 Tokyo
@@ -520,6 +535,9 @@ type
     ///   Deserializes a string into a generic type &lt;T&gt; (value based) with a given configuration <br />
     /// </summary>
     class function JSONToValue<T>(const AJSON: string; const AConfig: INeonConfiguration): T; overload;
+  public
+    class property OnWriteDataMember: TWriteDataMemberEvent read FOnWriteDataMember write FOnWriteDataMember;
+    class property OnReadDataMember: TReadDataMemberEvent read FOnReadDataMember write FOnReadDataMember;
   end;
 
 implementation
@@ -535,6 +553,13 @@ constructor TNeonSerializerJSON.Create(const AConfig: INeonConfiguration);
 begin
   inherited Create(AConfig);
   FOperation := TNeonOperation.Serialize;
+end;
+
+constructor TNeonSerializerJSON.Create(const AConfig: INeonConfiguration;
+  const AWriteDataMemberEvent: TWriteDataMemberEvent);
+begin
+  Create(AConfig);
+  FWriteDataMemberEvent := AWriteDataMemberEvent;
 end;
 
 function TNeonSerializerJSON.IsEnumerable(const AValue: TValue; out AList: IDynamicList): Boolean;
@@ -643,6 +668,7 @@ var
   LDynamicList: IDynamicList absolute LDynamicType;
   LDynamicStream: IDynamicStream absolute LDynamicType;
   LDynamicNullable: IDynamicNullable absolute LDynamicType;
+  LIsCanWrite: Boolean;
 begin
   Result := nil;
 
@@ -654,6 +680,13 @@ begin
       Result := LCustomSer.Serialize(AValue, ANeonObject, Self);
       Exit(Result);
     end;
+  end;
+
+  if Assigned(FWriteDataMemberEvent) then
+  begin
+    FWriteDataMemberEvent(AValue.Kind, LIsCanWrite);
+    if LIsCanWrite then
+      Exit;
   end;
 
   case AValue.Kind of
@@ -1285,6 +1318,7 @@ function TNeonDeserializerJSON.ReadDataMember(const AParam: TNeonDeserializerPar
 var
   LCustom: TCustomSerializer;
   LValue: TValue;
+  LIsCanRead: Boolean;
 begin
   Result := TValue.Empty;
 
@@ -1298,6 +1332,13 @@ begin
       Result := LCustom.Deserialize(AParam.JSONValue, LValue, AParam.NeonObject, Self);
       Exit(Result);
     end;
+  end;
+
+  if Assigned(FReadDataMemberEvent) then
+  begin
+    FReadDataMemberEvent(AParam.RttiType.TypeKind, LIsCanRead);
+    if LIsCanRead then
+      Exit;
   end;
 
   case AParam.RttiType.TypeKind of
@@ -1839,6 +1880,13 @@ begin
   end;
 end;
 
+constructor TNeonDeserializerJSON.Create(const AConfig: INeonConfiguration;
+  const AReadDataMemberEvent: TReadDataMemberEvent);
+begin
+  Create(AConfig);
+  FReadDataMemberEvent := AReadDataMemberEvent;
+end;
+
 function TNeonDeserializerJSON.JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
 begin
   Result := ReadDataMember(AJSON, AType, TValue.Empty);
@@ -1943,7 +1991,7 @@ class function TNeon.ObjectToJSON(AObject: TObject; AConfig: INeonConfiguration)
 var
   LWriter: TNeonSerializerJSON;
 begin
-  LWriter := TNeonSerializerJSON.Create(AConfig);
+  LWriter := TNeonSerializerJSON.Create(AConfig, FOnWriteDataMember);
   try
     Result := LWriter.ObjectToJSON(AObject);
   finally
@@ -2099,7 +2147,7 @@ class function TNeon.ValueToJSON(const AValue: TValue; AConfig: INeonConfigurati
 var
   LWriter: TNeonSerializerJSON;
 begin
-  LWriter := TNeonSerializerJSON.Create(AConfig);
+  LWriter := TNeonSerializerJSON.Create(AConfig, FOnWriteDataMember);
   try
     Result := LWriter.ValueToJSON(AValue);
   finally
@@ -2145,7 +2193,7 @@ class procedure TNeon.JSONToObject(AObject: TObject; AJSON: TJSONValue; AConfig:
 var
   LReader: TNeonDeserializerJSON;
 begin
-  LReader := TNeonDeserializerJSON.Create(AConfig);
+  LReader := TNeonDeserializerJSON.Create(AConfig, FOnReadDataMember);
   try
     LReader.JSONToObject(AObject, AJSON);
   finally
@@ -2202,7 +2250,7 @@ class function TNeon.JSONToValue(ARttiType: TRttiType; AJSON: TJSONValue; AConfi
 var
   LDes: TNeonDeserializerJSON;
 begin
-  LDes := TNeonDeserializerJSON.Create(AConfig);
+  LDes := TNeonDeserializerJSON.Create(AConfig, FOnReadDataMember);
   try
     Result := LDes.JSONToTValue(AJSON, ARttiType);
   finally
@@ -2221,7 +2269,7 @@ var
   LValue: TValue;
   LType: TRttiType;
 begin
-  LDes := TNeonDeserializerJSON.Create(AConfig);
+  LDes := TNeonDeserializerJSON.Create(AConfig, FOnReadDataMember);
   try
     LType := TRttiUtils.Context.GetType(TypeInfo(T));
     if not Assigned(LType) then
