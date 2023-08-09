@@ -269,7 +269,11 @@ begin
     LType := TRttiUtils.Context.GetType(TypeInfo(string));
     LValue := AContext.ReadDataMember(AValue, LType, AData, False);
   end
+{$IFDEF VER270}
+  else if (AValue is TJSONTrue) or (AValue is TJSONFalse) then
+{$ELSE}
   else if AValue is TJSONBool then
+{$ENDIF}
   begin
     LType := TRttiUtils.Context.GetType(TypeInfo(Boolean));
     LValue := AContext.ReadDataMember(AValue, LType, AData, False);

@@ -226,7 +226,11 @@ begin
     tkEnumeration: Result := TValue.From<Byte>(0);
     tkInteger:     Result := TValue.From<Integer>(0);
     tkInt64:       Result := TValue.From<Int64>(0);
+{$IFDEF VER270}
+    tkChar,
+{$ELSE}
     tkChar:        Result := TValue.From<UTF8Char>(#0);
+{$ENDIF}
     tkWChar:       Result := TValue.From<Char>(#0);
     tkFloat:       Result := TValue.From<Double>(0);
     tkString:      Result := TValue.From<UTF8String>('');
@@ -864,11 +868,24 @@ begin
 end;
 
 class function TBase64.Decode(const ASource: string): TBytes;
+{$IFDEF VER270}
+var
+  aIdBytes : TIdBytes;
+  I        : Integer;
+{$ENDIF}
 begin
 {$IFDEF HAS_NET_ENCODING}
   Result := TNetEncoding.Base64.DecodeStringToBytes(ASource);
 {$ELSE}
+{$IFDEF VER270}
+  aIdBytes := TIdDecoderMIME.DecodeBytes(ASource);
+
+  SetLength(Result, Length(aIdBytes));
+  for I := 0 to Length(aIdBytes) - 1 do
+    Result[I] := aIdBytes[I];
+{$ELSE}
   Result := TIdDecoderMIME.DecodeBytes(ASource) as TBytes;
+{$ENDIF}
 {$ENDIF}
 end;
 
