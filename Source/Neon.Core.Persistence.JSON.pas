@@ -1334,9 +1334,7 @@ begin
           Result := AData
         else
           Result := ReadRecord(AParam, AData);
-      end
-      else
-        Result := AData;
+      end;
     end;
 
   end;
