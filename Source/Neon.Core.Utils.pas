@@ -764,34 +764,6 @@ begin
 {$ENDIF}
 end;
 
-class function TJSONUtils.IsNotDefault(const AJSON: TJSONValue): Boolean;
-begin
-  Result := True;
-
-  if AJSON = nil then
-    Exit(False);
-
-  if AJSON is TJSONNull then
-    Exit(False);
-
-  if AJSON is TJSONString then
-    Exit(not (AJSON as TJSONString).Value.IsEmpty);
-
-  if AJSON is TJSONNumber then
-  begin
-    if (AJSON as TJSONNumber).Value.Contains('.') then
-      Exit(not IsZero((AJSON as TJSONNumber).AsDouble));
-
-    Exit(not (AJSON as TJSONNumber).AsInt = 0);
-  end;
-
-  if AJSON is TJSONObject then
-    Exit((AJSON as TJSONObject).Count > 0);
-
-  if AJSON is TJSONArray then
-    Exit((AJSON as TJSONArray).Count > 0);
-end;
-
 class function TJSONUtils.HasItems(const AJSON: TJSONValue): Boolean;
 begin
   Result := True;
@@ -821,6 +793,34 @@ begin
 
   if AJSON is TJSONString then
     Exit(not (AJSON as TJSONString).Value.IsEmpty);
+
+  if AJSON is TJSONObject then
+    Exit((AJSON as TJSONObject).Count > 0);
+
+  if AJSON is TJSONArray then
+    Exit((AJSON as TJSONArray).Count > 0);
+end;
+
+class function TJSONUtils.IsNotDefault(const AJSON: TJSONValue): Boolean;
+begin
+  Result := True;
+
+  if AJSON = nil then
+    Exit(False);
+
+  if AJSON is TJSONNull then
+    Exit(False);
+
+  if AJSON is TJSONString then
+    Exit(not (AJSON as TJSONString).Value.IsEmpty);
+
+  if AJSON is TJSONNumber then
+  begin
+    if (AJSON as TJSONNumber).Value.Contains('.') then
+      Exit(not IsZero((AJSON as TJSONNumber).AsDouble));
+
+    Exit(not (AJSON as TJSONNumber).AsInt = 0);
+  end;
 
   if AJSON is TJSONObject then
     Exit((AJSON as TJSONObject).Count > 0);

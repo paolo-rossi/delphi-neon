@@ -1324,7 +1324,7 @@ begin
 
     tkClass:
     begin
-      if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
+      if TJSONUtils.HasItems(AParam.JSONValue) then
         Result := ReadReference(AParam, AData)
       else
         Result := AData;
@@ -1332,7 +1332,7 @@ begin
 
     tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
     begin
-      if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
+      if TJSONUtils.HasItems(AParam.JSONValue) then
       begin
         if ReadNullable(AParam, AData) then
           Result := AData
@@ -1881,7 +1881,7 @@ var
 begin
   Result := AData;
   if (AData.IsObject) and (AData.AsObject = nil) and
-     TJSONUtils.IsNotEmpty(AValue) and
+     TJSONUtils.HasItems(AValue) and
      (FConfig.AutoCreate or ANeonObject.NeonAutoCreate) then
   begin
     LType := TRttiUtils.Context.GetType(AData.TypeInfo);
