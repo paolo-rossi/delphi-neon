@@ -79,7 +79,11 @@ begin
 
   LStream := TMemoryStream.Create;
   try
+{$IFDEF VER270}
+    LImage.Picture.Bitmap.SaveToStream(LStream);
+{$ELSE}
     LImage.Picture.SaveToStream(LStream);
+{$ENDIF}
     LStream.Position := soFromBeginning;
     LBase64 := TBase64.Encode(LStream);
   finally
@@ -107,7 +111,11 @@ begin
   try
     TBase64.Decode(AValue.Value, LStream);
     LStream.Position := soFromBeginning;
+{$IFDEF VER270}
+    LImage.Picture.Bitmap.LoadFromStream(LStream);
+{$ELSE}
     LImage.Picture.LoadFromStream(LStream);
+{$ENDIF}
   finally
     LStream.Free;
   end;

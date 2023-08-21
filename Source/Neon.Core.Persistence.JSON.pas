@@ -596,7 +596,14 @@ end;
 
 function TNeonSerializerJSON.WriteBoolean(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
+{$IFDEF VER270}
+  if AValue.AsBoolean then
+    Result := TJSONTrue.Create
+  else
+    Result := TJsonFalse.Create;
+{$ELSE}
   Result := TJSONBool.Create(AValue.AsBoolean);
+{$ENDIF}
 end;
 
 function TNeonSerializerJSON.WriteChar(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1126,7 +1133,11 @@ begin
   end;
 
   if ANeonObject.NeonRawValue then
+{$IFDEF VER270}
+    Result := TJSONObject.ParseJSONValue(AValue.AsString)
+{$ELSE}
     Result := TJSONObject.ParseJSONValue(AValue.AsString, False, True)
+{$ENDIF}
   else
     Result := TJSONString.Create(AValue.AsString);
 end;
@@ -1257,7 +1268,11 @@ begin
 
   case AParam.RttiType.TypeKind of
     // AnsiChar
+{$IFDEF VER270}
+    tkChar,
+{$ELSE}
     tkChar:  Result := TValue.From<UTF8Char>(UTF8Char(AParam.JSONValue.Value.Chars[0]));
+{$ENDIF}
 
     // WideChar
     tkWChar: Result := TValue.From<Char>(AParam.JSONValue.Value.Chars[0]);
@@ -1348,8 +1363,15 @@ begin
 
   if AParam.RttiType.Handle = System.TypeInfo(Boolean) then
   begin
+{$IFDEF VER270}
+    if AParam.JSONValue is TJSONTrue then
+      Result := True
+    else if AParam.JSONValue is TJSONFalse then
+      Result := False
+{$ELSE}
     if AParam.JSONValue is TJSONBool then
       Result := (AParam.JSONValue as TJSONBool).AsBoolean
+{$ENDIF}
     else if not FConfig.StrictTypes  then
       Result := AParam.JSONValue.GetValue<Boolean>
     else
@@ -1499,7 +1521,11 @@ begin
       end;
       ftExtended:
       begin
+{$IFDEF VER270}
+        LMax := MaxExtended;
+{$ELSE}
         LMax := MaxExtended80;
+{$ENDIF}
         LMsg := 'Extended';
       end;
       ftComp:
@@ -1742,8 +1768,15 @@ begin
 
     if LJSONValue is TJSONNumber then
       LValue := (LJSONValue as TJSONNumber).AsInt
+{$IFDEF VER270}
+    else if LJSONValue is TJSONTrue then
+      LValue := True
+    else if LJSONValue is TJSONFalse then
+      LValue := False
+{$ELSE}
     else if LJSONValue is TJSONBool then
       LValue := (LJSONValue as TJSONBool).AsBoolean
+{$ENDIF}
     else if LJSONValue is TJSONString then
       LValue := ReadDataMember(LJSONValue, LEnumType, TValue.Empty);
 
@@ -1785,7 +1818,11 @@ begin
     Exit(TValue.Empty);
 
   if AParam.NeonObject.NeonRawValue then
+{$IFDEF VER270}
+    Exit(TValue.From<string>(AParam.JSONValue.ToString));
+{$ELSE}
     Exit(TValue.From<string>(AParam.JSONValue.ToJSON));
+{$ENDIF}
 
   case AParam.RttiType.TypeKind of
 
@@ -2029,7 +2066,11 @@ var
   end;
 
 begin
+{$IFDEF VER270}
+  LJSONString := AJSONValue.ToString;
+{$ELSE}
   LJSONString := AJSONValue.ToJSON;
+{$ENDIF}
   if not APretty then
   begin
     AWriter.Write(LJSONString);
@@ -2249,7 +2290,11 @@ begin
   {$IFDEF HAS_NEW_JSON}
     Result := TJSONObject.ParseJSONValue(Data, UseBool, RaiseExc);
   {$ELSE}
+  {$IFDEF VER270}
+    Result := TJSONObject.ParseJSONValue(Data);
+  {$ELSE}
     Result := TJSONObject.ParseJSONValue(Data, UseBool);
+  {$ENDIF}
     if RaiseExc and not Assigned(Result) then
       raise ENeonException.Create(TNeonError.PARSE);
   {$ENDIF}
