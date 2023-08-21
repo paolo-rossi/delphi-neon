@@ -1634,7 +1634,7 @@ begin
     end;
   end;
   if (LInt < LMin) or (LInt > LMax) then
-    raise ENeonException.CreateFmt(TNeonError.RANGE_OUT_F2, [LInt, LMsg]);
+    raise ENeonException.CreateFmt(TNeonError.RANGE_OUT_F2, [LInt.ToString, LMsg]);
 
   Result := LInt;
 end;
