@@ -1336,7 +1336,9 @@ begin
     tkClass:
     begin
       if TJSONUtils.IsNotEmpty(AParam.JSONValue) then
-        Result := ReadReference(AParam, AData);
+        Result := ReadReference(AParam, AData)
+      else
+        Result := AData;
     end;
 
     tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
