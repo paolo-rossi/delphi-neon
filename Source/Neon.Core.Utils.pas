@@ -52,6 +52,10 @@ type
 
     class procedure JSONCopyFrom(ASource, ADestination: TJSONObject); static;
 
+    class function GetValueBool(AJSON: TJSONValue): Boolean;
+    class function GetJSONBool(const AValue: TValue): TJSONValue;
+    class function IsBool(AJSON: TJSONValue): Boolean;
+
     class function BooleanToTJSON(AValue: Boolean): TJSONValue;
     class function DateToJSON(ADate: TDateTime; AInputIsUTC: Boolean = True): string; static;
     class function DateToJSONValue(ADate: TDateTime; AInputIsUTC: Boolean = True): TJSONValue; static;
@@ -723,6 +727,43 @@ begin
 {$ENDIF}
 end;
 
+class function TJSONUtils.GetJSONBool(const AValue: TValue): TJSONValue;
+begin
+{$IFDEF VER270}
+  if AValue.AsBoolean then
+    Result := TJSONTrue.Create
+  else
+    Result := TJsonFalse.Create;
+{$ELSE}
+  Result := TJSONBool.Create(AValue.AsBoolean);
+{$ENDIF}
+end;
+
+class function TJSONUtils.GetValueBool(AJSON: TJSONValue): Boolean;
+begin
+{$IFDEF VER270}
+  if AJSON is TJSONTrue then
+    Result := True
+  else if AJSON is TJSONFalse then
+    Result := False
+{$ELSE}
+  if AJSON is TJSONBool then
+    Result := (AJSON as TJSONBool).AsBoolean
+{$ENDIF}
+end;
+
+class function TJSONUtils.IsBool(AJSON: TJSONValue): Boolean;
+begin
+  Result := False;
+{$IFDEF VER270}
+  if (AJSON is TJSONTrue) or (AJSON is TJSONFalse) then
+    Result := True;
+{$ELSE}
+  if AJSON is TJSONBool then
+    Result := True;
+{$ENDIF}
+end;
+
 class function TJSONUtils.IsNotDefault(const AJSON: TJSONValue): Boolean;
 begin
   Result := True;
@@ -756,6 +797,9 @@ begin
   Result := True;
 
   if AJSON = nil then
+    Exit(False);
+
+  if AJSON is TJSONNull then
     Exit(False);
 
   if AJSON is TJSONObject then

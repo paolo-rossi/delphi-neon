@@ -596,14 +596,7 @@ end;
 
 function TNeonSerializerJSON.WriteBoolean(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
-{$IFDEF VER270}
-  if AValue.AsBoolean then
-    Result := TJSONTrue.Create
-  else
-    Result := TJsonFalse.Create;
-{$ELSE}
-  Result := TJSONBool.Create(AValue.AsBoolean);
-{$ENDIF}
+  Result := TJSONUtils.GetJSONBool(AValue);
 end;
 
 function TNeonSerializerJSON.WriteChar(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1133,11 +1126,7 @@ begin
   end;
 
   if ANeonObject.NeonRawValue then
-{$IFDEF VER270}
-    Result := TJSONObject.ParseJSONValue(AValue.AsString)
-{$ELSE}
-    Result := TJSONObject.ParseJSONValue(AValue.AsString, False, True)
-{$ENDIF}
+    Result := TNeon.ParseJSON(AValue.AsString, False, True)
   else
     Result := TJSONString.Create(AValue.AsString);
 end;
@@ -1365,15 +1354,8 @@ begin
 
   if AParam.RttiType.Handle = System.TypeInfo(Boolean) then
   begin
-{$IFDEF VER270}
-    if AParam.JSONValue is TJSONTrue then
-      Result := True
-    else if AParam.JSONValue is TJSONFalse then
-      Result := False
-{$ELSE}
-    if AParam.JSONValue is TJSONBool then
-      Result := (AParam.JSONValue as TJSONBool).AsBoolean
-{$ENDIF}
+    if TJSONUtils.IsBool(AParam.JSONValue) then
+      Result := TJSONUtils.GetValueBool(AParam.JSONValue)
     else if not FConfig.StrictTypes  then
       Result := AParam.JSONValue.GetValue<Boolean>
     else
@@ -1770,15 +1752,8 @@ begin
 
     if LJSONValue is TJSONNumber then
       LValue := (LJSONValue as TJSONNumber).AsInt
-{$IFDEF VER270}
-    else if LJSONValue is TJSONTrue then
-      LValue := True
-    else if LJSONValue is TJSONFalse then
-      LValue := False
-{$ELSE}
-    else if LJSONValue is TJSONBool then
-      LValue := (LJSONValue as TJSONBool).AsBoolean
-{$ENDIF}
+    else if TJSONUtils.IsBool(LJSONValue) then
+      LValue := TJSONUtils.GetValueBool(LJSONValue)
     else if LJSONValue is TJSONString then
       LValue := ReadDataMember(LJSONValue, LEnumType, TValue.Empty);
 

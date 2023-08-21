@@ -25,6 +25,7 @@
 {$IF CompilerVersion >= 33} // Delphi 10.3 Rio
   {$DEFINE HAS_NEW_PIDS}
   {$DEFINE HAS_NEW_JSON}
+  {$DEFINE HAS_VAR_INLINE}
 {$ENDIF}
 
 {$IF CompilerVersion >= 34} // Delphi 10.4 Sydney
