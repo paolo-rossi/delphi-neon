@@ -746,9 +746,13 @@ begin
     Result := True
   else if AJSON is TJSONFalse then
     Result := False
+  else
+    raise ENeonException.Create('The JSON value is not boolean');
 {$ELSE}
   if AJSON is TJSONBool then
     Result := (AJSON as TJSONBool).AsBoolean
+  else
+    raise ENeonException.Create('The JSON value is not boolean');
 {$ENDIF}
 end;
 
