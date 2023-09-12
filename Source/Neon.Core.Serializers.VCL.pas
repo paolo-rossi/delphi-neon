@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018 Paolo Rossi                                              }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -79,10 +79,10 @@ begin
 
   LStream := TMemoryStream.Create;
   try
-{$IFDEF VER270}
-    LImage.Picture.Bitmap.SaveToStream(LStream);
-{$ELSE}
+{$IF CompilerVersion >= 30}
     LImage.Picture.SaveToStream(LStream);
+{$ELSE}
+    LImage.Picture.Bitmap.SaveToStream(LStream);
 {$ENDIF}
     LStream.Position := soFromBeginning;
     LBase64 := TBase64.Encode(LStream);
@@ -111,10 +111,10 @@ begin
   try
     TBase64.Decode(AValue.Value, LStream);
     LStream.Position := soFromBeginning;
-{$IFDEF VER270}
-    LImage.Picture.Bitmap.LoadFromStream(LStream);
-{$ELSE}
+{$IF CompilerVersion >= 30}
     LImage.Picture.LoadFromStream(LStream);
+{$ELSE}
+    LImage.Picture.Bitmap.LoadFromStream(LStream);
 {$ENDIF}
   finally
     LStream.Free;

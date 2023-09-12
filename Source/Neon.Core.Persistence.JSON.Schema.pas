@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2023 Paolo Rossi                                         }
+{  Copyright (c) 2018 Paolo Rossi                                              }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -21,9 +21,9 @@
 {******************************************************************************}
 unit Neon.Core.Persistence.JSON.Schema;
 
-interface
-
 {$I Neon.inc}
+
+interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs,

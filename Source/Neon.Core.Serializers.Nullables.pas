@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2021 Paolo Rossi                                         }
+{  Copyright (c) 2018 Paolo Rossi                                              }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -161,15 +161,8 @@ function TNullableBooleanSerializer.Deserialize(AValue: TJSONValue; const
 var
   LNullValue: NullBoolean;
 begin
-{$IFDEF VER270}
-  if AValue is TJSONTrue then
-    LNullValue := True
-  else if AValue is TJSONFalse then
-    LNullValue := False
-{$ELSE}
-  if AValue is TJSONBool then
-    LNullValue := (AValue as TJSONBool).AsBoolean
-{$ENDIF}
+  if TJSONUtils.IsBool(AValue) then
+    LNullValue := TJSONUtils.GetValueBool(AValue)
   else if AValue is TJSONNull then
     LNullValue := nil
   else
@@ -200,15 +193,7 @@ begin
       Exit(TJSONNull.Create);
     end;
   end;
-
-{$IFDEF VER270}
-  if LValue.Value then
-    Result := TJSONTrue.Create
-  else
-    Result := TJSONFalse.Create;
-{$ELSE}
-  Result := TJSONBool.Create(LValue.Value);
-{$ENDIF}
+  Result := TJSONUtils.GetJSONBool(LValue.Value);
 end;
 
 { TNullableIntegerSerializer }

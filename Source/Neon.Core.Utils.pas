@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2023 Paolo Rossi                                         }
+{  Copyright (c) 2018 Paolo Rossi                                              }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -21,9 +21,9 @@
 {******************************************************************************}
 unit Neon.Core.Utils;
 
-interface
-
 {$I Neon.inc}
+
+interface
 
 uses
   System.Classes, System.SysUtils, Data.DB, System.Rtti, System.JSON, System.TypInfo,
@@ -53,7 +53,8 @@ type
     class procedure JSONCopyFrom(ASource, ADestination: TJSONObject); static;
 
     class function GetValueBool(AJSON: TJSONValue): Boolean;
-    class function GetJSONBool(const AValue: TValue): TJSONValue;
+    class function GetJSONBool(const AValue: TValue): TJSONValue; overload;
+    class function GetJSONBool(AValue: Boolean): TJSONValue; overload;
     class function IsBool(AJSON: TJSONValue): Boolean;
 
     class function BooleanToTJSON(AValue: Boolean): TJSONValue;
@@ -230,10 +231,10 @@ begin
     tkEnumeration: Result := TValue.From<Byte>(0);
     tkInteger:     Result := TValue.From<Integer>(0);
     tkInt64:       Result := TValue.From<Int64>(0);
-{$IFDEF VER270}
-    tkChar,
-{$ELSE}
+{$IFDEF HAS_UTF8CHAR}
     tkChar:        Result := TValue.From<UTF8Char>(#0);
+{$ELSE}
+    tkChar,
 {$ENDIF}
     tkWChar:       Result := TValue.From<Char>(#0);
     tkFloat:       Result := TValue.From<Double>(0);
@@ -729,28 +730,40 @@ end;
 
 class function TJSONUtils.GetJSONBool(const AValue: TValue): TJSONValue;
 begin
-{$IFDEF VER270}
+{$IFDEF HAS_JSON_BOOL}
+  Result := TJSONBool.Create(AValue.AsBoolean);
+{$ELSE}
   if AValue.AsBoolean then
     Result := TJSONTrue.Create
   else
     Result := TJsonFalse.Create;
+{$ENDIF}
+end;
+
+class function TJSONUtils.GetJSONBool(AValue: Boolean): TJSONValue;
+begin
+{$IFDEF HAS_JSON_BOOL}
+  Result := TJSONBool.Create(AValue);
 {$ELSE}
-  Result := TJSONBool.Create(AValue.AsBoolean);
+  if AValue then
+    Result := TJSONTrue.Create
+  else
+    Result := TJsonFalse.Create;
 {$ENDIF}
 end;
 
 class function TJSONUtils.GetValueBool(AJSON: TJSONValue): Boolean;
 begin
-{$IFDEF VER270}
+{$IFDEF HAS_JSON_BOOL}
+  if AJSON is TJSONBool then
+    Result := (AJSON as TJSONBool).AsBoolean
+  else
+    raise ENeonException.Create('The JSON value is not boolean');
+{$ELSE}
   if AJSON is TJSONTrue then
     Result := True
   else if AJSON is TJSONFalse then
     Result := False
-  else
-    raise ENeonException.Create('The JSON value is not boolean');
-{$ELSE}
-  if AJSON is TJSONBool then
-    Result := (AJSON as TJSONBool).AsBoolean
   else
     raise ENeonException.Create('The JSON value is not boolean');
 {$ENDIF}
@@ -759,11 +772,11 @@ end;
 class function TJSONUtils.IsBool(AJSON: TJSONValue): Boolean;
 begin
   Result := False;
-{$IFDEF VER270}
-  if (AJSON is TJSONTrue) or (AJSON is TJSONFalse) then
+{$IFDEF HAS_JSON_BOOL}
+  if AJSON is TJSONBool then
     Result := True;
 {$ELSE}
-  if AJSON is TJSONBool then
+  if (AJSON is TJSONTrue) or (AJSON is TJSONFalse) then
     Result := True;
 {$ENDIF}
 end;
@@ -916,24 +929,20 @@ begin
 end;
 
 class function TBase64.Decode(const ASource: string): TBytes;
-{$IFDEF VER270}
+{$IFNDEF HAS_NET_ENCODING}
 var
-  aIdBytes : TIdBytes;
-  I        : Integer;
+  LBytes: TIdBytes;
+  LIndex: Integer;
 {$ENDIF}
 begin
 {$IFDEF HAS_NET_ENCODING}
   Result := TNetEncoding.Base64.DecodeStringToBytes(ASource);
 {$ELSE}
-{$IFDEF VER270}
-  aIdBytes := TIdDecoderMIME.DecodeBytes(ASource);
+  LBytes := TIdDecoderMIME.DecodeBytes(ASource);
 
-  SetLength(Result, Length(aIdBytes));
-  for I := 0 to Length(aIdBytes) - 1 do
-    Result[I] := aIdBytes[I];
-{$ELSE}
-  Result := TIdDecoderMIME.DecodeBytes(ASource) as TBytes;
-{$ENDIF}
+  SetLength(Result, Length(LBytes));
+  for LIndex := 0 to Length(LBytes) - 1 do
+    Result[LIndex] := LBytes[LIndex];
 {$ENDIF}
 end;
 

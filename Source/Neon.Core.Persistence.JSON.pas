@@ -1,7 +1,7 @@
 {******************************************************************************}
 {                                                                              }
 {  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018-2023 Paolo Rossi                                         }
+{  Copyright (c) 2018 Paolo Rossi                                              }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
 {******************************************************************************}
@@ -21,9 +21,9 @@
 {******************************************************************************}
 unit Neon.Core.Persistence.JSON;
 
-interface
-
 {$I Neon.inc}
+
+interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs,
@@ -1256,14 +1256,11 @@ begin
     Exit(TValue.Empty);
 
   case AParam.RttiType.TypeKind of
-    // AnsiChar
-{$IFDEF VER270}
-    tkChar,
-{$ELSE}
+{$IFDEF HAS_UTF8CHAR}
     tkChar:  Result := TValue.From<UTF8Char>(UTF8Char(AParam.JSONValue.Value.Chars[0]));
+{$ELSE}
+    tkChar,
 {$ENDIF}
-
-    // WideChar
     tkWChar: Result := TValue.From<Char>(AParam.JSONValue.Value.Chars[0]);
   end;
 end;
@@ -1505,10 +1502,10 @@ begin
       end;
       ftExtended:
       begin
-{$IFDEF VER270}
-        LMax := MaxExtended;
-{$ELSE}
+{$IFDEF HAS_EXTENDED_80}
         LMax := MaxExtended80;
+{$ELSE}
+        LMax := MaxExtended;
 {$ENDIF}
         LMsg := 'Extended';
       end;
@@ -1795,10 +1792,10 @@ begin
     Exit(TValue.Empty);
 
   if AParam.NeonObject.NeonRawValue then
-{$IFDEF VER270}
-    Exit(TValue.From<string>(AParam.JSONValue.ToString));
-{$ELSE}
+{$IFDEF HAS_TOJSON}
     Exit(TValue.From<string>(AParam.JSONValue.ToJSON));
+{$ELSE}
+    Exit(TValue.From<string>(AParam.JSONValue.ToString));
 {$ENDIF}
 
   case AParam.RttiType.TypeKind of
@@ -2043,10 +2040,10 @@ var
   end;
 
 begin
-{$IFDEF VER270}
-  LJSONString := AJSONValue.ToString;
-{$ELSE}
+{$IFDEF HAS_TOJSON}
   LJSONString := AJSONValue.ToJSON;
+{$ELSE}
+  LJSONString := AJSONValue.ToString;
 {$ENDIF}
   if not APretty then
   begin
@@ -2264,17 +2261,17 @@ end;
 
 class function TNeon.ParseJSON(const Data: string; UseBool, RaiseExc: Boolean): TJSONValue;
 begin
-  {$IFDEF HAS_NEW_JSON}
-    Result := TJSONObject.ParseJSONValue(Data, UseBool, RaiseExc);
-  {$ELSE}
-  {$IFDEF VER270}
-    Result := TJSONObject.ParseJSONValue(Data);
-  {$ELSE}
+{$IFDEF HAS_NEW_JSON}
+  Result := TJSONObject.ParseJSONValue(Data, UseBool, RaiseExc);
+{$ELSE}
+  {$IFDEF HAS_JSON_BOOL}
     Result := TJSONObject.ParseJSONValue(Data, UseBool);
+  {$ELSE}
+    Result := TJSONObject.ParseJSONValue(Data);
   {$ENDIF}
     if RaiseExc and not Assigned(Result) then
       raise ENeonException.Create(TNeonError.PARSE);
-  {$ENDIF}
+{$ENDIF}
 end;
 
 { TNeonDeserializerParam }
