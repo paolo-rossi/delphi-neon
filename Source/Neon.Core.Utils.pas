@@ -58,9 +58,19 @@ type
     class function IsBool(AJSON: TJSONValue): Boolean;
 
     class function BooleanToTJSON(AValue: Boolean): TJSONValue;
-    class function DateToJSON(ADate: TDateTime; AInputIsUTC: Boolean = True): string; static;
-    class function DateToJSONValue(ADate: TDateTime; AInputIsUTC: Boolean = True): TJSONValue; static;
-    class function JSONToDate(const ADate: string; AReturnUTC: Boolean = True): TDateTime; static;
+
+    class function DateToJSON(ADate: TDate): string; static;
+    class function DateToJSONValue(ADate: TDate): TJSONValue; static;
+
+    class function TimeToJSON(ATime: TTime): string; static;
+    class function TimeToJSONValue(ATime: TTime): TJSONValue; static;
+
+    class function DateTimeToJSON(ADateTime: TDateTime; AInputIsUTC: Boolean = True): string; static;
+    class function DateTimeToJSONValue(ADateTime: TDateTime; AInputIsUTC: Boolean = True): TJSONValue; static;
+
+    class function JSONToDate(const ADate: string): TDate; static;
+    class function JSONToTime(const ATime: string): TTime; static;
+    class function JSONToDateTime(const ADateTime: string; AReturnUTC: Boolean = True): TDateTime; static;
   end;
 
   TRttiUtils = class
@@ -663,16 +673,40 @@ begin
     Result := TJSONFalse.Create;
 end;
 
-class function TJSONUtils.DateToJSON(ADate: TDateTime; AInputIsUTC: Boolean = True): string;
+class function TJSONUtils.DateToJSON(ADate: TDate): string;
 begin
   Result := '';
   if ADate <> 0 then
-    Result := DateToISO8601(ADate, AInputIsUTC);
+    Result := FormatDateTime('YYYY-MM-DD', ADate);
 end;
 
-class function TJSONUtils.DateToJSONValue(ADate: TDateTime; AInputIsUTC: Boolean): TJSONValue;
+class function TJSONUtils.DateToJSONValue(ADate: TDate): TJSONValue;
 begin
-  Result := TJSONString.Create(TJSONUtils.DateToJSON(ADate, AInputIsUTC));
+  Result := TJSONString.Create(TJSONUtils.DateToJSON(ADate));
+end;
+
+class function TJSONUtils.TimeToJSON(ATime: TTime): string;
+begin
+  Result := '';
+  if ATime <> 0 then
+  Result := FormatDateTime('hh:nn:ss', ATime);
+end;
+
+class function TJSONUtils.TimeToJSONValue(ATime: TTime): TJSONValue;
+begin
+  Result := TJSONString.Create(TJSONUtils.TimeToJSON(ATime));
+end;
+
+class function TJSONUtils.DateTimeToJSON(ADateTime: TDateTime; AInputIsUTC: Boolean = True): string;
+begin
+  Result := '';
+  if ADateTime <> 0 then
+    Result := DateToISO8601(ADateTime, AInputIsUTC);
+end;
+
+class function TJSONUtils.DateTimeToJSONValue(ADateTime: TDateTime; AInputIsUTC: Boolean): TJSONValue;
+begin
+  Result := TJSONString.Create(TJSONUtils.DateTimeToJSON(ADateTime, AInputIsUTC));
 end;
 
 class procedure TJSONUtils.Decode(const ASource: string; ADest: TStream);
@@ -861,11 +895,25 @@ begin
   end;
 end;
 
-class function TJSONUtils.JSONToDate(const ADate: string; AReturnUTC: Boolean = True): TDateTime;
+class function TJSONUtils.JSONToDate(const ADate: string): TDate;
 begin
   Result := 0.0;
-  if ADate <> '' then
-    Result := ISO8601ToDate(ADate, AReturnUTC);
+  if Length(ADate) = 10 then  {YYYY-MM-DD} // Possible RegEx => ^(?:\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))$
+    Result := EncodeDate(StrToInt(Copy(ADate, 1, 4)), StrToInt(Copy(ADate, 6, 2)), StrToInt(Copy(ADate, 9, 2)));
+end;
+
+class function TJSONUtils.JSONToTime(const ATime: string): TTime;
+begin
+  Result := 0.0;
+  if Length(ATime) = 8 then {hh:nn:ss} // Possible RegEx => ^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$
+    Result := EncodeTime(StrToInt(Copy(ATime, 1, 2)), StrToInt(Copy(ATime, 4, 2)), StrToInt(Copy(ATime, 7, 2)), 0);
+end;
+
+class function TJSONUtils.JSONToDateTime(const ADateTime: string; AReturnUTC: Boolean = True): TDateTime;
+begin
+  Result := 0.0;
+  if ADateTime <> '' then
+    Result := ISO8601ToDate(ADateTime, AReturnUTC);
 end;
 
 class function TJSONUtils.ToJSON(AJSONValue: TJSONValue): string;
@@ -1191,9 +1239,9 @@ begin
     TFieldType.ftFloat:           Result := TJSONNumber.Create(AField.AsFloat);
     TFieldType.ftCurrency:        Result := TJSONNumber.Create(AField.AsCurrency);
     TFieldType.ftBCD:             Result := TJSONNumber.Create(AField.AsFloat);
-    TFieldType.ftDate:            Result := TJSONUtils.DateToJSONValue(AField.AsDateTime, AUseUTCDate);
-    TFieldType.ftTime:            Result := TJSONUtils.DateToJSONValue(AField.AsDateTime, AUseUTCDate);
-    TFieldType.ftDateTime:        Result := TJSONUtils.DateToJSONValue(AField.AsDateTime, AUseUTCDate);
+    TFieldType.ftDate:            Result := TJSONUtils.DateToJSONValue(AField.AsDateTime);
+    TFieldType.ftTime:            Result := TJSONUtils.TimeToJSONValue(AField.AsDateTime);
+    TFieldType.ftDateTime:        Result := TJSONUtils.DateTimeToJSONValue(AField.AsDateTime, AUseUTCDate);
     TFieldType.ftBytes:           Result := TJSONString.Create(TBase64.Encode(AField.AsBytes));
     TFieldType.ftVarBytes:        Result := TJSONString.Create(TBase64.Encode(AField.AsBytes));
     TFieldType.ftAutoInc:         Result := TJSONNumber.Create(AField.AsInteger);
@@ -1218,11 +1266,11 @@ begin
 //      TFieldType.ftInterface: ;
 //      TFieldType.ftIDispatch: ;
     TFieldType.ftGuid:            Result := TJSONString.Create(AField.AsString);
-    TFieldType.ftTimeStamp:       Result := TJSONUtils.DateToJSONValue(AField.AsDateTime, AUseUTCDate);
+    TFieldType.ftTimeStamp:       Result := TJSONUtils.DateTimeToJSONValue(AField.AsDateTime, AUseUTCDate);
     TFieldType.ftFMTBcd:          Result := TJSONNumber.Create(AField.AsFloat);
     TFieldType.ftFixedWideChar:   Result := TJSONString.Create(AField.AsString);
     TFieldType.ftWideMemo:        Result := TJSONString.Create(AField.AsString);
-    TFieldType.ftOraTimeStamp:    Result := TJSONUtils.DateToJSONValue(AField.AsDateTime, AUseUTCDate);
+    TFieldType.ftOraTimeStamp:    Result := TJSONUtils.DateTimeToJSONValue(AField.AsDateTime, AUseUTCDate);
     TFieldType.ftOraInterval:     Result := TJSONString.Create(AField.AsString);
     TFieldType.ftLongWord:        Result := TJSONNumber.Create(AField.AsInteger);
     TFieldType.ftShortint:        Result := TJSONNumber.Create(AField.AsInteger);
@@ -1302,9 +1350,9 @@ begin
       TFieldType.ftFloat:           LField.AsString := LJSONField.Value;
       TFieldType.ftCurrency:        LField.AsString := LJSONField.Value;
       TFieldType.ftBCD:             LField.AsString := LJSONField.Value;
-      TFieldType.ftDate:            LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AUseUTCDate);
-      TFieldType.ftTime:            LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AUseUTCDate);
-      TFieldType.ftDateTime:        LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AUseUTCDate);
+      TFieldType.ftDate:            LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value);
+      TFieldType.ftTime:            LField.AsDateTime := TJSONUtils.JSONToTime(LJSONField.Value);
+      TFieldType.ftDateTime:        LField.AsDateTime := TJSONUtils.JSONToDateTime(LJSONField.Value, AUseUTCDate);
       TFieldType.ftBytes:           ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
       TFieldType.ftVarBytes:        ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
       TFieldType.ftAutoInc:         LField.AsString := LJSONField.Value;
@@ -1329,11 +1377,11 @@ begin
       //TFieldType.ftInterface: ;
       //TFieldType.ftIDispatch: ;
       TFieldType.ftGuid:            LField.AsString := LJSONField.Value;
-      TFieldType.ftTimeStamp:       LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AUseUTCDate);
+      TFieldType.ftTimeStamp:       LField.AsDateTime := TJSONUtils.JSONToDateTime(LJSONField.Value, AUseUTCDate);
       TFieldType.ftFMTBcd:          ADataSet.Fields[LIndex].AsBytes := TBase64.Decode(LJSONField.Value);
       TFieldType.ftFixedWideChar:   LField.AsString := LJSONField.Value;
       TFieldType.ftWideMemo:        LField.AsString := LJSONField.Value;
-      TFieldType.ftOraTimeStamp:    LField.AsDateTime := TJSONUtils.JSONToDate(LJSONField.Value, AUseUTCDate);
+      TFieldType.ftOraTimeStamp:    LField.AsDateTime := TJSONUtils.JSONToDateTime(LJSONField.Value, AUseUTCDate);
       TFieldType.ftOraInterval:     LField.AsString := LJSONField.Value;
       TFieldType.ftLongWord:        LField.AsString := LJSONField.Value;
       TFieldType.ftShortint:        LField.AsString := LJSONField.Value;
