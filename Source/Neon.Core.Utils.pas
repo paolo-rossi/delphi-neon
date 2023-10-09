@@ -455,6 +455,7 @@ var
   LField: TRttiField;
   LBreak: Boolean;
 begin
+  Result := 0;
   for LField in ARttiType.GetFields do
   begin
     LBreak := False;

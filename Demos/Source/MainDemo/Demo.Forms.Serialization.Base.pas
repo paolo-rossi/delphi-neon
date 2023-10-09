@@ -166,7 +166,6 @@ var
   LJSON: TJSONValue;
   LValue: TValue;
   LReader: TNeonDeserializerJSON;
-  LWriter: TNeonSerializerJSON;
 begin
   LJSON := TJSONObject.ParseJSONValue(AWhere.Text);
   if not Assigned(LJSON) then
@@ -225,7 +224,6 @@ var
   LJSON: TJSONValue;
   LValue: TValue;
   LReader: TNeonDeserializerJSON;
-  LWriter: TNeonSerializerJSON;
 begin
   LJSON := TJSONObject.ParseJSONValue(AWhere.Text);
   if not Assigned(LJSON) then

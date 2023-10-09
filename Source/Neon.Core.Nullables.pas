@@ -87,8 +87,6 @@ uses
 { Nullable<T> }
 
 constructor Nullable<T>.Create(const Value: T);
-var
-  a: TValue;
 begin
   FValue := Value;
   FHasValue := DefaultTrueBoolStr;
