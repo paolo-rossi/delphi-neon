@@ -328,7 +328,11 @@ type
 
   TMemberRegistry = class(TObjectDictionary<PTypeInfo, TNeonRttiMembers>);
 
+  {$IFDEF HAS_NO_REF_COUNT}
+  TNeonBase = class(TNoRefCountObject, IConfigurationContext)
+  {$ELSE}
   TNeonBase = class(TSingletonImplementation, IConfigurationContext)
+  {$ENDIF}
   protected
     FConfig: TNeonConfiguration;
     FOperation: TNeonOperation;

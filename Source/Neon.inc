@@ -39,3 +39,7 @@
   {$DEFINE HAS_MRECORDS}
 {$ENDIF}
 
+{$IF CompilerVersion >= 35} // Delphi 11 Alexandria
+  {$DEFINE HAS_NO_REF_COUNT}
+{$ENDIF}
+
