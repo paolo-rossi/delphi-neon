@@ -74,7 +74,7 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 - More Unit Tests
 
 ## Prerequisite
-This library has been tested with **Delphi 11 Alexandria**, **Delphi 10.4 Sydney**, **Delphi 10.3 Rio**, **Delphi 10.2 Tokyo**, but with a minimum amount of work it should compile with **Delphi XE7 and higher**
+This library has been tested with **Delphi 12 Athens**, **Delphi 11 Alexandria**, **Delphi 10.4 Sydney**, **Delphi 10.3 Rio**, **Delphi 10.2 Tokyo**, but with a minimum amount of work it should compile with **Delphi XE7 and higher**
 
 #### Libraries/Units dependencies
 This library has no dependencies on external libraries/units.

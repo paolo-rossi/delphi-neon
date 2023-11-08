@@ -1,0 +1,73 @@
+{******************************************************************************}
+{                                                                              }
+{  Neon: Serialization Library for Delphi                                      }
+{  Copyright (c) 2018 Paolo Rossi                                              }
+{  https://github.com/paolo-rossi/neon-library                                 }
+{                                                                              }
+{******************************************************************************}
+{                                                                              }
+{  Licensed under the Apache License, Version 2.0 (the "License");             }
+{  you may not use this file except in compliance with the License.            }
+{  You may obtain a copy of the License at                                     }
+{                                                                              }
+{      http://www.apache.org/licenses/LICENSE-2.0                              }
+{                                                                              }
+{  Unless required by applicable law or agreed to in writing, software         }
+{  distributed under the License is distributed on an "AS IS" BASIS,           }
+{  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    }
+{  See the License for the specific language governing permissions and         }
+{  limitations under the License.                                              }
+{                                                                              }
+{******************************************************************************}
+package Neon;
+
+{$R *.res}
+{$IFDEF IMPLICITBUILDING This IFDEF should not be used by users}
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO OFF}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION OFF}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES ON}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DEFINE DEBUG}
+{$ENDIF IMPLICITBUILDING}
+{$DESCRIPTION 'Neon Serialization Library'}
+{$LIBSUFFIX AUTO}
+{$RUNONLY}
+{$IMPLICITBUILD OFF}
+
+requires
+  rtl,
+  dbrtl;
+
+contains
+  Neon.Core.Attributes in '..\..\Source\Neon.Core.Attributes.pas',
+  Neon.Core.DynamicTypes in '..\..\Source\Neon.Core.DynamicTypes.pas',
+  Neon.Core.Nullables in '..\..\Source\Neon.Core.Nullables.pas',
+  Neon.Core.Persistence in '..\..\Source\Neon.Core.Persistence.pas',
+  Neon.Core.Persistence.JSON in '..\..\Source\Neon.Core.Persistence.JSON.pas',
+  Neon.Core.Persistence.JSON.Schema in '..\..\Source\Neon.Core.Persistence.JSON.Schema.pas',
+  Neon.Core.Serializers.RTL in '..\..\Source\Neon.Core.Serializers.RTL.pas',
+  Neon.Core.Serializers.DB in '..\..\Source\Neon.Core.Serializers.DB.pas',
+  Neon.Core.Serializers.Nullables in '..\..\Source\Neon.Core.Serializers.Nullables.pas',
+  Neon.Core.TypeInfo in '..\..\Source\Neon.Core.TypeInfo.pas',
+  Neon.Core.Types in '..\..\Source\Neon.Core.Types.pas',
+  Neon.Core.Utils in '..\..\Source\Neon.Core.Utils.pas';
+
+end.
+
