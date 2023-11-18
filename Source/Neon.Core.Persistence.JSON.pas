@@ -354,6 +354,10 @@ type
   ///   Static utility class for serializing and deserializing Delphi types
   /// </summary>
   TNeon = class sealed
+  {$IFDEF HAS_TOJSON_OPTIONS}
+  private const
+    OUTPUT_DEFAULT = [TJSONAncestor.TJSONOutputOption.EncodeBelow32, TJSONAncestor.TJSONOutputOption.EncodeAbove127];
+  {$ENDIF}
   private
     /// <summary>
     ///   ParseJSON function call for compatibility Delphi <= 10.2 Tokyo
@@ -363,17 +367,24 @@ type
     /// <summary>
     ///   Prints a TJSONValue in a single line or formatted (PrettyPrinting)
     /// </summary>
-    class procedure PrintToWriter(AJSONValue: TJSONValue; AWriter: TTextWriter; APretty: Boolean); static;
+    class procedure PrintToWriter(AJSONValue: TJSONValue; AWriter: TTextWriter; APretty: Boolean
+      {$IFDEF HAS_TOJSON_OPTIONS}; AOutputOptions: TJSONAncestor.TJSONOutputOptions{$ENDIF}); static;
   public
     /// <summary>
     ///   Prints a TJSONValue in a single line or formatted (PrettyPrinting)
     /// </summary>
-    class function Print(AJSONValue: TJSONValue; APretty: Boolean): string; static;
+    class function Print(AJSONValue: TJSONValue; APretty: Boolean): string; overload; static;
+    {$IFDEF HAS_TOJSON_OPTIONS}
+    class function Print(AJSONValue: TJSONValue; APretty: Boolean; AOutputOptions: TJSONAncestor.TJSONOutputOptions): string; overload; static;
+    {$ENDIF}
 
     /// <summary>
     ///   Prints a TJSONValue in a single line or formatted (PrettyPrinting)
     /// </summary>
-    class procedure PrintToStream(AJSONValue: TJSONValue; AStream: TStream; APretty: Boolean); static;
+    class procedure PrintToStream(AJSONValue: TJSONValue; AStream: TStream; APretty: Boolean); overload; static;
+    {$IFDEF HAS_TOJSON_OPTIONS}
+    class procedure PrintToStream(AJSONValue: TJSONValue; AStream: TStream; APretty: Boolean; AOutputOptions: TJSONAncestor.TJSONOutputOptions); overload; static;
+    {$ENDIF}
   public
     /// <summary>
     ///   Serializes a value based type (record, string, integer, etc...) to a TStream
@@ -2007,12 +2018,27 @@ var
 begin
   LWriter := TStringWriter.Create;
   try
-    TNeon.PrintToWriter(AJSONValue, LWriter, APretty);
+    TNeon.PrintToWriter(AJSONValue, LWriter, APretty{$IFDEF HAS_TOJSON_OPTIONS}, OUTPUT_DEFAULT{$ENDIF});
     Result := LWriter.ToString;
   finally
     LWriter.Free;
   end;
 end;
+
+{$IFDEF HAS_TOJSON_OPTIONS}
+class function TNeon.Print(AJSONValue: TJSONValue; APretty: Boolean; AOutputOptions: TJSONAncestor.TJSONOutputOptions): string;
+var
+  LWriter: TStringWriter;
+begin
+  LWriter := TStringWriter.Create;
+  try
+    TNeon.PrintToWriter(AJSONValue, LWriter, APretty, AOutputOptions);
+    Result := LWriter.ToString;
+  finally
+    LWriter.Free;
+  end;
+end;
+{$ENDIF}
 
 class procedure TNeon.PrintToStream(AJSONValue: TJSONValue; AStream: TStream; APretty: Boolean);
 var
@@ -2020,13 +2046,28 @@ var
 begin
   LWriter := TStreamWriter.Create(AStream);
   try
-    TNeon.PrintToWriter(AJSONValue, LWriter, APretty);
+    TNeon.PrintToWriter(AJSONValue, LWriter, APretty{$IFDEF HAS_TOJSON_OPTIONS}, OUTPUT_DEFAULT{$ENDIF});
   finally
     LWriter.Free;
   end;
 end;
 
-class procedure TNeon.PrintToWriter(AJSONValue: TJSONValue; AWriter: TTextWriter; APretty: Boolean);
+{$IFDEF HAS_TOJSON_OPTIONS}
+class procedure TNeon.PrintToStream(AJSONValue: TJSONValue; AStream: TStream; APretty: Boolean; AOutputOptions: TJSONAncestor.TJSONOutputOptions);
+var
+  LWriter: TStreamWriter;
+begin
+  LWriter := TStreamWriter.Create(AStream);
+  try
+    TNeon.PrintToWriter(AJSONValue, LWriter, APretty, AOutputOptions);
+  finally
+    LWriter.Free;
+  end;
+end;
+{$ENDIF}
+
+class procedure TNeon.PrintToWriter(AJSONValue: TJSONValue; AWriter: TTextWriter; APretty: Boolean
+  {$IFDEF HAS_TOJSON_OPTIONS}; AOutputOptions: TJSONAncestor.TJSONOutputOptions{$ENDIF});
 var
   LJSONString: string;
   LChar: Char;
@@ -2041,7 +2082,11 @@ var
 
 begin
 {$IFDEF HAS_TOJSON}
+  {$IFDEF HAS_TOJSON_OPTIONS}
+  LJSONString := AJSONValue.ToJSON(AOutputOptions);
+  {$ELSE}
   LJSONString := AJSONValue.ToJSON;
+  {$ENDIF}
 {$ELSE}
   LJSONString := AJSONValue.ToString;
 {$ENDIF}
