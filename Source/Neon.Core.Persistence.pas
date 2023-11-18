@@ -664,7 +664,17 @@ begin
   if not Assigned(FMethodIf) then
     Exit(TNeonIncludeOption.Default);
 
-  LRes := FMethodIf.Invoke(TObject(AInstance), [TValue.From<TNeonIgnoreIfContext>(FMethodIfContext)]);
+  // we can only invoke a regular method on an existing object
+  if (AInstance <> nil) and (FMethodIf.MethodKind = mkFunction) then
+    LRes := FMethodIf.Invoke(TObject(AInstance), [TValue.From<TNeonIgnoreIfContext>(FMethodIfContext)])
+
+  // if the method is a class method, we can invoke it too, but have to do it a bit differently
+  else if FMethodIf.MethodKind = mkClassFunction then
+    LRes := FMethodIf.Invoke(FParent.FType.AsInstance.MetaClassType, [TValue.From<TNeonIgnoreIfContext>(FMethodIfContext)])
+  else
+    // can't really evaluate, so continue with default
+    Exit(TNeonIncludeOption.Default);
+
   case LRes.AsType<Boolean> of
     True: Result := TNeonIncludeOption.Include;
     False: Result := TNeonIncludeOption.Exclude;

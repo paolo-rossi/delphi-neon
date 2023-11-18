@@ -85,9 +85,19 @@ type
     function WriteFloat(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
-    ///   Writer for TDate* types
+    ///   Writer for TDate types
     /// </summary>
     function WriteDate(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+
+    /// <summary>
+    ///   Writer for TTime types
+    /// </summary>
+    function WriteTime(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+
+    /// <summary>
+    ///   Writer for TDateTime types
+    /// </summary>
+    function WriteDateTime(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
     ///   Writer for Variant types
@@ -702,10 +712,12 @@ begin
 
     tkFloat:
     begin
-      if (AValue.TypeInfo = System.TypeInfo(TDateTime)) or
-         (AValue.TypeInfo = System.TypeInfo(TDate)) or
-         (AValue.TypeInfo = System.TypeInfo(TTime)) then
+      if AValue.TypeInfo = System.TypeInfo(TDate) then
         Result := WriteDate(AValue, ANeonObject)
+      else if AValue.TypeInfo = System.TypeInfo(TTime) then
+        Result := WriteTime(AValue, ANeonObject)
+      else if AValue.TypeInfo = System.TypeInfo(TDateTime) then
+        Result := WriteDateTime(AValue, ANeonObject)
       else
         Result := WriteFloat(AValue, ANeonObject);
     end;
@@ -783,7 +795,31 @@ begin
         Exit(nil);
     end;
   end;
-  Result := TJSONString.Create(TJSONUtils.DateToJSON(AValue.AsType<TDateTime>, FConfig.UseUTCDate))
+  Result := TJSONString.Create(TJSONUtils.DateToJSON(AValue.AsType<TDate>));
+end;
+
+function TNeonSerializerJSON.WriteTime(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+begin
+  case ANeonObject.NeonInclude.Value of
+    IncludeIf.NotEmpty, IncludeIf.NotDefault:
+    begin
+      if AValue.AsExtended = 0 then
+        Exit(nil);
+    end;
+  end;
+  Result := TJSONString.Create(TJSONUtils.TimeToJSON(AValue.AsType<TTime>));
+end;
+
+function TNeonSerializerJSON.WriteDateTime(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
+begin
+  case ANeonObject.NeonInclude.Value of
+    IncludeIf.NotEmpty, IncludeIf.NotDefault:
+    begin
+      if AValue.AsExtended = 0 then
+        Exit(nil);
+    end;
+  end;
+  Result := TJSONString.Create(TJSONUtils.DateTimeToJSON(AValue.AsType<TDateTime>, FConfig.UseUTCDate));
 end;
 
 function TNeonSerializerJSON.WriteEnum(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1489,11 +1525,11 @@ begin
     Exit(TValue.Empty);
 
   if AParam.RttiType.Handle = System.TypeInfo(TDate) then
-    Result := TValue.From<TDate>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, True))
+    Result := TValue.From<TDate>(TJSONUtils.JSONToDate(AParam.JSONValue.Value))
   else if AParam.RttiType.Handle = System.TypeInfo(TTime) then
-    Result := TValue.From<TTime>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, True))
+    Result := TValue.From<TTime>(TJSONUtils.JSONToTime(AParam.JSONValue.Value))
   else if AParam.RttiType.Handle = System.TypeInfo(TDateTime) then
-    Result := TValue.From<TDateTime>(TJSONUtils.JSONToDate(AParam.JSONValue.Value, FConfig.UseUTCDate))
+    Result := TValue.From<TDateTime>(TJSONUtils.JSONToDateTime(AParam.JSONValue.Value, FConfig.UseUTCDate))
   else
   begin
     if FConfig.StrictTypes and not (AParam.JSONValue is TJSONNumber) then
