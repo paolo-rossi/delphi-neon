@@ -967,8 +967,15 @@ begin
 {$IFDEF HAS_NET_ENCODING}
   LBase64Stream := TStringStream.Create;
   try
-    TNetEncoding.Base64.Encode(ASource, LBase64Stream);
-    Result := LBase64Stream.DataString;
+    // FIX: if CharsPerLine is not initialized, it adds \r\n line feeds to
+    //      each line that are not part of Base64
+    var LEncoder := TBase64Encoding.Create(0);
+    try
+      LEncoder.Encode(ASource, LBase64Stream);
+      Result := LBase64Stream.DataString;
+    finally
+      LEncoder.Free;
+    end;
   finally
     LBase64Stream.Free;
   end;
