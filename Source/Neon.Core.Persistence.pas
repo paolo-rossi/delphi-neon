@@ -247,6 +247,7 @@ type
     function AsRttiType: TRttiType;
   public
     procedure ParseAttributes; virtual;
+    function GetAttribute<T: TCustomAttribute>: T;
 
     property Attributes: TArray<TCustomAttribute> read FAttributes write FAttributes;
     property TypeAttributes: TArray<TCustomAttribute> read FTypeAttributes write FTypeAttributes;
@@ -1019,6 +1020,16 @@ begin
   FOperation := AOperation;
   FAttributes := FRttiObject.GetAttributes;
   FNeonMembers := [];
+end;
+
+function TNeonRttiObject.GetAttribute<T>: T;
+var
+  LAttribute: TCustomAttribute;
+begin
+  Result := nil;
+  for LAttribute in FAttributes do
+    if LAttribute is T then
+      Exit(LAttribute as T);
 end;
 
 procedure TNeonRttiObject.InternalParseAttributes(const AAttr: TArray<TCustomAttribute>);

@@ -49,7 +49,8 @@ uses
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
   Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas',
   Neon.Tests.Config.EnumAsInt in 'Source\Neon.Tests.Config.EnumAsInt.pas',
-  Neon.Tests.Config.AutoCreate in 'Source\Neon.Tests.Config.AutoCreate.pas';
+  Neon.Tests.Config.AutoCreate in 'Source\Neon.Tests.Config.AutoCreate.pas',
+  Neon.Tests.Types.Bytes in 'Source\Neon.Tests.Types.Bytes.pas';
 
 var
   LRunner : ITestRunner;

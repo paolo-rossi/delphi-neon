@@ -77,7 +77,7 @@ procedure TTestCustomSerializers.RegisterSerializers;
 begin
   FConfig.GetSerializers.Clear;
 
-    // Standard Serializers
+  // Standard Serializers
   FConfig.GetSerializers.RegisterSerializer(TGUIDSerializer);
   FConfig.GetSerializers.RegisterSerializer(TStreamSerializer);
   FConfig.GetSerializers.RegisterSerializer(TDataSetSerializer);

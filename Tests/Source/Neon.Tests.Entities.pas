@@ -43,6 +43,24 @@ type
 
   TContactType = (Phone, Email, Skype);
 
+  TBytes64Rec = record
+    Bytes: TBytes;
+    [NeonFormat(NeonFormat.Native)]
+    ByteArray: TBytes;
+  end;
+
+  TBytes64Class = class
+  private
+    FBytes: TBytes;
+    FStream: TMemoryStream;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    property Bytes: TBytes read FBytes write FBytes;	
+    property Stream: TMemoryStream read FStream write FStream;
+  end;
+
   TSimpleRecord = record
     Name: string;
     BirthDate: TDateTime;
@@ -237,6 +255,7 @@ begin
 end;
 
 {$ENDIF}
+
 { TAutoCreateClass }
 
 constructor TAutoCreateClass.Create;
@@ -248,6 +267,19 @@ destructor TAutoCreateClass.Destroy;
 begin
   FRecursive.Free;
   FContact.Free;
+  inherited;
+end;
+
+{ TBytes64Class }
+
+constructor TBytes64Class.Create;
+begin
+  FStream := TMemoryStream.Create;
+end;
+
+destructor TBytes64Class.Destroy;
+begin
+  FStream.Free;
   inherited;
 end;
 

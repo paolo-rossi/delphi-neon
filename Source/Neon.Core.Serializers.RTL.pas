@@ -32,6 +32,10 @@ uses
   Neon.Core.Persistence;
 
 type
+  /// <summary>
+  ///   Custom serializer for the TGUID record type. It serialize the GUID in
+  ///   the canonical form: 'C4A22FDD-443F-4737-AA7D-2323F635E207'
+  /// </summary>
   TGUIDSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -41,6 +45,10 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Custom serializer for the TStream (and descendant) class. It serializes
+  ///   the stream as Base64
+  /// </summary>
   TStreamSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -50,6 +58,10 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Custom serializer for the TJSONValue class. Clones the JSON object or
+  ///   array
+  /// </summary>
   TJSONValueSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -59,6 +71,9 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Custom serializer for the TValue record.
+  /// </summary>
   TTValueSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
@@ -67,6 +82,20 @@ type
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
+
+  /// <summary>
+  ///   Custom serializer for the TBytes type. It allows to serialize TBytes as
+  ///   Base64 using NeonFormat attribute
+  /// </summary>
+  TBytesSerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
 
 procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 
@@ -78,6 +107,7 @@ uses
 procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 begin
   ARegistry.RegisterSerializer(TGUIDSerializer);
+  ARegistry.RegisterSerializer(TBytesSerializer);
   ARegistry.RegisterSerializer(TStreamSerializer);
   ARegistry.RegisterSerializer(TJSONValueSerializer);
 end;
@@ -290,6 +320,56 @@ begin
     Result := AContext.WriteDataMember(AValue.AsType<TValue>, False)
   else
     Result := nil;
+end;
+
+{ TBytesSerializer }
+
+class function TBytesSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := AType = TypeInfo(TBytes);
+end;
+
+function TBytesSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
+  ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
+var
+  LVal: TBytes;
+  LType: TRttiType;
+  LFormat: NeonFormatAttribute;
+begin
+  LFormat := ANeonObject.GetAttribute<NeonFormatAttribute>;
+  if Assigned(LFormat) and (LFormat.FormatValue = NeonFormat.Native) then
+  begin
+    LType := TRttiUtils.Context.GetType(TypeInfo(TBytes));
+    Result := AContext.ReadDataMember(AValue, LType, AData, False);
+  end
+  else
+  begin
+    if (AValue is TJSONString) then
+      LVal := TBase64.Decode(AValue.Value)
+    else
+      raise ENeonException.Create('JSONValue must be a string');
+
+    Result := TValue.From<TBytes>(LVal);
+  end;
+end;
+
+class function TBytesSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := TypeInfo(TBytes);
+end;
+
+function TBytesSerializer.Serialize(const AValue: TValue;
+  ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+var
+  LVal: TBytes;
+  LFormat: NeonFormatAttribute;
+begin
+  LVal := AValue.AsType<TBytes>;
+  LFormat := ANeonObject.GetAttribute<NeonFormatAttribute>;
+  if Assigned(LFormat) and (LFormat.FormatValue = NeonFormat.Native) then
+    Result := AContext.WriteDataMember(AValue, False)
+  else
+    Result := TJSONString.Create(TBase64.Encode(LVal));
 end;
 
 end.

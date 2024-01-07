@@ -75,7 +75,6 @@ type
   /// </remarks>
   NeonIgnoreAttribute = class(NeonAttribute);
 
-
   /// <summary>
   ///   The Neon attribute [NeonUnwrapped] is a property/field annotation used to
   ///   define that value should be "unwrapped" when serialized (and
@@ -133,6 +132,22 @@ type
     constructor Create(AIncludeValue: IncludeIf = IncludeIf.Always; const AIncludeFunction: string = 'ShouldInclude');
 
     property IncludeValue: TIncludeValue read FIncludeValue write FIncludeValue;
+  end;
+
+  /// <summary>
+  ///   The Neon annotation NeonFormat tells Neon to output the property (or field)
+  ///   in the specified format
+  /// </summary>
+  /// <remarks>
+  ///   Currently Base64 is supported for TBytes through a CustomSerializer
+  /// </remarks>
+  NeonFormat = (Native, Base64);
+  NeonFormatAttribute = class(NeonAttribute)
+  private
+    FFormatValue: NeonFormat;
+  public
+    constructor Create(AOutputValue: NeonFormat = NeonFormat.Native);
+    property FormatValue: NeonFormat read FFormatValue write FFormatValue;
   end;
 
   /// <summary>
@@ -290,6 +305,13 @@ end;
 constructor NeonEnumNamesAttribute.Create(const ANames: string);
 begin
   FNames := ANames.Split([',']);
+end;
+
+{ NeonFormatAttribute }
+
+constructor NeonFormatAttribute.Create(AOutputValue: NeonFormat);
+begin
+  FFormatValue := AOutputValue;
 end;
 
 end.
