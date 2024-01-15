@@ -336,6 +336,7 @@ type
   {$ENDIF}
   protected
     FConfig: TNeonConfiguration;
+    FConfigIntf: INeonConfiguration;
     FOperation: TNeonOperation;
     FOriginalInstance: TValue;
     FMemberRegistry: TMemberRegistry;
@@ -351,8 +352,8 @@ type
     procedure LogError(const AMessage: string);
     function GetConfiguration: INeonConfiguration;
   public
-    property Config: TNeonConfiguration read FConfig write FConfig;
-    property Errors: TStrings read FErrors write FErrors;
+    property Config: TNeonConfiguration read FConfig;
+    property Errors: TStrings read FErrors;
   end;
 
   TTypeInfoUtils = class
@@ -370,6 +371,7 @@ uses
 
 constructor TNeonBase.Create(const AConfig: INeonConfiguration);
 begin
+  FConfigIntf := AConfig;
   FConfig := AConfig as TNeonConfiguration;
   FMemberRegistry := TMemberRegistry.Create([doOwnsValues]);
   FErrors := TStringList.Create;
@@ -384,7 +386,7 @@ end;
 
 function TNeonBase.GetConfiguration: INeonConfiguration;
 begin
-  Result := FConfig;
+  Result := FConfigIntf;
 end;
 
 function TNeonBase.GetNameFromMember(AMember: TNeonRttiMember): string;
