@@ -220,6 +220,14 @@ type
   /// </summary>
   NeonDeserializeAttribute = class(NeonSerializeAttribute);
 
+  NeonItemFactoryAttribute = class(NeonAttribute)
+  private
+    FFactoryClass: TClass;
+  public
+    constructor Create(const AClass: TClass); overload;
+    property FactoryClass: TClass read FFactoryClass write FFactoryClass;
+  end;
+
   /// <summary>
   ///   The Neon annotation NeonValue tells Neon that Neon should not attempt to
   ///   serialize the object itself, but rather call a method on the object which
@@ -312,6 +320,13 @@ end;
 constructor NeonFormatAttribute.Create(AOutputValue: NeonFormat);
 begin
   FFormatValue := AOutputValue;
+end;
+
+{ NeonItemFactoryAttribute }
+
+constructor NeonItemFactoryAttribute.Create(const AClass: TClass);
+begin
+  FFactoryClass := AClass;
 end;
 
 end.

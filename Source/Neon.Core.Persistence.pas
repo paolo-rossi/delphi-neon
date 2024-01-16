@@ -36,6 +36,12 @@ uses
 {$SCOPEDENUMS ON}
 
 type
+  TCustomItemFactory = class;
+  TCustomItemFactoryClass = class of TCustomItemFactory;
+
+  TCustomSerializer = class;
+  TCustomSerializerClass = class of TCustomSerializer;
+
   TNeonSerializerRegistry = class;
   TNeonRttiObject = class;
 
@@ -52,6 +58,8 @@ type
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
+    function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
+    function RegisterItemFactory(AClass: TCustomItemFactoryClass): INeonConfiguration;
 
     function GetPrettyPrint: Boolean;
     function GetUseUTCDate: Boolean;
@@ -104,6 +112,21 @@ type
     procedure LogError(const AMessage: string);
   end;
 
+  //TCustomItemCreator = reference to function (AType: TRttiType; AValue: TJSONValue): TObject;
+
+  /// <summary>
+  ///   Base class for a Collection Items Factory
+  /// </summary>
+  TCustomItemFactory = class abstract(TObject)
+  public
+    function Build(const AType: TRttiType; AValue: TJSONValue): TObject; virtual; abstract;
+  end;
+
+  TNeonItemFactoryRegistry = class(TList<TCustomItemFactoryClass>);
+
+  /// <summary>
+  ///   Base class for a Custom Serializer
+  /// </summary>
   TCustomSerializer = class abstract(TObject)
   protected
     class function GetTargetInfo: PTypeInfo; virtual;
@@ -117,8 +140,6 @@ type
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; virtual; abstract;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; virtual; abstract;
   end;
-
-  TCustomSerializerClass = class of TCustomSerializer;
 
   TSerializerInfo = record
   public
@@ -181,6 +202,7 @@ type
     FEnumAsInt: Boolean;
     FAutoCreate: Boolean;
     FStrictTypes: Boolean;
+    FItemFactories: TNeonItemFactoryRegistry;
   public
     constructor Create;
     destructor Destroy; override;
@@ -202,10 +224,14 @@ type
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
 
+    function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
+    function RegisterItemFactory(AClass: TCustomItemFactoryClass): INeonConfiguration;
+
     function GetUseUTCDate: Boolean;
     function GetPrettyPrint: Boolean;
     function GetRaiseExceptions: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
+    function GetItemFactories: TNeonItemFactoryRegistry;
 
     property Members: TNeonMembersSet read FMembers write FMembers;
     property MemberCase: TNeonCase read FMemberCase write FMemberCase;
@@ -218,10 +244,12 @@ type
     property AutoCreate: Boolean read FAutoCreate write FAutoCreate;
     property StrictTypes: Boolean read FStrictTypes write FStrictTypes;
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
+    property ItemFactories: TNeonItemFactoryRegistry read FItemFactories write FItemFactories;
   end;
 
   TNeonRttiObject = class
   private
+    FNeonFactoryClass: TCustomItemFactoryClass;
     FTypeAttributes: TArray<TCustomAttribute>;
     FNeonAutoCreate: Boolean;
   protected
@@ -263,6 +291,7 @@ type
     property NeonVisibility: TNeonVisibility read FNeonVisibility write FNeonVisibility;
     property NeonUnwrapped: Boolean read FNeonUnwrapped write FNeonUnwrapped;
     property NeonAutoCreate: Boolean read FNeonAutoCreate write FNeonAutoCreate;
+    property NeonFactoryClass: TCustomItemFactoryClass read FNeonFactoryClass write FNeonFactoryClass;
   end;
 
   TNeonRttiType = class(TNeonRttiObject)
@@ -506,6 +535,7 @@ end;
 constructor TNeonConfiguration.Create;
 begin
   FSerializers := TNeonSerializerRegistry.Create;
+  FItemFactories := TNeonItemFactoryRegistry.Create;
 
   SetMemberCase(TNeonCase.Unchanged);
   SetMembers([TNeonMembers.Standard]);
@@ -529,6 +559,18 @@ begin
     .SetPrettyPrint(True);
 end;
 
+function TNeonConfiguration.RegisterItemFactory(AClass: TCustomItemFactoryClass): INeonConfiguration;
+begin
+  FItemFactories.Add(AClass);
+  Result := Self;
+end;
+
+function TNeonConfiguration.RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
+begin
+  FSerializers.RegisterSerializer(AClass);
+  Result := Self;
+end;
+
 class function TNeonConfiguration.Camel: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create
@@ -544,8 +586,14 @@ end;
 
 destructor TNeonConfiguration.Destroy;
 begin
+  FItemFactories.Free;
   FSerializers.Free;
   inherited;
+end;
+
+function TNeonConfiguration.GetItemFactories: TNeonItemFactoryRegistry;
+begin
+  Result := FItemFactories;
 end;
 
 function TNeonConfiguration.GetPrettyPrint: Boolean;
@@ -1037,6 +1085,7 @@ end;
 procedure TNeonRttiObject.InternalParseAttributes(const AAttr: TArray<TCustomAttribute>);
 var
   LAttribute: TCustomAttribute;
+  LClass: TClass;
 begin
   for LAttribute in AAttr do
   begin
@@ -1046,6 +1095,12 @@ begin
     begin
       FNeonSerializerName := (LAttribute as NeonSerializeAttribute).Name;
       FNeonSerializerClass := (LAttribute as NeonSerializeAttribute).Clazz;
+    end
+    else if LAttribute is NeonItemFactoryAttribute then
+    begin
+      LClass := (LAttribute as NeonItemFactoryAttribute).FactoryClass;
+      if LClass.InheritsFrom(TCustomItemFactory) then
+        FNeonFactoryClass := TCustomItemFactoryClass(LClass);
     end
     else if LAttribute is NeonIgnoreAttribute then
       FNeonIgnore := True
