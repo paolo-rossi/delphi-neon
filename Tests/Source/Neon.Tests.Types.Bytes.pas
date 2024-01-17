@@ -26,8 +26,6 @@ interface
 uses
   System.SysUtils, System.Classes, System.Rtti, DUnitX.TestFramework,
 
-  FireDAC.Comp.DataSet, FireDAC.Comp.Client,
-
   Neon.Core.Attributes,
   Neon.Core.Persistence,
   Neon.Tests.Entities,
@@ -45,10 +43,10 @@ type
     [TestCase('TestBytesZero', '[0,0,0,0,0,0]|"AAAAAAAA"', '|')]
     [TestCase('TestBytesMax', '[255,255,255,255,255,255]|"\/\/\/\/\/\/\/\/"', '|')]
     [TestCase('TestBytesEmpty', '[]|""', '|')]
-    procedure TestBytes([NeonFormat(NeonFormat.Base64)] AInput: TBytes; _Result: string);
+    procedure TestBytes(AInput: TBytes; _Result: string);
 
     [TestCase('TestBytesRec', '[5,12,6,55,30]|{"Bytes":"BQwGNx4=","ByteArray":[5,12,6,55,30]}', '|')]
-    procedure TestBytesRec([NeonFormat(NeonFormat.Base64)] AInput: TBytes; _Result: string);
+    procedure TestBytesRec(AInput: TBytes; _Result: string);
   end;
 
 
