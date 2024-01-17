@@ -231,7 +231,8 @@ type
     /// <summary>
     ///   Manages the creation of an Item of a collection (array, list, dictionary)
     /// </summary>
-    function CreateCollectionItem(const AParam: TNeonDeserializerParam): TValue;
+    function CreateCollectionItem(const AParam: TNeonDeserializerParam): TValue; overload;
+    function CreateCollectionItem(AType: TRttiType; ANeonRtti: TNeonRttiObject; AValue: TJSONValue): TValue; overload;
   private
     /// <summary>
     ///   reader for string types
@@ -1280,16 +1281,25 @@ begin
 
     for LIndex := 0 to LJSONArray.Count - 1 do
     begin
-      if AParam.RttiType.TypeKind = tkArray then
+      LItemParam.JSONValue := LJSONArray.Items[LIndex];
+
+      if AParam.RttiType.TypeKind = tkArray then // Static Array
       begin
-        LItemValue := Result.GetArrayElement(LIndex);
         if LItemParam.RttiType.TypeKind = tkClass then
-          LItemValue := CreateCollectionItem(AParam);
+          LItemValue := CreateCollectionItem(LItemParam)
+        else
+          LItemValue := Result.GetArrayElement(LIndex);
       end
       else //tkDynArray
-        LItemValue := CreateCollectionItem(AParam);
+      begin
+        LItemValue := CreateCollectionItem(
+          LItemParam.RttiType,
+          AParam.NeonObject,
+          LItemParam.JSONValue);
+        // Compute again the item's type in case it has changed
+        LItemParam.RttiType := TRttiUtils.Context.GetType(LItemValue.TypeInfo);
+      end;
 
-      LItemParam.JSONValue := LJSONArray.Items[LIndex];
       LItemValue := ReadDataMember(LItemParam, LItemValue, True);
       Result.SetArrayElement(LIndex, LItemValue);
     end;
@@ -1466,7 +1476,10 @@ begin
       LParam.JSONValue := LJSONArray.Items[LIndex];
 
       if LParam.RttiType.TypeKind = tkClass then
-        LItemValue := CreateCollectionItem(LParam)
+      begin
+        LItemValue := CreateCollectionItem(LParam);
+        LParam.RttiType := TRttiUtils.Context.GetType(LItemValue.TypeInfo);
+      end
       else
         LItemValue := LList.NewItem;
 
@@ -1508,7 +1521,10 @@ begin
         LParamKey.JSONValue := LEnum.Current.JsonString;
 
         if LParamKey.RttiType.TypeKind = tkClass then
-          LKey := CreateCollectionItem(LParamKey)
+        begin
+          LKey := CreateCollectionItem(LParamKey);
+          LParamKey.RttiType := TRttiUtils.Context.GetType(LKey.TypeInfo);
+        end
         else
           LKey := LMap.NewKey;
 
@@ -1519,8 +1535,11 @@ begin
 
         // Value creation and deserialization
         LParamValue.JSONValue := LEnum.Current.JsonValue;
-        if LParamKey.RttiType.TypeKind = tkClass then
-          LKey := CreateCollectionItem(LParamKey)
+        if LParamValue.RttiType.TypeKind = tkClass then
+        begin
+          LValue := CreateCollectionItem(LParamKey);
+          LParamValue.RttiType := TRttiUtils.Context.GetType(LValue.TypeInfo);
+        end
         else
           LValue := LMap.NewValue;
 
@@ -1932,6 +1951,24 @@ begin
   end;
 
   Result := TRttiUtils.CreateNewValue(AParam.RttiType);
+end;
+
+function TNeonDeserializerJSON.CreateCollectionItem(AType: TRttiType;
+  ANeonRtti: TNeonRttiObject; AValue: TJSONValue): TValue;
+var
+  LFactory: TCustomItemFactory;
+begin
+  if Assigned(ANeonRtti.NeonFactoryClass) then
+  begin
+    LFactory := ANeonRtti.NeonFactoryClass.Create;
+    try
+      Exit(LFactory.Build(AType, AValue));
+    finally
+      LFactory.Free;
+    end;
+  end;
+
+  Result := TRttiUtils.CreateNewValue(AType);
 end;
 
 function TNeonDeserializerJSON.JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
