@@ -141,6 +141,7 @@
         <DCCReference Include="Source\Neon.Tests.Config.MemberCase.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.EnumAsInt.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.AutoCreate.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Items.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Bytes.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

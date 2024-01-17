@@ -50,6 +50,7 @@ uses
   Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas',
   Neon.Tests.Config.EnumAsInt in 'Source\Neon.Tests.Config.EnumAsInt.pas',
   Neon.Tests.Config.AutoCreate in 'Source\Neon.Tests.Config.AutoCreate.pas',
+  Neon.Tests.Items in 'Source\Neon.Tests.Items.pas',
   Neon.Tests.Types.Bytes in 'Source\Neon.Tests.Types.Bytes.pas';
 
 var
