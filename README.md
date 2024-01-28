@@ -34,6 +34,9 @@ This new demo tries to compare the standard TJSON serialization engine with the 
 
 ![Neon Benchmarks Demo](https://user-images.githubusercontent.com/4686497/216270908-0a702077-02fe-4295-bce5-8da78ee46599.png)
 
+### A Neon Introduction by Holger Flick (Video)
+[![Modern Delphi web development #7](https://img.youtube.com/vi/djzfeS9k4KU/0.jpg)](https://www.youtube.com/watch?v=djzfeS9k4KU)
+
 ## General Features
 
 ### Configuration
