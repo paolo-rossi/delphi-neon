@@ -151,7 +151,9 @@ type
     class function ForEachFieldWithAttribute<T: TCustomAttribute>(AInstance: TObject; const ADoSomething: TFunc<TRttiField, T, Boolean>): Integer; overload;
     class function ForEachField(AInstance: TObject; const ADoSomething: TFunc<TRttiField, Boolean>): Integer;
 
-    class function GetType(AObject: TRttiObject): TRttiType;
+    class function GetType(AValue: TValue): TRttiType; overload;
+    class function GetType(AObject: TRttiObject): TRttiType; overload;
+
     class function GetSetElementType(ASetType: TRttiType): TRttiType;
 
     class function ClassDistanceFromRoot(AClass: TClass): Integer; overload; static;
@@ -255,6 +257,8 @@ begin
     tkVariant:     Result := TValue.From<Variant>(Null);
 
     tkClass:       Result := CreateInstance(AType);
+
+    {$IFDEF HAS_MRECORDS}tkMRecord,{$ENDIF}
     tkRecord, tkDynArray:
     begin
       LAllocatedMem := AllocMem(AType.TypeSize);
@@ -549,6 +553,11 @@ var
 begin
   LEnumInfo := GetTypeData(ASetType.Handle)^.CompType;
   Result := TRttiUtils.Context.GetType(LEnumInfo^);
+end;
+
+class function TRttiUtils.GetType(AValue: TValue): TRttiType;
+begin
+  Result := FContext.GetType(AValue.TypeInfo);
 end;
 
 class function TRttiUtils.GetType(AObject: TRttiObject): TRttiType;

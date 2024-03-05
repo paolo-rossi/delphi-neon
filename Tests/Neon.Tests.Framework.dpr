@@ -40,18 +40,18 @@ uses
   Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas',
   Neon.Tests.Entities in 'Source\Neon.Tests.Entities.pas',
   Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas',
+  Neon.Tests.Types.Bytes in 'Source\Neon.Tests.Types.Bytes.pas',
   Neon.Tests.Types.Enums in 'Source\Neon.Tests.Types.Enums.pas',
   Neon.Tests.Types.Simple in 'Source\Neon.Tests.Types.Simple.pas',
   Neon.Tests.Types.Arrays in 'Source\Neon.Tests.Types.Arrays.pas',
   Neon.Tests.Types.Strings in 'Source\Neon.Tests.Types.Strings.pas',
   Neon.Tests.Types.Records in 'Source\Neon.Tests.Types.Records.pas',
   Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas',
-  Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
   Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas',
   Neon.Tests.Config.EnumAsInt in 'Source\Neon.Tests.Config.EnumAsInt.pas',
   Neon.Tests.Config.AutoCreate in 'Source\Neon.Tests.Config.AutoCreate.pas',
-  Neon.Tests.Items in 'Source\Neon.Tests.Items.pas',
-  Neon.Tests.Types.Bytes in 'Source\Neon.Tests.Types.Bytes.pas';
+  Neon.Tests.Attributes.Factory in 'Source\Neon.Tests.Attributes.Factory.pas',
+  Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas';
 
 var
   LRunner : ITestRunner;

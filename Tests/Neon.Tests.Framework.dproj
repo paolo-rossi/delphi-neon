@@ -131,18 +131,18 @@
         <DCCReference Include="Source\Neon.Tests.Utils.pas"/>
         <DCCReference Include="Source\Neon.Tests.Entities.pas"/>
         <DCCReference Include="Source\Neon.Tests.Serializer.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Types.Bytes.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Enums.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Simple.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Arrays.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Strings.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Records.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Reference.pas"/>
-        <DCCReference Include="Source\Neon.Tests.CustomSerializers.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.MemberCase.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.EnumAsInt.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.AutoCreate.pas"/>
-        <DCCReference Include="Source\Neon.Tests.Items.pas"/>
-        <DCCReference Include="Source\Neon.Tests.Types.Bytes.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Attributes.Factory.pas"/>
+        <DCCReference Include="Source\Neon.Tests.CustomSerializers.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
