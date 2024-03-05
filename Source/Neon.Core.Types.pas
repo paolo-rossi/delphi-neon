@@ -34,7 +34,7 @@ type
   ENeonException = class(Exception);
 
 type
-  TNeonCase = (Unchanged, LowerCase, UpperCase, PascalCase, CamelCase, SnakeCase, CustomCase);
+  TNeonCase = (Unchanged, LowerCase, UpperCase, PascalCase, CamelCase, SnakeCase, KebabCase, ScreamingSnakeCase, CustomCase);
   TNeonMemberType = (Unknown, Prop, Field, Indexed);
   TNeonMembers = (Standard, Fields, Properties);
   TNeonMembersSet = set of TNeonMembers;
