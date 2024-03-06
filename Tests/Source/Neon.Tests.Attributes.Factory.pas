@@ -71,6 +71,11 @@ type
     function Build(const AType: TRttiType; AValue: TJSONValue): TObject; override;
   end;
 
+  TFixedPetFactory = class(TCustomFactory)
+  public
+    function Build(const AType: TRttiType; AValue: TJSONValue): TObject; override;
+  end;
+
   TObjFactory = class(TCustomFactory)
   public
     function Build(const AType: TRttiType; AValue: TJSONValue): TObject; override;
@@ -118,13 +123,17 @@ type
   TFactoryTestArray = class
   private
     FPets: TPetArray;
+    FOtherPets: TPetArray;
   public
     destructor Destroy; override;
 
-    function HasItemOfType(AClass: TPetClass): Boolean;
+    function HasItemOfType(const AList: TPetArray; AClass: TPetClass): Boolean;
 
     [NeonItemFactory(TPetFactory)]
     property Pets: TPetArray read FPets write FPets;
+
+    [NeonItemFactory(TFixedPetFactory)]
+    property OtherPets: TPetArray read FOtherPets write FOtherPets;
   end;
 
   TFactoryTestStatic = class
@@ -156,7 +165,7 @@ type
     [TestCase('TestObj', '{"Obj":{"Breed":"Bulldog"}}|Bulldog', '|')]
     procedure TestObjType(const AInput, ABreed: string);
   public
-    [TestCase('TestArrayItemType', '{"Pets":[{"$Type":0,"Name":"Ant"},{"$Type":1,"Name":"Cat","Mood":"Sleepy"},{"$Type":3,"Name":"WatchDog","Breed":"Bulldog","Strength":12}]}', '|')]
+    [TestCase('TestArrayItemType', '{"Pets":[{"$Type":0,"Name":"Ant"},{"$Type":1,"Name":"Cat"},{"$Type":3,"Name":"WatchDog"}],"OtherPets":[{"$Type":1,"Name":"Cat"},{"$Type":3,"Name":"WatchDog"},{"$Type":0,"Name":"Ant"}]}', '|')]
     procedure TestArrayItemType(const AInput: string);
 
     [TestCase('TestArrayItemValues', '{"Pets":[{"$Type":3,"Name":"WatchDog","Race":"German shepherd","Strength":12},{"$Type":3,"Name":"WatchDog","Race":"Bulldog","Strength":14}]}|26', '|')]
@@ -215,8 +224,13 @@ end;
 procedure TTestItemFactory.TestArrayItemType(const AInput: string);
 begin
   TTestUtils.DeserializeObject(AInput, FItemsArray, FNeonConfig);
-  Assert.IsTrue(FItemsArray.HasItemOfType(TCat));
-  Assert.IsTrue(FItemsArray.HasItemOfType(TWatchDog));
+
+  Assert.IsTrue(FItemsArray.HasItemOfType(FItemsArray.Pets, TCat));
+  Assert.IsTrue(FItemsArray.HasItemOfType(FItemsArray.Pets, TWatchDog));
+
+  Assert.IsTrue(FItemsArray.OtherPets[0].ClassName = 'TDog');
+  Assert.IsTrue(FItemsArray.OtherPets[1].ClassName = 'TDog');
+  Assert.IsTrue(FItemsArray.OtherPets[2].ClassName = 'TDog');
 end;
 
 procedure TTestItemFactory.TestArrayItemValues(const AInput: string; _Result: Integer);
@@ -322,6 +336,14 @@ begin
   Result := TPet.Create;
 end;
 
+{ TFixedPetFactory }
+
+function TFixedPetFactory.Build(const AType: TRttiType; AValue: TJSONValue): TObject;
+begin
+  Result := TDog.Create;
+end;
+
+
 { TObjFactory }
 
 function TObjFactory.Build(const AType: TRttiType; AValue: TJSONValue): TObject;
@@ -388,11 +410,11 @@ begin
   inherited;
 end;
 
-function TFactoryTestArray.HasItemOfType(AClass: TPetClass): Boolean;
+function TFactoryTestArray.HasItemOfType(const AList: TPetArray; AClass: TPetClass): Boolean;
 var
   LPet: TPet;
 begin
-  for LPet in Pets do
+  for LPet in AList do
     if LPet is AClass then
       Exit(True);
 
