@@ -87,12 +87,8 @@ type
   NeonUnwrappedAttribute = class(NeonAttribute);
 
   /// <summary>
-  ///   The Neon annotation NeonInclude tells Neon to include the property (or field)
-  ///   based on the value
+  ///   The IncludeIf enum values define when to include the field or property.
   /// </summary>
-  /// <remarks>
-  ///   Write Attribute
-  /// </remarks>
   IncludeIf = (
     /// <summary>
     ///   Include the member if it's not nil
@@ -221,6 +217,44 @@ type
   NeonDeserializeAttribute = class(NeonSerializeAttribute);
 
   /// <summary>
+  ///   The NeonFactory attribute is used to specify an object factory for an
+  ///   instance. In the constructor you must pass the factory class
+  /// </summary>
+  /// <remarks>
+  ///   <para>
+  ///     The instance to be created <b>must be nil</b>.
+  ///   </para>
+  ///   <para>
+  ///     The factory class must be registerd in the config with
+  ///     Config.RegisterFactory()
+  ///   </para>
+  /// </remarks>
+  NeonFactoryAttribute = class(NeonAttribute)
+  private
+    FFactoryClass: TClass;
+  public
+    constructor Create(const AFactory: TClass); overload;
+    property FactoryClass: TClass read FFactoryClass write FFactoryClass;
+  end;
+
+  /// <summary>
+  ///   The NeonItemFactory attribute is used to specify an object factory for
+  ///   the items of a collection. In the constructor you must pass the factory
+  ///   class
+  /// </summary>
+  /// <remarks>
+  ///   The factory class must be registerd in the config with
+  ///   Config.RegisterFactory()
+  /// </remarks>
+  NeonItemFactoryAttribute = class(NeonAttribute)
+  private
+    FFactoryClass: TClass;
+  public
+    constructor Create(const AItemFactory: TClass); overload;
+    property FactoryClass: TClass read FFactoryClass write FFactoryClass;
+  end;
+
+  /// <summary>
   ///   The Neon annotation NeonValue tells Neon that Neon should not attempt to
   ///   serialize the object itself, but rather call a method on the object which
   ///   serializes the object to a TJSONValue.
@@ -236,7 +270,6 @@ type
   ///   NeonRawValue property Neon won't do that.
   /// </summary>
   NeonRawValueAttribute = class(NeonAttribute);
-
 
   /// <summary>
   ///   The NeonAutoCreate tells Neon to create an object if it's nil. The
@@ -312,6 +345,20 @@ end;
 constructor NeonFormatAttribute.Create(AOutputValue: NeonFormat);
 begin
   FFormatValue := AOutputValue;
+end;
+
+{ NeonItemFactoryAttribute }
+
+constructor NeonItemFactoryAttribute.Create(const AItemFactory: TClass);
+begin
+  FFactoryClass := AItemFactory;
+end;
+
+{ NeonFactoryAttribute }
+
+constructor NeonFactoryAttribute.Create(const AFactory: TClass);
+begin
+  FFactoryClass := AFactory;
 end;
 
 end.

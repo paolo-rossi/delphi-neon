@@ -36,6 +36,12 @@ uses
 {$SCOPEDENUMS ON}
 
 type
+  TCustomFactory = class;
+  TCustomFactoryClass = class of TCustomFactory;
+
+  TCustomSerializer = class;
+  TCustomSerializerClass = class of TCustomSerializer;
+
   TNeonSerializerRegistry = class;
   TNeonRttiObject = class;
 
@@ -52,6 +58,8 @@ type
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
+    function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
+    function RegisterFactory(AClass: TCustomFactoryClass): INeonConfiguration;
 
     function GetPrettyPrint: Boolean;
     function GetUseUTCDate: Boolean;
@@ -104,6 +112,20 @@ type
     procedure LogError(const AMessage: string);
   end;
 
+  //TCustomItemCreator = reference to function (AType: TRttiType; AValue: TJSONValue): TObject;
+
+  /// <summary>
+  ///   Base class for an Object Factory
+  /// </summary>
+  TCustomFactory = class abstract(TObject)
+  public
+    function Build(const AType: TRttiType; AValue: TJSONValue): TObject; virtual; abstract;
+  end;
+  TNeonFactoryRegistry = class(TList<TCustomFactoryClass>);
+
+  /// <summary>
+  ///   Base class for a Custom Serializer
+  /// </summary>
   TCustomSerializer = class abstract(TObject)
   protected
     class function GetTargetInfo: PTypeInfo; virtual;
@@ -117,8 +139,6 @@ type
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; virtual; abstract;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; virtual; abstract;
   end;
-
-  TCustomSerializerClass = class of TCustomSerializer;
 
   TSerializerInfo = record
   public
@@ -163,8 +183,13 @@ type
   public
     class function PascalToCamel(const AString: string): string;
     class function CamelToPascal(const AString: string): string;
+
     class function PascalToSnake(const AString: string): string;
+    class function PascalToScreamingSnake(const AString: string): string;
     class function SnakeToPascal(const AString: string): string;
+
+    class function PascalToKebab(const AString: string): string;
+    class function KebabToPascal(const AString: string): string;
   end;
 
   TNeonConfiguration = class sealed(TInterfacedObject, INeonConfiguration)
@@ -181,6 +206,7 @@ type
     FEnumAsInt: Boolean;
     FAutoCreate: Boolean;
     FStrictTypes: Boolean;
+    FFactoryList: TNeonFactoryRegistry;
   public
     constructor Create;
     destructor Destroy; override;
@@ -189,6 +215,8 @@ type
     class function Pretty: INeonConfiguration; static;
     class function Snake: INeonConfiguration; static;
     class function Camel: INeonConfiguration; static;
+    class function Kebab: INeonConfiguration; static;
+    class function ScreamingSnake: INeonConfiguration; static;
 
     function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
@@ -202,10 +230,14 @@ type
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
 
+    function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
+    function RegisterFactory(AClass: TCustomFactoryClass): INeonConfiguration;
+
     function GetUseUTCDate: Boolean;
     function GetPrettyPrint: Boolean;
     function GetRaiseExceptions: Boolean;
     function GetSerializers: TNeonSerializerRegistry;
+    function GetFactoryList: TNeonFactoryRegistry;
 
     property Members: TNeonMembersSet read FMembers write FMembers;
     property MemberCase: TNeonCase read FMemberCase write FMemberCase;
@@ -218,10 +250,13 @@ type
     property AutoCreate: Boolean read FAutoCreate write FAutoCreate;
     property StrictTypes: Boolean read FStrictTypes write FStrictTypes;
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
+    property FactoryList: TNeonFactoryRegistry read FFactoryList write FFactoryList;
   end;
 
   TNeonRttiObject = class
   private
+    FNeonFactoryClass: TCustomFactoryClass;
+    FNeonItemFactoryClass: TCustomFactoryClass;
     FTypeAttributes: TArray<TCustomAttribute>;
     FNeonAutoCreate: Boolean;
   protected
@@ -263,6 +298,8 @@ type
     property NeonVisibility: TNeonVisibility read FNeonVisibility write FNeonVisibility;
     property NeonUnwrapped: Boolean read FNeonUnwrapped write FNeonUnwrapped;
     property NeonAutoCreate: Boolean read FNeonAutoCreate write FNeonAutoCreate;
+    property NeonFactoryClass: TCustomFactoryClass read FNeonFactoryClass write FNeonFactoryClass;
+    property NeonItemFactoryClass: TCustomFactoryClass read FNeonItemFactoryClass write FNeonItemFactoryClass;
   end;
 
   TNeonRttiType = class(TNeonRttiObject)
@@ -412,9 +449,11 @@ begin
     TNeonCase.Unchanged : Result := LMemberName;
     TNeonCase.LowerCase : Result := LowerCase(LMemberName);
     TNeonCase.UpperCase : Result := UpperCase(LMemberName);
+    TNeonCase.PascalCase: Result := LMemberName;
     TNeonCase.CamelCase : Result := TCaseAlgorithm.PascalToCamel(LMemberName);
     TNeonCase.SnakeCase : Result := TCaseAlgorithm.PascalToSnake(LMemberName);
-    TNeonCase.PascalCase: Result := LMemberName;
+    TNeonCase.KebabCase : Result := TCaseAlgorithm.PascalToKebab(LMemberName);
+    TNeonCase.ScreamingSnakeCase : Result := TCaseAlgorithm.PascalToScreamingSnake(LMemberName);
     TNeonCase.CustomCase: Result := FConfig.MemberCustomCase(LMemberName);
   end;
 end;
@@ -506,6 +545,7 @@ end;
 constructor TNeonConfiguration.Create;
 begin
   FSerializers := TNeonSerializerRegistry.Create;
+  FFactoryList := TNeonFactoryRegistry.Create;
 
   SetMemberCase(TNeonCase.Unchanged);
   SetMembers([TNeonMembers.Standard]);
@@ -529,6 +569,18 @@ begin
     .SetPrettyPrint(True);
 end;
 
+function TNeonConfiguration.RegisterFactory(AClass: TCustomFactoryClass): INeonConfiguration;
+begin
+  FFactoryList.Add(AClass);
+  Result := Self;
+end;
+
+function TNeonConfiguration.RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
+begin
+  FSerializers.RegisterSerializer(AClass);
+  Result := Self;
+end;
+
 class function TNeonConfiguration.Camel: INeonConfiguration;
 begin
   Result := TNeonConfiguration.Create
@@ -544,8 +596,14 @@ end;
 
 destructor TNeonConfiguration.Destroy;
 begin
+  FFactoryList.Free;
   FSerializers.Free;
   inherited;
+end;
+
+function TNeonConfiguration.GetFactoryList: TNeonFactoryRegistry;
+begin
+  Result := FFactoryList;
 end;
 
 function TNeonConfiguration.GetPrettyPrint: Boolean;
@@ -566,6 +624,12 @@ end;
 function TNeonConfiguration.GetUseUTCDate: Boolean;
 begin
   Result := FUseUTCDate;
+end;
+
+class function TNeonConfiguration.Kebab: INeonConfiguration;
+begin
+  Result := TNeonConfiguration.Create
+    .SetMemberCase(TNeonCase.KebabCase);
 end;
 
 function TNeonConfiguration.SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
@@ -590,6 +654,13 @@ function TNeonConfiguration.SetUseUTCDate(AValue: Boolean): INeonConfiguration;
 begin
   FUseUTCDate := AValue;
   Result := Self;
+end;
+
+class function TNeonConfiguration.ScreamingSnake: INeonConfiguration;
+begin
+  Result := TNeonConfiguration.Create
+    .SetIgnoreFieldPrefix(True)
+    .SetMemberCase(TNeonCase.ScreamingSnakeCase);
 end;
 
 function TNeonConfiguration.SetAutoCreate(AValue: Boolean): INeonConfiguration;
@@ -822,6 +893,28 @@ begin
   Result := Result.Replace(LOld, LNew, []);
 end;
 
+class function TCaseAlgorithm.KebabToPascal(const AString: string): string;
+var
+  LChar: Char;
+  LIndex: Integer;
+  LSingleWord: string;
+  LWords: TArray<string>;
+begin
+  LWords := AString.Split(['-']);
+  for LIndex := 0 to Length(LWords) - 1 do
+  begin
+    LSingleWord := LWords[LIndex];
+    if LSingleWord.IsEmpty then
+      Continue;
+    LChar := Upcase(LSingleWord.Chars[0]);
+    LSingleWord := LSingleWord.Remove(0, 1);
+    LSingleWord := LSingleWord.Insert(0, LChar);
+    LWords[LIndex] := LSingleWord;
+  end;
+
+  Result := string.Join('', LWords);
+end;
+
 class function TCaseAlgorithm.PascalToCamel(const AString: string): string;
 var
   LOld, LNew: Char;
@@ -836,9 +929,26 @@ begin
   Result := Result.Replace(LOld, LNew, []);
 end;
 
+class function TCaseAlgorithm.PascalToKebab(const AString: string): string;
+begin
+  Result := LowerCase(
+    TRegEx.Replace(AString,
+    '([A-Z][a-z\d]+)(?=([A-Z][A-Z\a-z\d]+))', '$1-', [])
+  );
+end;
+
 class function TCaseAlgorithm.PascalToSnake(const AString: string): string;
 begin
   Result := LowerCase(
+    TRegEx.Replace(AString,
+    '([A-Z][a-z\d]+)(?=([A-Z][A-Z\a-z\d]+))', '$1_', [])
+  );
+end;
+
+class function TCaseAlgorithm.PascalToScreamingSnake(const AString: string):
+    string;
+begin
+  Result := UpperCase(
     TRegEx.Replace(AString,
     '([A-Z][a-z\d]+)(?=([A-Z][A-Z\a-z\d]+))', '$1_', [])
   );
@@ -1037,6 +1147,7 @@ end;
 procedure TNeonRttiObject.InternalParseAttributes(const AAttr: TArray<TCustomAttribute>);
 var
   LAttribute: TCustomAttribute;
+  LClass: TClass;
 begin
   for LAttribute in AAttr do
   begin
@@ -1046,6 +1157,18 @@ begin
     begin
       FNeonSerializerName := (LAttribute as NeonSerializeAttribute).Name;
       FNeonSerializerClass := (LAttribute as NeonSerializeAttribute).Clazz;
+    end
+    else if LAttribute is NeonFactoryAttribute then
+    begin
+      LClass := (LAttribute as NeonFactoryAttribute).FactoryClass;
+      if LClass.InheritsFrom(TCustomFactory) then
+        FNeonFactoryClass := TCustomFactoryClass(LClass);
+    end
+    else if LAttribute is NeonItemFactoryAttribute then
+    begin
+      LClass := (LAttribute as NeonItemFactoryAttribute).FactoryClass;
+      if LClass.InheritsFrom(TCustomFactory) then
+        FNeonItemFactoryClass := TCustomFactoryClass(LClass);
     end
     else if LAttribute is NeonIgnoreAttribute then
       FNeonIgnore := True

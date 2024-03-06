@@ -221,12 +221,17 @@ type
     /// <summary>
     ///   Decides to whether or not to create the object and assigning it to the reference
     /// </summary>
-    function ReadReference(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+    function ReadReference(var AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 
     /// <summary>
     ///   Decides to whether or not to create the object and assigning it to the reference
     /// </summary>
-    function ManageInstance(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject): TValue;
+    function ManageInstance(var AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+
+    /// <summary>
+    ///   Manages the creation of an Item of a collection (array, list, dictionary)
+    /// </summary>
+    function CreateItem(ANeonRtti: TNeonRttiObject; AValue: TJSONValue; var AType: TRttiType): TValue;
   private
     /// <summary>
     ///   reader for string types
@@ -335,7 +340,7 @@ type
     /// <summary>
     ///   This method chooses the right Reader
     /// </summary>
-    function ReadDataMember(const AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue; overload;
+    function ReadDataMember(var AParam: TNeonDeserializerParam; const AData: TValue; ACustomProcess: Boolean): TValue; overload;
   public
     constructor Create(const AConfig: INeonConfiguration);
 
@@ -840,7 +845,7 @@ end;
 function TNeonSerializerJSON.WriteFloat(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 begin
   case ANeonObject.NeonInclude.Value of
-    IncludeIf.NotEmpty, IncludeIf.NotDefault:
+    IncludeIf.NotDefault:
     begin
       if AValue.AsExtended = 0 then
         Exit(nil);
@@ -1234,8 +1239,6 @@ begin
   end;
 end;
 
-{ TNeonDeserializerJSON }
-
 constructor TNeonDeserializerJSON.Create(const AConfig: INeonConfiguration);
 begin
   inherited Create(AConfig);
@@ -1253,8 +1256,8 @@ begin
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.Empty);
 
-  // We don't need to free items (objects) because the array to deserialize
-  // to is always a new value
+  // We don't need to free items (objects) because the array
+  // to deserialize to is always a new value
   //TRttiUtils.FreeArrayItems(AData);
 
   Result := AData;
@@ -1275,20 +1278,21 @@ begin
 
     for LIndex := 0 to LJSONArray.Count - 1 do
     begin
-      if AParam.RttiType.TypeKind = tkArray then
-      begin
-        LItemValue := Result.GetArrayElement(LIndex);
-        if LItemParam.RttiType.TypeKind = tkClass then
-          LItemValue := TRttiUtils.CreateInstance(LItemParam.RttiType);
-      end
-      else //tkDynArray
-        LItemValue := TRttiUtils.CreateNewValue(LItemParam.RttiType);
-
       LItemParam.JSONValue := LJSONArray.Items[LIndex];
+
+      if AParam.RttiType.TypeKind = tkArray then // Static Array
+      begin
+        if LItemParam.RttiType.TypeKind = tkClass then
+          LItemValue := CreateItem(AParam.NeonObject, LItemParam.JSONValue, LItemParam.RttiType)
+        else
+          LItemValue := Result.GetArrayElement(LIndex);
+      end
+      else //tkDynArray (Dynamic Array)
+        LItemValue := CreateItem(AParam.NeonObject, LItemParam.JSONValue, LItemParam.RttiType);
+
       LItemValue := ReadDataMember(LItemParam, LItemValue, True);
       Result.SetArrayElement(LIndex, LItemValue);
     end;
-
   finally
     LItemParam.NeonObject.Free;
   end;
@@ -1328,7 +1332,7 @@ begin
   end;
 end;
 
-function TNeonDeserializerJSON.ReadDataMember(const AParam: TNeonDeserializerParam;
+function TNeonDeserializerJSON.ReadDataMember(var AParam: TNeonDeserializerParam;
   const AData: TValue; ACustomProcess: Boolean): TValue;
 var
   LCustom: TCustomSerializer;
@@ -1342,7 +1346,7 @@ begin
     LCustom := FConfig.Serializers.GetSerializer(AParam.RttiType.Handle);
     if Assigned(LCustom) then
     begin
-      LValue := ManageInstance(AParam.JSONValue, AData, AParam.NeonObject);
+      LValue := ManageInstance(AParam, AData);
       Result := LCustom.Deserialize(AParam.JSONValue, LValue, AParam.NeonObject, Self);
       Exit(Result);
     end;
@@ -1461,7 +1465,11 @@ begin
     begin
       LParam.JSONValue := LJSONArray.Items[LIndex];
 
-      LItemValue := LList.NewItem;
+      if LParam.RttiType.TypeKind = tkClass then
+        LItemValue := CreateItem(AParam.NeonObject, LParam.JSONValue, LParam.RttiType)
+      else
+        LItemValue := LList.NewItem;
+
       LItemValue := ReadDataMember(LParam, LItemValue, True);
 
       LList.Add(LItemValue);
@@ -1496,17 +1504,29 @@ begin
     try
       while LEnum.MoveNext do
       begin
-        LKey := LMap.NewKey;
+        // Key creation and deserialization
         LParamKey.JSONValue := LEnum.Current.JsonString;
+
+        if LParamKey.RttiType.TypeKind = tkClass then
+          LKey := CreateItem(AParam.NeonObject, LParamKey.JSONValue, LParamKey.RttiType)
+        else
+          LKey := LMap.NewKey;
+
         if LParamKey.RttiType.TypeKind = tkClass then
           LMap.KeyFromString(LKey, LEnum.Current.JsonString.Value)
         else
           LKey := ReadDataMember(LParamKey, LKey, True);
 
-        LValue := LMap.NewValue;
+        // Value creation and deserialization
         LParamValue.JSONValue := LEnum.Current.JsonValue;
+        if LParamValue.RttiType.TypeKind = tkClass then
+          LValue := CreateItem(AParam.NeonObject, LParamValue.JSONValue, LParamValue.RttiType)
+        else
+          LValue := LMap.NewValue;
+
         LValue := ReadDataMember(LParamValue, LValue, True);
 
+        // Add the pair to the Map
         LMap.Add(LKey, LValue);
       end;
     finally
@@ -1897,6 +1917,27 @@ begin
   end;
 end;
 
+function TNeonDeserializerJSON.CreateItem(ANeonRtti: TNeonRttiObject;
+  AValue: TJSONValue; var AType: TRttiType): TValue;
+var
+  LFactory: TCustomFactory;
+  LCreated: TObject;
+begin
+  if Assigned(ANeonRtti.NeonItemFactoryClass) then
+  begin
+    LFactory := ANeonRtti.NeonItemFactoryClass.Create;
+    try
+      LCreated := LFactory.Build(AType, AValue);
+      AType := TRttiUtils.Context.GetType(LCreated.ClassType);
+      Exit(LCreated);
+    finally
+      LFactory.Free;
+    end;
+  end;
+
+  Result := TRttiUtils.CreateNewValue(AType);
+end;
+
 function TNeonDeserializerJSON.JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
 begin
   Result := ReadDataMember(AJSON, AType, TValue.Empty);
@@ -1919,26 +1960,46 @@ begin
   Result := ReadDataMember(AJSON, AType, AData);
 end;
 
-function TNeonDeserializerJSON.ManageInstance(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject): TValue;
+function TNeonDeserializerJSON.ManageInstance(var AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 var
-  LType: TRttiType;
+  LFactory: TCustomFactory;
+  LObj: TObject;
 begin
   Result := AData;
-  if (AData.IsObject) and (AData.AsObject = nil) and
-     TJSONUtils.HasItems(AValue) and
-     (FConfig.AutoCreate or ANeonObject.NeonAutoCreate) then
+
+  if not AData.IsObject then
+    Exit;
+
+  if not (AData.AsObject = nil) then
+    Exit;
+
+  if not TJSONUtils.HasItems(AParam.JSONValue) then
+    Exit;
+
+  if Assigned(AParam.NeonObject.NeonFactoryClass) then
   begin
-    LType := TRttiUtils.Context.GetType(AData.TypeInfo);
-    Result := TRttiUtils.CreateInstance(LType);
+    LFactory := AParam.NeonObject.NeonFactoryClass.Create;
+    try
+      LObj := LFactory.Build(AParam.RttiType, AParam.JSONValue);
+
+      // Compute again the instance type in case it has changed
+      AParam.RttiType := TRttiUtils.Context.GetType(LObj.ClassType);
+
+      Exit(LObj);
+    finally
+      LFactory.Free;
+    end;
   end;
+
+  if (FConfig.AutoCreate or AParam.NeonObject.NeonAutoCreate) then
+    Exit(TRttiUtils.CreateInstance(AParam.RttiType));
 end;
 
-function TNeonDeserializerJSON.ReadReference(const AParam:
-    TNeonDeserializerParam; const AData: TValue): TValue;
+function TNeonDeserializerJSON.ReadReference(var AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 var
   LValue: TValue;
 begin
-  LValue := ManageInstance(AParam.JSONValue, AData, AParam.NeonObject);
+  LValue := ManageInstance(AParam, AData);
 
   if ReadEnumerableMap(AParam, LValue) then
     Exit(LValue);

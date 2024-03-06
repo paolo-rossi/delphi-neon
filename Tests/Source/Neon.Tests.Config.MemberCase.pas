@@ -57,17 +57,20 @@ type
     [TestCase('TestCamelCase', 'TestCamelCase')]
     procedure TestCamelCase(const AMethod: string);
 
-    [Test]
     [TestCase('TestSnakeCase', 'TestSnakeCase')]
     procedure TestSnakeCase(const AMethod: string);
 
-    [Test]
     [TestCase('TestLowerCase', 'TestLowerCase')]
     procedure TestLowerCase(const AMethod: string);
 
-    [Test]
     [TestCase('TestUpperCase', 'TestUpperCase')]
     procedure TestUpperCase(const AMethod: string);
+
+    [TestCase('TestKebabCase', 'TestKebabCase')]
+    procedure TestKebabCase(const AMethod: string);
+
+    [TestCase('TestScreamingSnakeCase', 'TestScreamingSnakeCase')]
+    procedure TestScreamingSnakeCase(const AMethod: string);
   end;
 
 implementation
@@ -101,6 +104,13 @@ begin
     TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.Default));
 end;
 
+procedure TTestConfigMemberCase.TestScreamingSnakeCase(const AMethod: string);
+begin
+  Assert.AreEqual(
+    TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
+    TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.ScreamingSnake));
+end;
+
 procedure TTestConfigMemberCase.TestSnakeCase(const AMethod: string);
 begin
   Assert.AreEqual(
@@ -124,6 +134,13 @@ begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
     TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.Camel));
+end;
+
+procedure TTestConfigMemberCase.TestKebabCase(const AMethod: string);
+begin
+  Assert.AreEqual(
+    TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
+    TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.Kebab));
 end;
 
 procedure TTestConfigMemberCase.TestLowerCase(const AMethod: string);
