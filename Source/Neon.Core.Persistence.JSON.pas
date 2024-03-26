@@ -33,7 +33,8 @@ uses
   Neon.Core.Attributes,
   Neon.Core.Persistence,
   Neon.Core.DynamicTypes,
-  Neon.Core.Utils;
+  Neon.Core.Utils,
+  Data.DBXJSONReflect;
 
 type
   /// <summary>
@@ -1696,6 +1697,9 @@ var
   LNeonMember: TNeonRttiMember;
   LMemberValue: TValue;
   LParam: TNeonDeserializerParam;
+  ctx: TRttiContext;
+  LNeonMemberValue: TObject;
+  LObjectCreate: TObject;
 begin
   LMembers := GetNeonMembers(AType);
   LMembers.FilterDeserialize(AInstance);
@@ -1721,6 +1725,21 @@ begin
         Continue;
 
       try
+        if (LNeonMember.TypeKind = tkClass) then
+        begin
+          LNeonMemberValue := LNeonMember.GetValue(AInstance).AsObject;
+          if not Assigned(LNeonMemberValue) and not (LParam.JSONValue is TJSONNull) then
+          begin
+            ctx := TRttiContext.Create;
+            try
+              LObjectCreate := TJSONUnMarshal.ObjectInstance(ctx,LNeonMember.RttiType.QualifiedName);
+              LNeonMember.SetValue(LObjectCreate,AInstance);
+            finally
+              ctx.Free;
+            end;
+          end;
+        end;
+	  
         LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue(AInstance), True);
         LNeonMember.SetValue(LMemberValue, AInstance);
       except

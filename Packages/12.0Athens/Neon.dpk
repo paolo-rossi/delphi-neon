@@ -53,7 +53,8 @@ package Neon;
 
 requires
   rtl,
-  dbrtl;
+  dbrtl,
+  DbxCommonDriver;
 
 contains
   Neon.Core.Attributes in '..\..\Source\Neon.Core.Attributes.pas',
