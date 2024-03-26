@@ -971,6 +971,7 @@ class function TBase64.Encode(const ASource: TStream): string;
 {$IFDEF HAS_NET_ENCODING}
 var
   LBase64Stream: TStringStream;
+  LEncoder: TBase64Encoding;
 {$ENDIF}
 begin
 {$IFDEF HAS_NET_ENCODING}
@@ -978,7 +979,7 @@ begin
   try
     // FIX: if CharsPerLine is not initialized, it adds \r\n line feeds to
     //      each line that are not part of Base64
-    var LEncoder := TBase64Encoding.Create(0);
+    LEncoder := TBase64Encoding.Create(0);
     try
       LEncoder.Encode(ASource, LBase64Stream);
       Result := LBase64Stream.DataString;
