@@ -1946,11 +1946,9 @@ end;
 procedure TNeonDeserializerJSON.JSONToObject(AObject: TObject; AJSON: TJSONValue);
 var
   LType: TRttiType;
-  LValue: TValue;
 begin
   FOriginalInstance := AObject;
   LType := TRttiUtils.Context.GetType(AObject.ClassType);
-  LValue := AObject;
   ReadDataMember(AJSON, LType, AObject);
 end;
 
