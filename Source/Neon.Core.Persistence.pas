@@ -58,6 +58,7 @@ type
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
+    function SetIgnoreMembers(AMemberList: TArray<string>): INeonConfiguration;
     function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
     function RegisterFactory(AClass: TCustomFactoryClass): INeonConfiguration;
 
@@ -206,6 +207,7 @@ type
     FEnumAsInt: Boolean;
     FAutoCreate: Boolean;
     FStrictTypes: Boolean;
+    FIgnoreMembers: TArray<string>;
     FFactoryList: TNeonFactoryRegistry;
   public
     constructor Create;
@@ -229,6 +231,7 @@ type
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
+    function SetIgnoreMembers(AMemberList: TArray<string>): INeonConfiguration;
 
     function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
     function RegisterFactory(AClass: TCustomFactoryClass): INeonConfiguration;
@@ -249,6 +252,8 @@ type
     property EnumAsInt: Boolean read FEnumAsInt write FEnumAsInt;
     property AutoCreate: Boolean read FAutoCreate write FAutoCreate;
     property StrictTypes: Boolean read FStrictTypes write FStrictTypes;
+    property IgnoreMembers: TArray<string> read FIgnoreMembers write FIgnoreMembers;
+
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
     property FactoryList: TNeonFactoryRegistry read FFactoryList write FFactoryList;
   end;
@@ -352,6 +357,7 @@ type
     FConfig: TNeonConfiguration;
     FParent: TNeonRttiType;
   private
+    function IgnoredName(const AName: string): Boolean; inline;
     function MatchesVisibility(AVisibility: TMemberVisibility): Boolean;
     function MatchesMemberChoice(AMemberType: TNeonMemberType): Boolean;
   public
@@ -554,6 +560,8 @@ begin
   SetUseUTCDate(True);
   SetPrettyPrint(False);
   SetStrictTypes(True);
+  // Compatibility with older Neon versions
+  SetIgnoreMembers(['Parent', 'Owner'])
 end;
 
 class function TNeonConfiguration.Default: INeonConfiguration;
@@ -678,6 +686,12 @@ end;
 function TNeonConfiguration.SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
 begin
   FIgnoreFieldPrefix := AValue;
+  Result := Self;
+end;
+
+function TNeonConfiguration.SetIgnoreMembers(AMemberList: TArray<string>): INeonConfiguration;
+begin
+  FIgnoreMembers := AMemberList;
   Result := Self;
 end;
 
@@ -1009,6 +1023,9 @@ begin
     if LMember.NeonIgnore then
       Continue;
 
+    if IgnoredName(LMember.Name) then
+      Continue;
+
     if not LMember.IsWritable then
       Continue;
 
@@ -1050,11 +1067,7 @@ begin
     if not LMember.IsReadable then
       Continue;
 
-    { TODO -opaolo -c : Maybe controlled by a config item? 29/06/2018 23:14:17 }
-    if SameText(LMember.Name, 'Parent') then
-      Continue;
-
-    if SameText(LMember.Name, 'Owner') then
+    if IgnoredName(LMember.Name) then
       Continue;
 
     if not LMember.IsWritable and
@@ -1065,6 +1078,16 @@ begin
     if MatchesMemberChoice(LMember.MemberType) then
       LMember.Serializable := True;
   end;
+end;
+
+function TNeonRttiMembers.IgnoredName(const AName: string): Boolean;
+var
+  LMemberName: string;
+begin
+  Result := False;
+  for LMemberName in FConfig.IgnoreMembers do
+    if SameText(AName, LMemberName) then
+      Exit(True);
 end;
 
 function TNeonRttiMembers.MatchesMemberChoice(AMemberType: TNeonMemberType): Boolean;
