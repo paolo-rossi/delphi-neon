@@ -143,6 +143,7 @@
         <DCCReference Include="Source\Neon.Tests.Config.AutoCreate.pas"/>
         <DCCReference Include="Source\Neon.Tests.Attributes.Factory.pas"/>
         <DCCReference Include="Source\Neon.Tests.CustomSerializers.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Config.IgnoreMembers.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
