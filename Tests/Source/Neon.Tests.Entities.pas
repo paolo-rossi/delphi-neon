@@ -45,7 +45,7 @@ type
 
   TBytes64Rec = record
     Bytes: TBytes;
-    [NeonFormat(NeonFormat.Native)]
+    [NeonFormat('native')]
     ByteArray: TBytes;
   end;
 

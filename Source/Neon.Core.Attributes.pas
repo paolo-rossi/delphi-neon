@@ -138,11 +138,13 @@ type
   ///   Currently Base64 is supported for TBytes through a CustomSerializer
   /// </remarks>
   NeonFormat = (Native, Base64);
-  NeonFormatAttribute = class(NeonAttribute)
+  NeonFormatAttribute = class(NeonNamedAttribute)
   private
     FFormatValue: NeonFormat;
   public
-    constructor Create(AOutputValue: NeonFormat = NeonFormat.Native);
+    constructor Create(AOutputValue: NeonFormat = NeonFormat.Native); overload; deprecated;
+    constructor Create(AOutputValue: string = 'native'); overload;
+    function IsValue(const AValue: string): Boolean;
     property FormatValue: NeonFormat read FFormatValue write FFormatValue;
   end;
 
@@ -291,7 +293,7 @@ type
 implementation
 
 uses
-  System.StrUtils, System.DateUtils;
+  System.StrUtils, System.TypInfo, System.DateUtils;
 
 { NeonNamedAttribute }
 
@@ -345,6 +347,17 @@ end;
 constructor NeonFormatAttribute.Create(AOutputValue: NeonFormat);
 begin
   FFormatValue := AOutputValue;
+  FValue := LowerCase(GetEnumName(TypeInfo(NeonFormat), Integer(AOutputValue)));
+end;
+
+constructor NeonFormatAttribute.Create(AOutputValue: string);
+begin
+  FValue := AOutputValue;
+end;
+
+function NeonFormatAttribute.IsValue(const AValue: string): Boolean;
+begin
+  Result := SameText(FValue, AValue);
 end;
 
 { NeonItemFactoryAttribute }

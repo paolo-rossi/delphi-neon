@@ -88,6 +88,10 @@ type
   ///   Base64 using NeonFormat attribute
   /// </summary>
   TBytesSerializer = class(TCustomSerializer)
+  private
+    function IsFormatValue(AFormat: NeonFormatAttribute; const AValue: string): Boolean; inline;
+
+    function ValueAsBase64(const AValue: TJSONValue): TValue; inline;
   protected
     class function GetTargetInfo: PTypeInfo; override;
     class function CanHandle(AType: PTypeInfo): Boolean; override;
@@ -332,25 +336,26 @@ end;
 function TBytesSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
   ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
 var
-  LVal: TBytes;
   LType: TRttiType;
   LFormat: NeonFormatAttribute;
 begin
   LFormat := ANeonObject.GetAttribute<NeonFormatAttribute>;
-  if Assigned(LFormat) and (LFormat.FormatValue = NeonFormat.Native) then
+  if IsFormatValue(LFormat, 'native') then
   begin
     LType := TRttiUtils.Context.GetType(TypeInfo(TBytes));
-    Result := AContext.ReadDataMember(AValue, LType, AData, False);
-  end
-  else
-  begin
-    if (AValue is TJSONString) then
-      LVal := TBase64.Decode(AValue.Value)
-    else
-      raise ENeonException.Create('JSONValue must be a string');
-
-    Result := TValue.From<TBytes>(LVal);
+    Exit(AContext.ReadDataMember(AValue, LType, AData, False));
   end;
+
+  //if IsFormatValue(LFormat, 'base64') then
+  Result := ValueAsBase64(AValue);
+end;
+
+function TBytesSerializer.IsFormatValue(AFormat: NeonFormatAttribute; const AValue: string): Boolean;
+begin
+  if not Assigned(AFormat) then
+    Exit(False);
+
+  Result := AFormat.IsValue(AValue);
 end;
 
 class function TBytesSerializer.GetTargetInfo: PTypeInfo;
@@ -366,10 +371,23 @@ var
 begin
   LVal := AValue.AsType<TBytes>;
   LFormat := ANeonObject.GetAttribute<NeonFormatAttribute>;
-  if Assigned(LFormat) and (LFormat.FormatValue = NeonFormat.Native) then
-    Result := AContext.WriteDataMember(AValue, False)
-  else
-    Result := TJSONString.Create(TBase64.Encode(LVal));
+
+  if IsFormatValue(LFormat, 'native') then
+    Exit(AContext.WriteDataMember(AValue, False));
+
+  //if IsFormatValue(LFormat, 'base64') then
+  Exit(TJSONString.Create(TBase64.Encode(LVal)));
+end;
+
+function TBytesSerializer.ValueAsBase64(const AValue: TJSONValue): TValue;
+var
+  LVal: TBytes;
+begin
+  if not (AValue is TJSONString) then
+    raise ENeonException.Create('JSONValue must be a string');
+
+  LVal := TBase64.Decode(AValue.Value);
+  Result := TValue.From<TBytes>(LVal);
 end;
 
 end.
