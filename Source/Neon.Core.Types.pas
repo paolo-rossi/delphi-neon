@@ -35,6 +35,7 @@ type
 
 type
   TNeonCase = (Unchanged, LowerCase, UpperCase, PascalCase, CamelCase, SnakeCase, KebabCase, ScreamingSnakeCase, CustomCase);
+  TNeonSort = (Rtti, RttiReverse, Alpha, AlphaReverse);
   TNeonMemberType = (Unknown, Prop, Field, Indexed);
   TNeonMembers = (Standard, Fields, Properties);
   TNeonMembersSet = set of TNeonMembers;

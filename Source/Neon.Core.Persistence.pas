@@ -48,6 +48,7 @@ type
   INeonConfiguration = interface
   ['{F82AB790-1C65-4501-915C-0289EFD9D8CC}']
     function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
+    function SetMemberSort(AValue: TNeonSort): INeonConfiguration;
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
@@ -197,6 +198,7 @@ type
   private
     FVisibility: TNeonVisibility;
     FMembers: TNeonMembersSet;
+    FMemberSort: TNeonSort;
     FMemberCase: TNeonCase;
     FMemberCustomCase: TCaseFunc;
     FIgnoreFieldPrefix: Boolean;
@@ -221,6 +223,7 @@ type
     class function ScreamingSnake: INeonConfiguration; static;
 
     function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
+    function SetMemberSort(AValue: TNeonSort): INeonConfiguration;
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
@@ -243,6 +246,7 @@ type
     function GetFactoryList: TNeonFactoryRegistry;
 
     property Members: TNeonMembersSet read FMembers write FMembers;
+    property MemberSort: TNeonSort read FMemberSort write FMemberSort;
     property MemberCase: TNeonCase read FMemberCase write FMemberCase;
     property MemberCustomCase: TCaseFunc read FMemberCustomCase write FMemberCustomCase;
     property Visibility: TNeonVisibility read FVisibility write FVisibility;
@@ -469,6 +473,20 @@ var
   LFields, LProps: TArray<TRttiMember>;
   LMember: TRttiMember;
   LNeonMember: TNeonRttiMember;
+
+  function AlphaComparer(AReverse: Boolean): IComparer<TNeonRttiMember>;
+  begin
+    Result := TComparer<TNeonRttiMember>.Construct(
+      function (const L, R: TNeonRttiMember): Integer
+      begin
+        if AReverse then
+          Result := CompareStr(R.Name, L.Name)
+        else
+          Result := CompareStr(L.Name, R.Name);
+      end
+    );
+  end;
+
 begin
   if FMemberRegistry.TryGetValue(AType.Handle, Result) then
     Exit(Result);
@@ -502,6 +520,13 @@ begin
     Result.Add(LNeonMember);
   end;
   FMemberRegistry.Add(AType.Handle, Result);
+
+  case FConfig.MemberSort of
+    TNeonSort.Rtti: ; // Default, do nothing
+    TNeonSort.RttiReverse: Result.Reverse;
+    TNeonSort.Alpha: Result.Sort(AlphaComparer(False));
+    TNeonSort.AlphaReverse: Result.Sort(AlphaComparer(True));
+  end;
 end;
 
 function TNeonBase.GetTypeMembers(AType: TRttiType): TArray<TRttiMember>;
@@ -643,6 +668,12 @@ end;
 function TNeonConfiguration.SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
 begin
   FMembers := AValue;
+  Result := Self;
+end;
+
+function TNeonConfiguration.SetMemberSort(AValue: TNeonSort): INeonConfiguration;
+begin
+  FMemberSort := AValue;
   Result := Self;
 end;
 
