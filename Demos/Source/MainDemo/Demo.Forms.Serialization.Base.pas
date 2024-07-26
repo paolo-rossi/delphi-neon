@@ -24,10 +24,22 @@ unit Demo.Forms.Serialization.Base;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.Rtti, System.SysUtils, System.Classes,
-  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
-  Vcl.CategoryButtons, System.ImageList, Vcl.ImgList, System.Actions, Vcl.ActnList,
-
+  Winapi.Windows,
+  Winapi.Messages,
+  System.Rtti,
+  System.SysUtils,
+  System.Classes,
+  System.ImageList,
+  System.Actions,
+  Vcl.Graphics,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Dialogs,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Vcl.CategoryButtons,
+  Vcl.ImgList,
+  Vcl.ActnList,
   Demo.Frame.Configuration,
   Neon.Core.Persistence,
   Neon.Core.Persistence.JSON,

@@ -24,9 +24,14 @@ unit Neon.Core.Serializers.RTL;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Rtti, System.SyncObjs, System.TypInfo,
-  System.Generics.Collections, System.Math.Vectors, System.JSON,
-
+  System.SysUtils,
+  System.Classes,
+  System.Rtti,
+  System.SyncObjs,
+  System.TypInfo,
+  System.Generics.Collections,
+  System.Math.Vectors,
+  System.JSON,
   Neon.Core.Types,
   Neon.Core.Attributes,
   Neon.Core.Persistence;

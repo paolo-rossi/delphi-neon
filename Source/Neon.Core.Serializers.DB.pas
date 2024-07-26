@@ -24,9 +24,15 @@ unit Neon.Core.Serializers.DB;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Rtti, System.SyncObjs, System.TypInfo,
-  System.Generics.Collections, System.Math.Vectors, System.JSON, Data.DB,
-
+  System.SysUtils,
+  System.Classes,
+  System.Rtti,
+  System.SyncObjs,
+  System.TypInfo,
+  System.Generics.Collections,
+  System.Math.Vectors,
+  System.JSON,
+  Data.DB,
   Neon.Core.Types,
   Neon.Core.Attributes,
   Neon.Core.Persistence;

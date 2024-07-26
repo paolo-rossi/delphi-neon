@@ -26,9 +26,14 @@ unit Neon.Core.Persistence;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Rtti, System.SyncObjs, System.TypInfo,
-  System.Generics.Collections, System.JSON, System.Generics.Defaults,
-
+  System.SysUtils,
+  System.Classes,
+  System.Rtti,
+  System.SyncObjs,
+  System.TypInfo,
+  System.Generics.Collections,
+  System.JSON,
+  System.Generics.Defaults,
   Neon.Core.Types,
   Neon.Core.Attributes,
   Neon.Core.DynamicTypes;

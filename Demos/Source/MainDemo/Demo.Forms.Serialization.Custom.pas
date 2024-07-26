@@ -24,18 +24,31 @@ unit Demo.Forms.Serialization.Custom;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, System.Rtti,
-  System.Actions, Vcl.ActnList, System.ImageList, Vcl.ImgList, Vcl.CategoryButtons,
-
-  Demo.Forms.Serialization.Base,
-  Demo.Frame.Configuration,
+  Winapi.Windows,
+  Winapi.Messages,
+  System.SysUtils,
+  System.Variants,
+  System.Classes,
+  System.Rtti,
+  System.Actions,
+  System.ImageList,
+  Vcl.Graphics,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Dialogs,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Vcl.ActnList,
+  Vcl.ImgList,
+  Vcl.CategoryButtons,
   Neon.Core.Types,
   Neon.Core.Nullables,
   Neon.Core.Attributes,
   Neon.Core.Persistence,
   Neon.Core.Persistence.JSON,
-  Neon.Core.Utils;
+  Neon.Core.Utils,
+  Demo.Forms.Serialization.Base,
+  Demo.Frame.Configuration;
 
 type
   TfrmSerializationCustom = class(TfrmSerializationBase)

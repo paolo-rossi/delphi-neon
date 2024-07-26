@@ -24,10 +24,22 @@ unit Demo.Forms.Serialization.Delphi;
 interface
 
 uses
-  Winapi.Windows, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Data.DB,
-  Vcl.CategoryButtons, System.Actions, Vcl.ActnList, System.ImageList, Vcl.ImgList,
-
+  Winapi.Windows,
+  System.SysUtils,
+  System.Variants,
+  System.Classes,
+  System.Actions,
+  System.ImageList,
+  Data.DB,
+  Vcl.Graphics,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Dialogs,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Vcl.CategoryButtons,
+  Vcl.ActnList,
+  Vcl.ImgList,
   Demo.Forms.Serialization.Base,
   Neon.Core.Attributes;
 

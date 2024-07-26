@@ -24,10 +24,22 @@ unit Demo.Forms.Serialization.Records;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  System.Actions, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
-  Vcl.CategoryButtons, Vcl.ActnList, System.ImageList, Vcl.ImgList,
-
+  Winapi.Windows,
+  Winapi.Messages,
+  System.SysUtils,
+  System.Variants,
+  System.Classes,
+  System.Actions,
+  System.ImageList,
+  Vcl.Graphics,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Dialogs,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Vcl.CategoryButtons,
+  Vcl.ActnList,
+  Vcl.ImgList,
   Demo.Forms.Serialization.Base;
 
 type

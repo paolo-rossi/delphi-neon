@@ -24,9 +24,15 @@ unit Demo.Neon.Serializers;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Rtti, System.SyncObjs, System.TypInfo,
-  System.Generics.Collections, System.Math.Vectors, System.JSON, Vcl.Graphics,
-
+  System.SysUtils,
+  System.Classes,
+  System.Rtti,
+  System.SyncObjs,
+  System.TypInfo,
+  System.Generics.Collections,
+  System.Math.Vectors,
+  System.JSON,
+  Vcl.Graphics,
   Demo.Neon.Entities,
   Neon.Core.Types,
   Neon.Core.Attributes,

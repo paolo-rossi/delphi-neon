@@ -24,12 +24,33 @@ unit Demo.Forms.Details;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Data.DB, FireDAC.Stan.Intf, FireDAC.Stan.Option,
-  FireDAC.Stan.Param, FireDAC.Stan.Error, FireDAC.DatS, FireDAC.Phys.Intf,
-  FireDAC.DApt.Intf, FireDAC.Stan.StorageBin, Vcl.ExtCtrls, Vcl.DBCtrls,
-  FireDAC.Comp.DataSet, FireDAC.Comp.Client, Vcl.Grids, Vcl.DBGrids,
-  Vcl.StdCtrls, Vcl.Mask, FireDAC.Stan.StorageJSON;
+  Winapi.Windows,
+  Winapi.Messages,
+  System.SysUtils,
+  System.Variants,
+  System.Classes,
+  Data.DB,
+  Vcl.Graphics,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Dialogs,
+  Vcl.ExtCtrls,
+  Vcl.DBCtrls,
+  Vcl.Grids,
+  Vcl.DBGrids,
+  Vcl.StdCtrls,
+  Vcl.Mask,
+  FireDAC.Stan.Intf,
+  FireDAC.Stan.Option,
+  FireDAC.Stan.Param,
+  FireDAC.Stan.Error,
+  FireDAC.DatS,
+  FireDAC.Phys.Intf,
+  FireDAC.DApt.Intf,
+  FireDAC.Stan.StorageBin,
+  FireDAC.Comp.DataSet,
+  FireDAC.Comp.Client,
+  FireDAC.Stan.StorageJSON;
 
 type
   TfrmDetails = class(TForm)
@@ -69,7 +90,9 @@ var
 implementation
 
 uses
-  System.IOUtils, Vcl.Imaging.pngimage, Vcl.Imaging.jpeg;
+  System.IOUtils,
+  Vcl.Imaging.pngimage,
+  Vcl.Imaging.jpeg;
 
 {$R *.dfm}
 

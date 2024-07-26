@@ -26,7 +26,9 @@ unit Neon.Core.Types;
 interface
 
 uses
-  System.Classes, System.SysUtils, System.TypInfo;
+  System.Classes,
+  System.SysUtils,
+  System.TypInfo;
 
 {$SCOPEDENUMS ON}
 

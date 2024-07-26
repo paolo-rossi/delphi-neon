@@ -26,9 +26,15 @@ interface
 {$I Neon.inc}
 
 uses
-  System.SysUtils, System.Classes, System.Generics.Collections, System.Rtti,
-  System.Math, System.Math.Vectors, System.Types, System.JSON, Vcl.Graphics,
-
+  System.SysUtils,
+  System.Classes,
+  System.Generics.Collections,
+  System.Rtti,
+  System.Math,
+  System.Math.Vectors,
+  System.Types,
+  System.JSON,
+  Vcl.Graphics,
   Neon.Core.Types,
   Neon.Core.Nullables,
   Neon.Core.Attributes;

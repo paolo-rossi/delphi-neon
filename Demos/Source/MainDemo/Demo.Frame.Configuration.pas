@@ -24,10 +24,18 @@ unit Demo.Frame.Configuration;
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
-  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
+  Winapi.Windows,
+  Winapi.Messages,
+  System.SysUtils,
+  System.Variants,
+  System.Classes,
   System.TypInfo,
-
+  Vcl.Graphics,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Dialogs,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
   Neon.Core.Types,
   Neon.Core.Persistence;
 
@@ -80,7 +88,6 @@ uses
   Neon.Core.Serializers.RTL,
   Neon.Core.Serializers.VCL,
   Neon.Core.Serializers.Nullables,
-
   Demo.Neon.Serializers;
 
 {$R *.dfm}

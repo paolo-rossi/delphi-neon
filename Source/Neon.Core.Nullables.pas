@@ -26,8 +26,13 @@ unit Neon.Core.Nullables;
 interface
 
 uses
-  System.SysUtils, System.Variants, System.Classes, System.Generics.Defaults, System.Rtti,
-  System.TypInfo, System.JSON;
+  System.SysUtils,
+  System.Variants,
+  System.Classes,
+  System.Generics.Defaults,
+  System.Rtti,
+  System.TypInfo,
+  System.JSON;
 
 type
   ENullableException = class(Exception);

@@ -28,7 +28,9 @@ interface
 {$SCOPEDENUMS ON}
 
 uses
-  System.Classes, System.SysUtils, System.Rtti,
+  System.Classes,
+  System.SysUtils,
+  System.Rtti,
   Neon.Core.Types;
 
 type
@@ -293,7 +295,9 @@ type
 implementation
 
 uses
-  System.StrUtils, System.TypInfo, System.DateUtils;
+  System.StrUtils,
+  System.TypInfo,
+  System.DateUtils;
 
 { NeonNamedAttribute }
 

@@ -26,13 +26,20 @@ unit Neon.Core.Utils;
 interface
 
 uses
-  System.Classes, System.SysUtils, Data.DB, System.Rtti, System.JSON, System.TypInfo,
-  {$IFDEF HAS_NET_ENCODING}
-  System.NetEncoding,
-  {$ELSE}
-  IdCoder, IdCoderMIME, IdGlobal,
-  {$ENDIF}
-  System.Generics.Collections;
+  System.Classes,
+  System.SysUtils,
+  System.Rtti,
+  System.JSON,
+  System.TypInfo,
+  Data.DB,
+  System.Generics.Collections,
+{$IFDEF HAS_NET_ENCODING}
+  System.NetEncoding;
+{$ELSE}
+  IdCoder,
+  IdCoderMIME,
+  IdGlobal;
+{$ENDIF}
 
 type
   TJSONUtils = class
@@ -191,7 +198,10 @@ type
 implementation
 
 uses
-  System.StrUtils, System.DateUtils, System.Math, System.Variants,
+  System.StrUtils,
+  System.DateUtils,
+  System.Math,
+  System.Variants,
   Neon.Core.Types;
 
 class function TRttiUtils.ClassDistanceFromRoot(AClass: TClass): Integer;

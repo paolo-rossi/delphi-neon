@@ -26,9 +26,13 @@ unit Neon.Core.Persistence.JSON;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Rtti, System.SyncObjs,
-  System.TypInfo, System.Generics.Collections, System.JSON,
-
+  System.SysUtils,
+  System.Classes,
+  System.Rtti,
+  System.SyncObjs,
+  System.TypInfo,
+  System.Generics.Collections,
+  System.JSON,
   Neon.Core.Types,
   Neon.Core.Attributes,
   Neon.Core.Persistence,

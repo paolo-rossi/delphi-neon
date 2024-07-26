@@ -24,8 +24,11 @@ unit Neon.Core.Serializers.Nullables;
 interface
 
 uses
-  System.SysUtils, System.Generics.Defaults, System.Rtti, System.TypInfo, System.JSON,
-
+  System.SysUtils,
+  System.Generics.Defaults,
+  System.Rtti,
+  System.TypInfo,
+  System.JSON,
   Neon.Core.Attributes,
   Neon.Core.Persistence,
   Neon.Core.Types,

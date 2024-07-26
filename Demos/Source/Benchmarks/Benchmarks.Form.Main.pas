@@ -24,14 +24,26 @@ unit Benchmarks.Form.Main;
 interface
 
 uses
-  System.SysUtils, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
-  VclTee.TeeGDIPlus, VCLTee.TeEngine, Vcl.ExtCtrls,
-  VCLTee.TeeProcs, VCLTee.Chart, VCLTee.Series,
-  Vcl.Imaging.pngimage, System.ImageList, Vcl.ImgList,
-  System.Generics.Collections, System.Diagnostics,
-  System.Json, REST.Json,
-
+  System.SysUtils,
+  System.Classes,
+  System.ImageList,
+  System.Generics.Collections,
+  System.Diagnostics,
+  System.JSON,
+  Vcl.Graphics,
+  Vcl.Controls,
+  Vcl.Forms,
+  Vcl.Dialogs,
+  Vcl.StdCtrls,
+  Vcl.ExtCtrls,
+  Vcl.Imaging.pngimage,
+  Vcl.ImgList,
+  VclTee.TeeGDIPlus,
+  VclTee.Teengine,
+  VclTee.TeeProcs,
+  VclTee.Chart,
+  VclTee.Series,
+  REST.Json,
   Benchmarks.Entities;
 
 type

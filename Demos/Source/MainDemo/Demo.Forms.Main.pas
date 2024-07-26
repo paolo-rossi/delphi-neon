@@ -24,10 +24,19 @@ unit Demo.Forms.Main;
 interface
 
 uses
-  System.Classes, System.SysUtils, System.Actions, System.ImageList,
-  Vcl.Forms, Vcl.ActnList, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Controls,
-  Vcl.ExtCtrls, Vcl.Imaging.pngimage, Vcl.ImgList, Vcl.Graphics,
-
+  System.Classes,
+  System.SysUtils,
+  System.Actions,
+  System.ImageList,
+  Vcl.Forms,
+  Vcl.ActnList,
+  Vcl.ComCtrls,
+  Vcl.StdCtrls,
+  Vcl.Controls,
+  Vcl.ExtCtrls,
+  Vcl.Imaging.pngimage,
+  Vcl.ImgList,
+  Vcl.Graphics,
   Neon.Core.Types,
   Neon.Core.Attributes,
   Neon.Core.Persistence,
@@ -58,10 +67,12 @@ implementation
 
 uses
   System.Generics.Collections,
-
-  Demo.Forms.Serialization.Custom, Demo.Forms.Serialization.Delphi,
-  Demo.Forms.Serialization.Simple, Demo.Forms.Serialization.Records,
-  Demo.Forms.Serialization.Schema, Demo.Forms.Serialization.Complex;
+  Demo.Forms.Serialization.Custom,
+  Demo.Forms.Serialization.Delphi,
+  Demo.Forms.Serialization.Simple,
+  Demo.Forms.Serialization.Records,
+  Demo.Forms.Serialization.Schema,
+  Demo.Forms.Serialization.Complex;
 
 { TMainForm }
 
