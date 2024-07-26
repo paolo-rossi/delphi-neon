@@ -2169,16 +2169,6 @@ class procedure TNeon.PrintToWriter(AJSONValue: TJSONValue; AWriter: TTextWriter
   {$IFDEF HAS_TOJSON_OPTIONS}; AOutputOptions: TJSONAncestor.TJSONOutputOptions{$ENDIF});
 var
   LJSONString: string;
-  LChar: Char;
-  LOffset: Integer;
-  LIndex: Integer;
-  LOutsideString: Boolean;
-
-  function Spaces(AOffset: Integer): string;
-  begin
-    Result := StringOfChar(#32, AOffset * 2);
-  end;
-
 begin
 {$IFDEF HAS_TOJSON}
   {$IFDEF HAS_TOJSON_OPTIONS}
@@ -2195,58 +2185,7 @@ begin
     Exit;
   end;
 
-  LOffset := 0;
-  LOutsideString := True;
-
-  for LIndex := 0 to Length(LJSONString) - 1 do
-  begin
-    LChar := LJSONString.Chars[LIndex];
-
-    if LChar = '"' then
-      LOutsideString := not LOutsideString;
-
-    if LOutsideString and (LChar = '{') then
-    begin
-      Inc(LOffset);
-      AWriter.Write(LChar);
-      AWriter.Write(sLineBreak);
-      AWriter.Write(Spaces(LOffset));
-    end
-    else if LOutsideString and (LChar = '}') then
-    begin
-      Dec(LOffset);
-      AWriter.Write(sLineBreak);
-      AWriter.Write(Spaces(LOffset));
-      AWriter.Write(LChar);
-    end
-    else if LOutsideString and (LChar = ',') then
-    begin
-      AWriter.Write(LChar);
-      AWriter.Write(sLineBreak);
-      AWriter.Write(Spaces(LOffset));
-    end
-    else if LOutsideString and (LChar = '[') then
-    begin
-      Inc(LOffset);
-      AWriter.Write(LChar);
-      AWriter.Write(sLineBreak);
-      AWriter.Write(Spaces(LOffset));
-    end
-    else if LOutsideString and (LChar = ']') then
-    begin
-      Dec(LOffset);
-      AWriter.Write(sLineBreak);
-      AWriter.Write(Spaces(LOffset));
-      AWriter.Write(LChar);
-    end
-    else if LOutsideString and (LChar = ':') then
-    begin
-      AWriter.Write(LChar);
-      AWriter.Write(' ');
-    end
-    else
-      AWriter.Write(LChar);
-  end;
+  TJSONUtils.Prettify(LJSONString, AWriter);
 end;
 
 class function TNeon.ValueToJSON(const AValue: TValue): TJSONValue;

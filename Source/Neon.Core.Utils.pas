@@ -78,6 +78,8 @@ type
     class function JSONToDate(const ADate: string): TDate; static;
     class function JSONToTime(const ATime: string): TTime; static;
     class function JSONToDateTime(const ADateTime: string; AReturnUTC: Boolean = True): TDateTime; static;
+
+    class procedure Prettify(const AJSONString: string; AWriter: TTextWriter);
   end;
 
   TRttiUtils = class
@@ -927,6 +929,77 @@ begin
   Result := 0.0;
   if Length(ATime) = 8 then {hh:nn:ss} // Possible RegEx => ^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$
     Result := EncodeTime(StrToInt(Copy(ATime, 1, 2)), StrToInt(Copy(ATime, 4, 2)), StrToInt(Copy(ATime, 7, 2)), 0);
+end;
+
+class procedure TJSONUtils.Prettify(const AJSONString: string; AWriter: TTextWriter);
+var
+  LChar, LPrev: Char;
+  LOffset: Integer;
+  LIndex: Integer;
+  LOutsideString: Boolean;
+
+  function Spaces(AOffset: Integer): string; inline;
+  begin
+    Result := StringOfChar(#32, AOffset * 2);
+  end;
+
+begin
+  LOffset := 0;
+  LOutsideString := True;
+
+  LPrev := #0;
+  for LIndex := 0 to Length(AJSONString) - 1 do
+  begin
+    LChar := AJSONString.Chars[LIndex];
+
+    if (LChar = '"') and not (LPrev = '\') then
+      LOutsideString := not LOutsideString;
+
+    if LOutsideString and (LChar = '{') then
+    begin
+      Inc(LOffset);
+      AWriter.Write(LChar);
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
+    end
+    else if LOutsideString and (LChar = '}') then
+    begin
+      Dec(LOffset);
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
+      AWriter.Write(LChar);
+    end
+    else if LOutsideString and (LChar = ',') then
+    begin
+      AWriter.Write(LChar);
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
+    end
+    else if LOutsideString and (LChar = '[') then
+    begin
+      Inc(LOffset);
+      AWriter.Write(LChar);
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
+    end
+    else if LOutsideString and (LChar = ']') then
+    begin
+      Dec(LOffset);
+      AWriter.Write(sLineBreak);
+      AWriter.Write(Spaces(LOffset));
+      AWriter.Write(LChar);
+    end
+    else if LOutsideString and (LChar = ':') then
+    begin
+      AWriter.Write(LChar);
+      AWriter.Write(' ');
+    end
+    else
+      AWriter.Write(LChar);
+
+    LPrev := LChar;
+  end;
+
 end;
 
 class function TJSONUtils.JSONToDateTime(const ADateTime: string; AReturnUTC: Boolean = True): TDateTime;
