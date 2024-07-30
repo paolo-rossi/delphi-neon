@@ -89,10 +89,6 @@ type
     procedure actSerGenericObjectListExecute(Sender: TObject);
     procedure actSerStreamableExecute(Sender: TObject);
     procedure actSerStreamablePropExecute(Sender: TObject);
-  private
-    { Private declarations }
-  public
-    { Public declarations }
   end;
 
 var

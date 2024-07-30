@@ -559,8 +559,6 @@ uses
   System.DateUtils,
   System.Variants;
 
-{ TNeonSerializerJSON }
-
 constructor TNeonSerializerJSON.Create(const AConfig: INeonConfiguration);
 begin
   inherited Create(AConfig);
@@ -784,14 +782,6 @@ begin
     begin
       Result := WriteVariant(AValue, ANeonObject);
     end;
-
-    {
-    tkUnknown,
-    tkMethod,
-    tkPointer,
-    tkProcedure,
-    tkClassRef:
-    }
   end;
 end;
 
@@ -1215,29 +1205,18 @@ begin
 
   LVariantType := VarType(LValue) and VarTypeMask;
   case LVariantType of
-    //varEmpty   :
-    //varNull    :
     varSmallInt,
     varInteger : Result := WriteInteger(Int64(LValue), ANeonObject);
     varSingle  ,
     varDouble  ,
     varCurrency: Result := WriteFloat(Currency(LValue), ANeonObject);
     varDate    : Result := WriteDate(VarToDateTime(LValue), ANeonObject);
-    //varOleStr  :
-    //varDispatch:
-    //varError   :
     varBoolean : Result := WriteBoolean(Boolean(LValue), ANeonObject);
-    //varVariant :
-    //varUnknown :
     varByte    ,
     varWord    ,
     varLongWord,
     varInt64   : Result := WriteInteger(Int64(LValue), ANeonObject);
-    //varStrArg  :
     varString  : Result := WriteString(VarToStr(LValue), ANeonObject);
-    //varAny     :
-    //varTypeMask:
-
   else
     Result := TJSONString.Create(AValue.AsVariant);
   end;
@@ -1259,10 +1238,6 @@ var
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.Empty);
-
-  // We don't need to free items (objects) because the array
-  // to deserialize to is always a new value
-  //TRttiUtils.FreeArrayItems(AData);
 
   Result := AData;
   LJSONArray := AParam.JSONValue as TJSONArray;
@@ -1357,7 +1332,6 @@ begin
   end;
 
   case AParam.RttiType.TypeKind of
-    // Simple types
     tkInt64:       Result := ReadInt64(AParam);
     tkInteger:     Result := ReadInteger(AParam);
     tkChar:        Result := ReadChar(AParam);
@@ -1870,19 +1844,12 @@ begin
 {$ENDIF}
 
   case AParam.RttiType.TypeKind of
-
-    // AnsiString
     tkLString: Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
 
     {$IFDEF WINDOWS}
-    //WideString
     tkWString: Result := TValue.From<WideString>(AParam.JSONValue.Value);
     {$ENDIF}
-
-    //UnicodeString
     tkUString: Result := TValue.From<string>(AParam.JSONValue.Value);
-
-    //ShortString
     tkString:  Result := TValue.From<UTF8String>(UTF8String(AParam.JSONValue.Value));
 
   else
@@ -2019,8 +1986,6 @@ function TNeonDeserializerJSON.JSONToTValue(AJSON: TJSONValue; AType: TRttiType)
 begin
   Result := ReadDataMember(AJSON, AType, TValue.Empty.Cast(AType.Handle));
 end;
-
-{ TNeon }
 
 class function TNeon.JSONToObject(AType: TRttiType; AJSON: TJSONValue): TObject;
 begin
@@ -2356,8 +2321,6 @@ begin
       raise ENeonException.Create(TNeonError.PARSE);
 {$ENDIF}
 end;
-
-{ TNeonDeserializerParam }
 
 procedure TNeonDeserializerParam.Default;
 begin

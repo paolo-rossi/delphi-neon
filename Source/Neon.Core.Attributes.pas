@@ -281,17 +281,6 @@ type
   /// </summary>
   NeonAutoCreateAttribute = class(NeonAttribute);
 
-  {
-  //Read Annotations
-  NeonSetterAttribute = class(NeonAttribute);
-  NeonAnySetterAttribute = class(NeonAttribute);
-  NeonCreatorAttribute = class(NeonAttribute);
-  NeonInjectAttribute = class(NeonAttribute);
-  //Write Annotations
-  NeonGetterAttribute = class(NeonAttribute);
-  NeonAnyGetterAttribute = class(NeonAttribute);
-  }
-
 implementation
 
 uses
@@ -299,21 +288,15 @@ uses
   System.TypInfo,
   System.DateUtils;
 
-{ NeonNamedAttribute }
-
 constructor NeonNamedAttribute.Create(const AValue: string);
 begin
   FValue := AValue;
 end;
 
-{ NeonMembersTypeAttribute }
-
 constructor NeonMembersSetAttribute.Create(const AValue: TNeonMembersSet);
 begin
   FValue := AValue;
 end;
-
-{ NeonVisibilityAttribute }
 
 constructor NeonVisibilityAttribute.Create(const AValue: TNeonVisibility);
 begin
@@ -330,8 +313,6 @@ begin
   FName := AName;
 end;
 
-{ NeonIncludeAttribute }
-
 constructor NeonIncludeAttribute.Create(AIncludeValue: IncludeIf; const AIncludeFunction: string);
 begin
   FIncludeValue.Present := True;
@@ -339,14 +320,10 @@ begin
   FIncludeValue.IncludeFunction := AIncludeFunction;
 end;
 
-{ NeonEnumNamesAttribute }
-
 constructor NeonEnumNamesAttribute.Create(const ANames: string);
 begin
   FNames := ANames.Split([',']);
 end;
-
-{ NeonFormatAttribute }
 
 constructor NeonFormatAttribute.Create(AOutputValue: NeonFormat);
 begin
@@ -364,14 +341,10 @@ begin
   Result := SameText(FValue, AValue);
 end;
 
-{ NeonItemFactoryAttribute }
-
 constructor NeonItemFactoryAttribute.Create(const AItemFactory: TClass);
 begin
   FFactoryClass := AItemFactory;
 end;
-
-{ NeonFactoryAttribute }
 
 constructor NeonFactoryAttribute.Create(const AFactory: TClass);
 begin

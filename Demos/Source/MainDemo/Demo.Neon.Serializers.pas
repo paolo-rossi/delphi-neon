@@ -140,8 +140,6 @@ uses
   System.DateUtils,
   Neon.Core.Utils;
 
-{ TPoint3DSerializer }
-
 class function TPoint3DSerializer.GetTargetInfo: PTypeInfo;
 begin
   Result := TypeInfo(TPoint3D);
@@ -177,8 +175,6 @@ begin
 
   Result := TValue.From<TPoint3D>(LVal);
 end;
-
-{ TParameterSerializer }
 
 class function TParameterSerializer.GetTargetInfo: PTypeInfo;
 begin
@@ -231,8 +227,6 @@ begin
 
   Result := TValue.From<TParameterContainer>(LVal);
 end;
-
-{ TFontSerializer }
 
 class function TFontSerializer.GetTargetInfo: PTypeInfo;
 begin
@@ -292,8 +286,6 @@ begin
 
   Result := TValue.From<TFont>(LFont);
 end;
-
-{ TCaseClassSerializer }
 
 class function TCaseClassSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
@@ -355,8 +347,6 @@ begin
   Result := LJSON;
 end;
 
-{ TTimeSerializer }
-
 class function TTimeSerializer.GetTargetInfo: PTypeInfo;
 begin
   Result := TypeInfo(TTime);
@@ -389,8 +379,6 @@ begin
   LTime := StrToTime(AValue.Value);
   Result := TValue.From<TTime>(LTime);
 end;
-
-{ TCustomDateSerializer }
 
 class function TCustomDateSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
@@ -429,8 +417,6 @@ begin
   DecodeDate(LDate, LYear, LMonth, LDay);
   Result := TJSONString.Create(Format('%d|%.2d|%.2d', [LYear, LMonth, LDay]));
 end;
-
-{ TDateTimeSerializer }
 
 class function TDateTimeSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin

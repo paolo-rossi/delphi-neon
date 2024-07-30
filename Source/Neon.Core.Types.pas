@@ -76,8 +76,6 @@ type
 
 implementation
 
-{ TNeonIgnoreIfContext }
-
 constructor TNeonIgnoreIfContext.Create(const AMemberName: string; AOperation: TNeonOperation);
 begin
   MemberName := AMemberName;

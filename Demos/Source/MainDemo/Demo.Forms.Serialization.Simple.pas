@@ -80,10 +80,6 @@ type
     procedure actSerStringExecute(Sender: TObject);
     procedure actSerTypesClassExecute(Sender: TObject);
     procedure actSerVariantsExecute(Sender: TObject);
-  private
-    { Private declarations }
-  public
-    { Public declarations }
   end;
 
 var

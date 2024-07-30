@@ -419,8 +419,6 @@ uses
   System.RegularExpressions,
   Neon.Core.Utils;
 
-{ TNeonBase }
-
 constructor TNeonBase.Create(const AConfig: INeonConfiguration);
 begin
   FConfigIntf := AConfig;
@@ -505,13 +503,11 @@ begin
   begin
     LFields := TArray<TRttiMember>(AType.AsRecord.GetFields);
     LProps  := TArray<TRttiMember>(AType.AsRecord.GetProperties);
-    // GetIndexedProperties
   end
   else if AType.IsInstance then
   begin
     LFields := TArray<TRttiMember>(AType.AsInstance.GetFields);
     LProps  := TArray<TRttiMember>(AType.AsInstance.GetProperties);
-    // GetIndexedProperties
   end;
 
   for LMember in LFields do
@@ -575,8 +571,6 @@ procedure TNeonBase.LogError(const AMessage: string);
 begin
   FErrors.Add(AMessage);
 end;
-
-{ TNeonConfiguration }
 
 constructor TNeonConfiguration.Create;
 begin
@@ -755,8 +749,6 @@ begin
   Result := Self;
 end;
 
-{ TNeonRttiMember }
-
 constructor TNeonRttiMember.Create(AMember: TRttiMember; AParent: TNeonRttiType; AOperation: TNeonOperation);
 begin
   inherited Create(AMember, AOperation);
@@ -927,8 +919,6 @@ begin
   Result := FMember.Visibility
 end;
 
-{ TCaseAlgorithm }
-
 class function TCaseAlgorithm.CamelToPascal(const AString: string): string;
 var
   LOld, LNew: Char;
@@ -1025,8 +1015,6 @@ begin
 
   Result := string.Join('', LWords);
 end;
-
-{ TNeonRttiMembers }
 
 constructor TNeonRttiMembers.Create(AConfig: TNeonConfiguration;
   AType: TRttiType; AOperation: TNeonOperation);
@@ -1150,10 +1138,8 @@ begin
   end;
 
   case AMemberType of
-    //TNeonMemberType.Unknown: Result := False;
     TNeonMemberType.Prop   :   Result := TNeonMembers.Properties in LMemberChoice;
     TNeonMemberType.Field  :   Result := TNeonMembers.Fields in LMemberChoice;
-    //TNeonMemberType.Indexed: Result := False;
   end;
 end;
 
@@ -1176,8 +1162,6 @@ function TNeonRttiMembers.NewMember(AMember: TRttiMember): TNeonRttiMember;
 begin
   Result := TNeonRttiMember.Create(AMember, FParent, FOperation);
 end;
-
-{ TNeonRttiObject }
 
 function TNeonRttiObject.AsRttiType: TRttiType;
 begin
@@ -1264,8 +1248,6 @@ begin
 
 end;
 
-{ TNeonRttiType }
-
 constructor TNeonRttiType.Create(AType: TRttiType; AOperation: TNeonOperation);
 begin
   inherited Create(AType, AOperation);
@@ -1273,8 +1255,6 @@ begin
 
   ParseAttributes;
 end;
-
-{ TNeonSerializerRegistry }
 
 procedure TNeonSerializerRegistry.Assign(ARegistry: TNeonSerializerRegistry);
 var
@@ -1428,8 +1408,6 @@ begin
     end;
 end;
 
-{ TCustomSerializer }
-
 class function TCustomSerializer.ClassDistance: Integer;
 begin
   Result := TRttiUtils.ClassDistanceFromRoot(GetTargetInfo);
@@ -1471,15 +1449,11 @@ begin
     Result := True;
 end;
 
-{ TSerializerInfo }
-
 class function TSerializerInfo.FromSerializer(ASerializerClass: TCustomSerializerClass): TSerializerInfo;
 begin
   Result.SerializerClass := ASerializerClass;
   Result.Distance := ASerializerClass.ClassDistance;
 end;
-
-{ TTypeInfoUtils }
 
 class function TTypeInfoUtils.EnumToString(ATypeInfo: PTypeInfo; AValue: Integer;
     ANeonObject: TNeonRttiObject): string;

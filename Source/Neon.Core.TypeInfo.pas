@@ -106,8 +106,6 @@ uses
   Neon.Core.Types,
   Neon.Core.Utils;
 
-{ TNeonTypeInfoStream }
-
 constructor TNeonTypeInfoStream.Create(AStreamType: TRttiType);
 begin
   FStreamType := AStreamType;
@@ -131,8 +129,6 @@ begin
 
   Result := Self.Create(TRttiUtils.Context.GetType(TypeInfo(string)));
 end;
-
-{ TNeonTypeInfoList }
 
 constructor TNeonTypeInfoList.Create(AItemType: TRttiType);
 begin
@@ -172,8 +168,6 @@ begin
 
   Result := TNeonTypeInfoList.Create(LItemType);
 end;
-
-{ TNeonTypeInfoMap }
 
 constructor TNeonTypeInfoMap.Create(AKeyType, AValueType: TRttiType);
 begin
@@ -219,8 +213,6 @@ begin
 
   Result := TNeonTypeInfoMap.Create(LKeyType, LValType);
 end;
-
-{ TNeonTypeInfoNullable }
 
 constructor TNeonTypeInfoNullable.Create(ABaseType: TRttiType);
 begin

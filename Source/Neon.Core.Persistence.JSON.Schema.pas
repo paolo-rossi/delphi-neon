@@ -208,8 +208,6 @@ implementation
 uses
   System.Variants;
 
-{ TNeonSchemaGenerator }
-
 class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass): TJSONObject;
 begin
   Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), TNeonConfiguration.Default);
@@ -406,8 +404,6 @@ function TNeonSchemaGenerator.WriteDataSet(AType: TRttiType; ANeonObject: TNeonR
 var
   LJSONProps: TJSONObject;
 begin
-  //Result := TDataSetUtils.RecordToJSONSchema(AValue.AsObject as TDataSet, FConfig);
-
   LJSONProps := TJSONObject.Create;
   Result := TJSONObject.Create
     .AddPair('type', 'object')
@@ -604,22 +600,7 @@ end;
 
 function TNeonSchemaGenerator.WriteVariant(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
-{
-  case ANeonObject.NeonInclude.Value of
-    Include.NotNull:
-    begin
-      if VarIsNull(AValue.AsVariant) then
-        Exit(nil);
-    end;
-    Include.NotEmpty:
-    begin
-      if VarIsEmpty(AValue.AsVariant) then
-        Exit(nil);
-    end;
-  end;
-}
   Result :=nil;
-  //TJSONString.Create(AValue.AsVariant);
 end;
 
 end.

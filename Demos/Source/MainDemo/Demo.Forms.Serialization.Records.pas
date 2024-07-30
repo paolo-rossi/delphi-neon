@@ -95,10 +95,6 @@ type
     procedure actSerSetEnumCustomExecute(Sender: TObject);
     procedure actSerSetEnumExecute(Sender: TObject);
     procedure actSerSetNumberExecute(Sender: TObject);
-  private
-    { Private declarations }
-  public
-    { Public declarations }
   end;
 
 var

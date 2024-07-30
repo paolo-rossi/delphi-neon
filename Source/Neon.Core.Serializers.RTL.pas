@@ -121,8 +121,6 @@ begin
   ARegistry.RegisterSerializer(TJSONValueSerializer);
 end;
 
-{ TGUIDSerializer }
-
 class function TGUIDSerializer.GetTargetInfo: PTypeInfo;
 begin
   Result := TypeInfo(TGUID);
@@ -156,8 +154,6 @@ begin
   LGUID := StringToGUID(Format('{%s}', [AValue.Value]));
   Result := TValue.From<TGUID>(LGUID);
 end;
-
-{ TStreamSerializer }
 
 class function TStreamSerializer.GetTargetInfo: PTypeInfo;
 begin
@@ -203,8 +199,6 @@ begin
   TBase64.Decode(AValue.Value, LStream);
 end;
 
-{ TJSONValueSerializer }
-
 class function TJSONValueSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
   Result := TypeInfoIs(AType);
@@ -236,20 +230,6 @@ begin
   else if LJSONData is TJSONArray then
     for LValue in (AValue as TJSONArray) do
       (LJSONData as TJSONArray).AddElement(LValue.Clone as TJSONValue)
-
-  {
-  else if LJSONData is TJSONString then
-    (LJSONData as TJSONString). Value := (AValue as TJSONString).Value
-
-  else if LJSONData is TJSONNumber then
-    (LJSONData as TJSONNumber).Value := (AValue as TJSONNumber).Value
-
-  else if LJSONData is TJSONBool then
-    (LJSONData as TJSONString).Value := (AValue as TJSONString).Value
-
-  else if LJSONData is TJSONNull then
-    (LJSONData as TJSONString).Value := (AValue as TJSONString).Value
-  }
 end;
 
 class function TJSONValueSerializer.GetTargetInfo: PTypeInfo;
@@ -282,8 +262,6 @@ begin
 
   Exit(LOriginalJSON.Clone as TJSONValue);
 end;
-
-{ TTValueSerializer }
 
 class function TTValueSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
@@ -331,8 +309,6 @@ begin
     Result := nil;
 end;
 
-{ TBytesSerializer }
-
 class function TBytesSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
   Result := AType = TypeInfo(TBytes);
@@ -351,7 +327,6 @@ begin
     Exit(AContext.ReadDataMember(AValue, LType, AData, False));
   end;
 
-  //if IsFormatValue(LFormat, 'base64') then
   Result := ValueAsBase64(AValue);
 end;
 
@@ -380,7 +355,6 @@ begin
   if IsFormatValue(LFormat, 'native') then
     Exit(AContext.WriteDataMember(AValue, False));
 
-  //if IsFormatValue(LFormat, 'base64') then
   Exit(TJSONString.Create(TBase64.Encode(LVal)));
 end;
 

@@ -236,7 +236,6 @@ type
     FOptions: TMySet;
     FSurname: string;
     FMap: TObjectDictionary<string, TNote>;
-    //FCMR: TExampleCMR;
   public
     constructor Create;
     destructor Destroy; override;
@@ -247,7 +246,6 @@ type
     [NeonProperty('LastName')]
     property Surname: string read FSurname write FSurname;
 
-    //property CMR: TExampleCMR read FCMR write FCMR;
     property Addresses: TAddresses read FAddresses write FAddresses;
     property DateProp: TDateTime read FDateProp write FDateProp;
     property DoubleProp: Double read FDoubleProp write FDoubleProp;
@@ -260,13 +258,11 @@ type
 
   TCaseClass = class
   private
-    //[NeonInclude]
     FPrivateField: Double;
     FFirstProp: Integer;
     FSecondXProp: string;
     FThirdPascalCaseProp: TDateTime;
     FDefProp: Integer;
-    //[NeonInclude, NeonMembers(TNeonMembers.Fields)]
     FirstRecord: TMyRecord;
     FNote: TNote;
     FJSON: TJSONObject;
@@ -334,9 +330,6 @@ type
     Field2: TRect;
   private
     function ShouldInclude(const AContext: TNeonIgnoreIfContext): Boolean;
-
-    //[NeonSerializerMethod]
-    //function Serializer(const AContext: TNeonIgnoreIfContext): TJSONValue;
   public
     class function DefaultValues: TFilterClass;
 
@@ -510,14 +503,7 @@ type
 
 implementation
 
-{
-uses
-  Winapi.Windows;
-}
-
 {$IFDEF HAS_MRECORDS}
-
-{ TManagedRecord }
 
 class operator TManagedRecord.Initialize(out Dest: TManagedRecord);
 begin
@@ -532,8 +518,6 @@ begin
 end;
 
 {$ENDIF}
-
-{ TPerson }
 
 procedure TPerson.AddAddress(const ACity, ACountry: string);
 var
@@ -555,8 +539,6 @@ begin
   FDateProp := Now;
   FOptions := [TMyEnum.First, TMyEnum.Second, TMyEnum.Fourth];
   FMap := TObjectDictionary<string, TNote>.Create([doOwnsValues]);
-  //FCMR.Info := 'Info';
-  //FCMR.KeyPairs.Add('name', 'Paolo');
 end;
 
 destructor TPerson.Destroy;
@@ -570,8 +552,6 @@ begin
   FMap.Free;
   inherited;
 end;
-
-{ TAddressBook }
 
 function TAddressBook.Add(ACity, ACountry: string): TAddress;
 begin
@@ -598,8 +578,6 @@ begin
   inherited;
 end;
 
-{ TMyRecord }
-
 procedure TMyRecord.FromString(const AValue: string);
 begin
   One := AValue;
@@ -610,8 +588,6 @@ function TMyRecord.ToString: string;
 begin
   Result := One + '-' + Two.ToString;
 end;
-
-{ TStreamableSample }
 
 function TStreamableSample.GetAsString: string;
 begin
@@ -636,8 +612,6 @@ begin
   FPayload := TEncoding.UTF8.GetBytes(Value);
 end;
 
-{ TStreamableComposition }
-
 constructor TStreamableComposition.Create;
 begin
   FStream := TStreamableSample.Create;
@@ -648,8 +622,6 @@ begin
   FStream.Free;
   inherited;
 end;
-
-{ TCaseClass }
 
 constructor TCaseClass.Create;
 begin
@@ -675,15 +647,9 @@ begin
   Result.SecondXProp := 'Metà';
   Result.ThirdPascalCaseProp := EncodeDate(2018, Random(11)+1, Random(27)+1);
   Result.BoolProp := True;
-  {
-  Result.JSON.AddPair('name', 'Paolo');
-  Result.JSON.AddPair('age', '50');
-  }
   Result.Note.Date := Now;
   Result.Note.Text := 'Lorem Ipsum';
 end;
-
-{ TFilterClass }
 
 class function TFilterClass.DefaultValues: TFilterClass;
 begin
@@ -739,11 +705,8 @@ begin
   FVector.W := 40;
 end;
 
-{ TParameterContainer }
-
 constructor TParameterContainer.Create;
 begin
-  //ref := TReference.Create;
   par := TParameter.Create;
 end;
 
@@ -753,8 +716,6 @@ begin
   ref.Free;
   inherited;
 end;
-
-{ TTypeClass }
 
 constructor TTypeClass.Create;
 begin
@@ -768,8 +729,6 @@ begin
   FPropBoolean := FPropInteger > 4000;
   FPropDate := IfThen(FPropEnum = tkInteger, Random * 50000, 0);
 end;
-
-{ TAddress }
 
 constructor TAddress.Create(const ACity, ACountry: string);
 begin
@@ -788,17 +747,12 @@ begin
   Result := FCity;
 end;
 
-
-{ TMyDerivedClass }
-
 procedure TMyDerivedClass.DefaultValues;
 begin
   inherited;
   FPropertyTest := 'property added';
   FieldTest := 'my field: hello world!';
 end;
-
-{ TNeonIncludeEntity }
 
 function TNeonIncludeEntity.ShouldInclude(const AContext: TNeonIgnoreIfContext): Boolean;
 begin
@@ -816,16 +770,12 @@ begin
   end;
 end;
 
-{ TDates }
-
 procedure TDates.SampleData;
 begin
   Date := Now;
   Time := Now + 0.5;
   Custom := Now + 2;
 end;
-
-{ TUnwrappedClass }
 
 constructor TUnwrappedClass.Create;
 begin
@@ -850,25 +800,17 @@ end;
 
 {$IFDEF HAS_MRECORDS}
 
-{ TExampleCMR }
-
 class operator TExampleCMR.Initialize(out Dest: TExampleCMR);
 begin
   Dest.KeyPairs := TDictionary<string, string>.Create;
-  //OutputDebugString(PChar('Initialized Record: ' + IntToHex(IntPtr(@Dest))));
-  //OutputDebugString(PChar('Created Object: ' + IntToHex(IntPtr(@Dest.KeyPairs))));
 end;
 
 class operator TExampleCMR.Finalize(var Dest: TExampleCMR);
 begin
-  //OutputDebugString(PChar('Destroying Object: ' + IntToHex(IntPtr(@Dest.KeyPairs))));
-  //OutputDebugString(PChar('Finalizing Record: ' + IntToHex(IntPtr(@Dest))));
   Dest.KeyPairs.Free;
 end;
 
 {$ENDIF}
-
-{ TNodeObject }
 
 constructor TNodeObject.Create;
 begin

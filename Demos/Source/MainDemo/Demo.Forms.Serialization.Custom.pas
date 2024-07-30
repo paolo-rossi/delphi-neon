@@ -94,8 +94,6 @@ type
     procedure actSerTTimeExecute(Sender: TObject);
   private
     function BuildConfig: INeonConfiguration;
-  public
-    { Public declarations }
   end;
 
 var
@@ -251,7 +249,6 @@ begin
   LObj := TClassOfNullables.Create;
   try
     LObj.Name := nil;
-    //LObj.Age := 50;
     LObj.Speed := TEnumSpeed.Medium;
 
     LObj.BirthDate := nil;
@@ -317,11 +314,8 @@ var
 begin
   LParam := TParameterContainer.Create;
   try
-    //LParam.ref := TReference.Create;
-    //LParam.ref.ref := '#components/schemas/Pets';
     LParam.name := 'Parameter Name';
     LParam.code := 200;
-    //LParam.ref.ref := 'http://doc.url';
     LParam.par._in := '/pets/findByStatus?status=available';
     LParam.par.name := 'Host';
     LParam.par.description := 'Host Name (Server)';

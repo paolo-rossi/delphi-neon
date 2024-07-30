@@ -151,8 +151,6 @@ type
 
 implementation
 
-{ TContact }
-
 constructor TContact.Create;
 begin
   FAddress := TAddress.Create;
@@ -163,8 +161,6 @@ begin
   FAddress.Free;
   inherited;
 end;
-
-{ TCustomer }
 
 procedure TCustomer.ClearContacts;
 var
@@ -187,8 +183,6 @@ begin
   inherited;
 end;
 
-{ TCustomersEnvelope }
-
 procedure TCustomersEnvelope.Clear;
 var
   LCustomer: TCustomer;
@@ -209,8 +203,6 @@ begin
 
   inherited;
 end;
-
-{ TUsersEnvelope }
 
 procedure TUsersEnvelope.Clear;
 var

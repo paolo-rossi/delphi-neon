@@ -98,8 +98,6 @@ implementation
 uses
   Neon.Core.Utils;
 
-{ TNullableStringSerializer }
-
 class function TNullableStringSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
   if AType = GetTargetInfo then
@@ -149,8 +147,6 @@ begin
   Result := TJSONString.Create(LValue.Value);
 end;
 
-{ TNullableBooleanSerializer }
-
 class function TNullableBooleanSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
   if AType = GetTargetInfo then
@@ -198,8 +194,6 @@ begin
   end;
   Result := TJSONUtils.GetJSONBool(LValue.Value);
 end;
-
-{ TNullableIntegerSerializer }
 
 class function TNullableIntegerSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
@@ -250,8 +244,6 @@ begin
   Result := TJSONNumber.Create(LValue.Value);
 end;
 
-{ TNullableInt64Serializer }
-
 class function TNullableInt64Serializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
   if AType = GetTargetInfo then
@@ -301,8 +293,6 @@ begin
   Result := TJSONNumber.Create(LValue.Value);
 end;
 
-{ TNullableDoubleSerializer }
-
 class function TNullableDoubleSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin
   if AType = GetTargetInfo then
@@ -351,8 +341,6 @@ begin
 
   Result := TJSONNumber.Create(LValue.Value);
 end;
-
-{ TNullableTDateTimeSerializer }
 
 class function TNullableTDateTimeSerializer.CanHandle(AType: PTypeInfo): Boolean;
 begin

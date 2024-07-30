@@ -93,8 +93,6 @@ uses
 
 {$R *.dfm}
 
-{ TfrmSerializationBase }
-
 constructor TfrmSerializationBase.CreateEx(AOwner: TComponent; AConfigForm: TframeConfiguration; AColor: TColor);
 begin
   inherited Create(AOwner);

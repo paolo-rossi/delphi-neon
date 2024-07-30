@@ -89,8 +89,6 @@ implementation
 uses
   Neon.Core.Utils;
 
-{ Nullable<T> }
-
 constructor Nullable<T>.Create(const Value: T);
 begin
   FValue := Value;

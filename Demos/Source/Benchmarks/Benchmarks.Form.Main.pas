@@ -104,8 +104,6 @@ type
 
     procedure BenchmarkFile(AObject: TEnvelope; AJSON: TJSONObject; AScale: Integer);
     function LoadData(const AFile: string; AScale: Integer): TJSONObject;
-  public
-    { Public declarations }
   end;
 
 var

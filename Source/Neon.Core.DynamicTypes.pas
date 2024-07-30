@@ -117,7 +117,6 @@ type
     procedure Add(AItem: TValue);
     procedure Clear;
     function Count: Integer;
-    // Enumerator functions
     function Current: TValue;
     function MoveNext: Boolean;
   end;
@@ -200,8 +199,6 @@ uses
   Neon.Core.Types,
   Neon.Core.Utils;
 
-{ TDynamicStream }
-
 constructor TDynamicStream.Create(AInstance: TObject; ALoadMethod, ASaveMethod: TRttiMethod);
 begin
   FInstance := AInstance;
@@ -255,8 +252,6 @@ procedure TDynamicStream.SaveToStream(AStream: TStream);
 begin
   FSaveMethod.Invoke(FInstance, [AStream]);
 end;
-
-{ TDynamicList }
 
 procedure TDynamicList.Add(AItem: TValue);
 begin
@@ -378,8 +373,6 @@ function TDynamicList.NewItem: TValue;
 begin
   Result := TRttiUtils.CreateNewValue(FItemType);
 end;
-
-{ TDynamicMap }
 
 procedure TDynamicMap.Add(const AKey, AValue: TValue);
 begin
@@ -504,7 +497,7 @@ begin
 
   // Optional methods (on Key object)
   case LKeyType.TypeKind of
-    tkClass{, tkRecord, tkInterface}:
+    tkClass:
     begin
       LToStringMethod := LKeyType.GetMethod('ToString');
       LFromStringMethod := LKeyType.GetMethod('FromString');
@@ -553,8 +546,6 @@ begin
     Result := '';
 end;
 
-{ TDynamicMap.TEnumerator }
-
 constructor TDynamicMap.TEnumerator.Create(AMethod: TRttiMethod; AInstance: TObject);
 begin
   // Memory creation, must destroy the object
@@ -584,8 +575,6 @@ function TDynamicMap.TEnumerator.MoveNext: Boolean;
 begin
   Result := FMoveNextMethod.Invoke(FInstance, []).AsBoolean;
 end;
-
-{ TDynamicNullable }
 
 constructor TDynamicNullable.Create(AInstance: TValue; ATypeInfoMethod, AHasValueMethod,
   AGetValueMethod, ASetValueMethod: TRttiMethod);

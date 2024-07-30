@@ -74,8 +74,6 @@ uses
   Demo.Forms.Serialization.Schema,
   Demo.Forms.Serialization.Complex;
 
-{ TMainForm }
-
 procedure TMainForm.CreateTab(const ACaption: string; AIcon: Integer; AColor: TColor; AClass: TfrmSerializationClass);
 var
   LTab: TTabSheet;

@@ -69,8 +69,6 @@ type
     procedure actSerMiscTValueExecute(Sender: TObject);
   private
     function BuildConfig: INeonConfiguration;
-  public
-    { Public declarations }
   end;
 
 var
@@ -163,9 +161,7 @@ var
 begin
   LValue := 42;
 
-  //SerializeSimple(10);
   SerializeSimple(LValue);
-  //SerializeSimple(TValue.From<TValue>(LValue));
 end;
 
 function TfrmSerializationSchema.BuildConfig: INeonConfiguration;

@@ -65,10 +65,6 @@ type
     procedure actStringListExecute(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure btnShowDetailsClick(Sender: TObject);
-  private
-    { Private declarations }
-  public
-    { Public declarations }
   end;
 
 var

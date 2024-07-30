@@ -77,8 +77,6 @@ type
     procedure FormCreate(Sender: TObject);
     procedure btnAvatarClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
-  private
-    { Private declarations }
   public
     procedure ClearImage;
     procedure EmptyDataSet;

@@ -59,8 +59,6 @@ begin
   ARegistry.RegisterSerializer(TDataSetSerializer);
 end;
 
-{ TDataSetSerializer }
-
 class function TDataSetSerializer.GetTargetInfo: PTypeInfo;
 begin
   Result := TDataSet.ClassInfo;
