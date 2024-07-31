@@ -1259,7 +1259,6 @@ end;
 class procedure TDataSetUtils.SetField(AField: TField; AJSON: TJSONValue; AUseUTCDate: Boolean);
 begin
   case AField.DataType of
-    //TFieldType.ftUnknown: ;
     TFieldType.ftString:          AField.AsString := AJSON.Value;
     TFieldType.ftSmallint:        AField.AsString := AJSON.Value;
     TFieldType.ftInteger:         AField.AsString := AJSON.Value;
@@ -1277,23 +1276,16 @@ begin
     TFieldType.ftBlob:            Base64ToBlobField(AJSON.Value, AField as TBlobField);
     TFieldType.ftMemo:            AField.AsString := AJSON.Value;
     TFieldType.ftGraphic:         (AField as TGraphicField).Value := TBase64.Decode(AJSON.Value);
-    //TFieldType.ftFmtMemo: ;
-    //TFieldType.ftParadoxOle: ;
-    //TFieldType.ftDBaseOle: ;
     TFieldType.ftTypedBinary:     AField.AsBytes := TBase64.Decode(AJSON.Value);
-    //TFieldType.ftCursor: ;
     TFieldType.ftFixedChar:       AField.AsString := AJSON.Value;
     TFieldType.ftWideString:      AField.AsString := AJSON.Value;
     TFieldType.ftLargeint:        AField.AsString := AJSON.Value;
     TFieldType.ftADT:             AField.AsBytes := TBase64.Decode(AJSON.Value);
     TFieldType.ftArray:           AField.AsBytes := TBase64.Decode(AJSON.Value);
-    //TFieldType.ftReference: ;
     TFieldType.ftDataSet:         JSONToDataSet(AJSON, (AField as TDataSetField).NestedDataSet, AUseUTCDate);
     TFieldType.ftOraBlob:         Base64ToBlobField(AJSON.Value, AField as TBlobField);
     TFieldType.ftOraClob:         Base64ToBlobField(AJSON.Value, AField as TBlobField);
     TFieldType.ftVariant:         Base64ToBlobField(AJSON.Value, AField as TBlobField);
-    //TFieldType.ftInterface: ;
-    //TFieldType.ftIDispatch: ;
     TFieldType.ftGuid:            AField.AsString := AJSON.Value;
     TFieldType.ftTimeStamp:       AField.AsDateTime := TJSONUtils.JSONToDateTime(AJSON.Value, AUseUTCDate);
     TFieldType.ftFMTBcd:          AField.AsBytes := TBase64.Decode(AJSON.Value);
@@ -1305,11 +1297,7 @@ begin
     TFieldType.ftShortint:        AField.AsString := AJSON.Value;
     TFieldType.ftByte:            AField.AsString := AJSON.Value;
     TFieldType.ftExtended:        AField.AsString := AJSON.Value;
-    //TFieldType.ftConnection: ;
-    //TFieldType.ftParams: ;
     TFieldType.ftStream:          AField.AsBytes := TBase64.Decode(AJSON.Value);
-    //TFieldType.ftTimeStampOffset: ;
-    //TFieldType.ftObject: ;
     TFieldType.ftSingle:          AField.AsString := AJSON.Value;
   end;
 
