@@ -1,8 +1,8 @@
 {******************************************************************************}
 {                                                                              }
-{  Neon: Serialization Library for Delphi                                      }
-{  Copyright (c) 2018 Paolo Rossi                                              }
-{  https://github.com/paolo-rossi/neon-library                                 }
+{  Neon: JSON Serialization library for Delphi                                 }
+{  Copyright (c) 2018  Paolo Rossi                                             }
+{  https://github.com/paolo-rossi/delphi-neon                                  }
 {                                                                              }
 {******************************************************************************}
 {                                                                              }
