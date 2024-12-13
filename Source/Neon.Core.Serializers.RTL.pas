@@ -100,6 +100,20 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Custom serializer for the TCollection class.
+  ///   Adds to the config for the TCollectionItem some exclusions
+  /// </summary>
+  TCollectionSerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    class procedure ChangeConfig(AConfig: INeonConfiguration); override;
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
 
 procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 
@@ -114,6 +128,7 @@ begin
   ARegistry.RegisterSerializer(TBytesSerializer);
   ARegistry.RegisterSerializer(TStreamSerializer);
   ARegistry.RegisterSerializer(TJSONValueSerializer);
+  ARegistry.RegisterSerializer(TCollectionSerializer);
 end;
 
 { TGUIDSerializer }
@@ -388,6 +403,86 @@ begin
 
   LVal := TBase64.Decode(AValue.Value);
   Result := TValue.From<TBytes>(LVal);
+end;
+
+{ TCollectionSerializer }
+
+class function TCollectionSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := TypeInfoIs(AType);
+end;
+
+class procedure TCollectionSerializer.ChangeConfig(AConfig: INeonConfiguration);
+begin
+  AConfig.Rules.ForClass<TCollectionItem>
+    .AddIgnoreMembers(['Collection', 'Index', 'DisplayName'])
+end;
+
+function TCollectionSerializer.Deserialize(AValue: TJSONValue;
+  const AData: TValue; ANeonObject: TNeonRttiObject;
+  AContext: IDeserializerContext): TValue;
+var
+  LColl: TCollection;
+  LItemColl: TCollectionItem;
+  LType: TRttiType;
+  LArray: TJSONArray;
+  LItem: TJSONValue;
+begin
+  if not (AValue is TJSONArray) then
+    raise ENeonException.Create('The JSON must be an array');
+
+  LArray := AValue as TJSONArray;
+  LColl := AData.AsType<TCollection>;
+  LType := TRttiUtils.Context.GetType(LColl.ItemClass);
+
+  for LItem in LArray do
+  begin
+    if LItem is TJSONNull then
+      Continue;
+
+    if not (LItem is TJSONObject) then
+      ENeonException.Create('The item must be an object');
+
+    LItemColl := LColl.Add;
+    AContext.ReadDataMember(LItem, LType, LItemColl);
+  end;
+
+  Result := TValue.From<TCollection>(LColl);
+end;
+
+class function TCollectionSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := TCollection.ClassInfo;
+end;
+
+function TCollectionSerializer.Serialize(const AValue: TValue;
+  ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+var
+  LIndex: Integer;
+  LColl: TCollection;
+  LItemColl: TCollectionItem;
+  LArray: TJSONArray;
+  LItem: TJSONValue;
+begin
+  LColl := AValue.AsType<TCollection>;
+
+  if LColl.Count > 0 then
+  begin
+    LArray := TJSONArray.Create;
+    for LIndex := 0 to LColl.Count - 1 do
+    begin
+      LItemColl := LColl.Items[LIndex];
+      LItem := AContext.WriteDataMember(LItemColl, True);
+      LArray.AddElement(LItem);
+    end;
+    Result := LArray;
+  end
+  else
+  begin
+    if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
+      Exit(nil);
+    Result := TJSONArray.Create;
+  end;
 end;
 
 end.

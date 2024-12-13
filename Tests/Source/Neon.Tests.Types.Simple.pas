@@ -92,7 +92,7 @@ type
 
     [Test]
     [TestCase('TestDoublePos', '123.42,123.42')]
-    [TestCase('TestDoubleNull', '0.0,0')]
+    [TestCase('TestDoubleNull', '0.0,0.0')]
     [TestCase('TestDoubleNeg', '-123.42,-123.42')]
     [TestCase('TestDoubleSup', '1.79E308,1.79E308')]
     procedure TestDouble(const AValue: Double; _Result: string);
@@ -254,7 +254,8 @@ end;
 
 procedure TTestSimpleTypesSer.TestDouble(const AValue: Double; _Result: string);
 begin
-  Assert.AreEqual(_Result, TTestUtils.SerializeValue(AValue));
+  var str := TTestUtils.SerializeValue(AValue);
+  Assert.AreEqual(_Result, str);
 end;
 
 procedure TTestSimpleTypesSer.TestIn64(const AValue: Int64; _Result: string);

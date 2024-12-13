@@ -52,7 +52,8 @@ uses
   Neon.Tests.Config.AutoCreate in 'Source\Neon.Tests.Config.AutoCreate.pas',
   Neon.Tests.Attributes.Factory in 'Source\Neon.Tests.Attributes.Factory.pas',
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
-  Neon.Tests.Config.IgnoreMembers in 'Source\Neon.Tests.Config.IgnoreMembers.pas';
+  Neon.Tests.Config.IgnoreMembers in 'Source\Neon.Tests.Config.IgnoreMembers.pas',
+  Neon.Tests.ConfigTypes in 'Source\Neon.Tests.ConfigTypes.pas';
 
 var
   LRunner : ITestRunner;
