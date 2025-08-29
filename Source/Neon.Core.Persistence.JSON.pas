@@ -1908,12 +1908,10 @@ begin
 
   if AParam.JSONValue is TJSONString then
   begin
-    try
-      LDateTime := ISO8601ToDate(AParam.JSONValue.Value, FConfig.UseUTCDate);
+    if TryISO8601ToDate(AParam.JSONValue.Value, LDateTime, FConfig.UseUTCDate) then
       Exit(TValue.From<Variant>(VarFromDateTime(LDateTime)));
-    except
-      Exit(TValue.From<Variant>(AParam.JSONValue.Value));
-    end;
+
+    Exit(TValue.From<Variant>(AParam.JSONValue.Value));
   end;
 end;
 
