@@ -387,6 +387,15 @@ begin
   LVal := AValue.AsType<TBytes>;
   LFormat := ANeonObject.GetAttribute<NeonFormatAttribute>;
 
+  if Length(LVal) = 0 then
+  begin
+    case ANeonObject.NeonInclude.Value of
+      IncludeIf.NotEmpty, IncludeIf.NotDefault: Exit(nil);
+    else
+      Exit(TJSONString.Create(''));
+    end;
+  end;
+
   if IsFormatValue(LFormat, 'native') then
     Exit(AContext.WriteDataMember(AValue, False));
 
