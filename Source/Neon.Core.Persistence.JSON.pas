@@ -2109,6 +2109,9 @@ class function TNeon.Print(AJSONValue: TJSONValue; APretty: Boolean): string;
 var
   LWriter: TStringWriter;
 begin
+  if not Assigned(AJSONValue) then
+    Exit('');
+
   LWriter := TStringWriter.Create;
   try
     TNeon.PrintToWriter(AJSONValue, LWriter, APretty{$IFDEF HAS_TOJSON_OPTIONS}, OUTPUT_DEFAULT{$ENDIF});
@@ -2123,6 +2126,9 @@ class function TNeon.Print(AJSONValue: TJSONValue; APretty: Boolean; AOutputOpti
 var
   LWriter: TStringWriter;
 begin
+  if not Assigned(AJSONValue) then
+    Exit('');
+
   LWriter := TStringWriter.Create;
   try
     TNeon.PrintToWriter(AJSONValue, LWriter, APretty, AOutputOptions);
@@ -2137,6 +2143,9 @@ class procedure TNeon.PrintToStream(AJSONValue: TJSONValue; AStream: TStream; AP
 var
   LWriter: TStreamWriter;
 begin
+  if not Assigned(AJSONValue) then
+    Exit;
+
   LWriter := TStreamWriter.Create(AStream);
   try
     TNeon.PrintToWriter(AJSONValue, LWriter, APretty{$IFDEF HAS_TOJSON_OPTIONS}, OUTPUT_DEFAULT{$ENDIF});
@@ -2150,6 +2159,9 @@ class procedure TNeon.PrintToStream(AJSONValue: TJSONValue; AStream: TStream; AP
 var
   LWriter: TStreamWriter;
 begin
+  if not Assigned(AJSONValue) then
+    Exit;
+
   LWriter := TStreamWriter.Create(AStream);
   try
     TNeon.PrintToWriter(AJSONValue, LWriter, APretty, AOutputOptions);
@@ -2205,10 +2217,7 @@ var
 begin
   LJSON := ValueToJSON(AValue, AConfig);
   try
-    if Assigned(LJSON) then
-      Result := Print(LJSON, AConfig.GetPrettyPrint)
-    else
-      Result := '';
+    Result := Print(LJSON, AConfig.GetPrettyPrint);
   finally
     LJSON.Free;
   end;
