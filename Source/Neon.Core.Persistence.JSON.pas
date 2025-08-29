@@ -959,14 +959,14 @@ begin
     IncludeIf.Always, IncludeIf.CustomFunction:
     begin
       if ANullable.HasValue then
-        Result := WriteDataMember(ANullable.GetValue)
+        Result := WriteDataMember(ANullable.GetValue, True, ANeonObject)
       else
         Result := TJSONNull.Create;
     end;
     IncludeIf.NotNull, IncludeIf.NotEmpty, IncludeIf.NotDefault:
     begin
       if ANullable.HasValue then
-        Result := WriteDataMember(ANullable.GetValue);
+        Result := WriteDataMember(ANullable.GetValue, True, ANeonObject);
     end;
   end;
 end;
