@@ -47,7 +47,7 @@ type
   public
     MemberName: string;
     Operation: TNeonOperation;
-    constructor Create(const AMemberName: string; AOperation: TNeonOperation);
+    constructor Create(const AMemberName: string);
   end;
 
 type
@@ -76,10 +76,9 @@ implementation
 
 { TNeonIgnoreIfContext }
 
-constructor TNeonIgnoreIfContext.Create(const AMemberName: string; AOperation: TNeonOperation);
+constructor TNeonIgnoreIfContext.Create(const AMemberName: string);
 begin
   MemberName := AMemberName;
-  Operation := AOperation;
 end;
 
 end.

@@ -69,7 +69,7 @@ function TDataSetSerializer.Deserialize(AValue: TJSONValue; const AData:
     TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
 begin
   Result := AData;
-  TDataSetUtils.JSONToDataSet(AValue, AData.AsObject as TDataSet, AContext.GetConfiguration.GetUseUTCDate);
+  TDataSetUtils.JSONToDataSet(AValue, AData.AsObject as TDataSet, AContext.GetSettings.UseUTCDate);
 end;
 
 function TDataSetSerializer.Serialize(const AValue: TValue; ANeonObject:
@@ -83,7 +83,7 @@ begin
     if LDataSet.IsEmpty then
       Exit(nil);
 
-  Result := TDataSetUtils.DataSetToJSONArray(LDataSet, AContext.GetConfiguration.GetUseUTCDate);
+  Result := TDataSetUtils.DataSetToJSONArray(LDataSet, AContext.GetSettings.UseUTCDate);
 end;
 
 end.

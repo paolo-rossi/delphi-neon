@@ -123,14 +123,14 @@ end;
 procedure TTestReferenceTypes.TestPersonNil(const AMethod: string);
 begin
   Assert.AreEqual('{}',
-    TTestUtils.SerializeObject(nil, TNeonConfiguration.Default));
+    TTestUtils.SerializeObject(nil, TNeonSettings.Default));
 end;
 
 procedure TTestReferenceTypes.TestPersonPretty(const AMethod: string);
 begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
-    TTestUtils.SerializeObject(FPerson1, TNeonConfiguration.Pretty));
+    TTestUtils.SerializeObject(FPerson1, TNeonSettings.Pretty));
 end;
 
 procedure TTestReferenceTypes.TestPersonUnicode(const AMethod: string);

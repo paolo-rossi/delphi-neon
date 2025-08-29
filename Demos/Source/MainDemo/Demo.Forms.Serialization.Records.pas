@@ -164,8 +164,8 @@ var
 begin
   LVariantObj := TVariantEntity.Create;
   try
-    DeserializeObject(LVariantObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LVariantObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LVariantObj, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LVariantObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LVariantObj.Free;
   end;

@@ -142,7 +142,7 @@ begin
   LConfig := TNeonConfiguration.Default;
   LConfig.SetIgnoreMembers(LIgnoreList);
 
-  Assert.AreEqual(_Result, TTestUtils.SerializeObject(FTestObj, LConfig));
+  Assert.AreEqual(_Result, TTestUtils.SerializeObject(FTestObj, LConfig.BuildSettings));
 end;
 
 procedure TTestIgnoreMembers.TestIgnoreType(const AMemberList, _Result: string);
@@ -155,9 +155,9 @@ begin
   LConfig := TNeonConfiguration.Default
     .Rules.ForClass<TTestClass>
       .SetIgnoreMembers(LIgnoreList)
-      .ApplyConfig;
+    .BackToConfig;
 
-  Assert.AreEqual(_Result, TTestUtils.SerializeObject(FTestObj, LConfig));
+  Assert.AreEqual(_Result, TTestUtils.SerializeObject(FTestObj, LConfig.BuildSettings));
 end;
 
 procedure TTestIgnoreMembers.TestStdType(const AMemberList, _Result: string);
@@ -170,9 +170,9 @@ begin
   LConfig := TNeonConfiguration.Default
     .Rules.ForClass<TTestClass>
       .SetIgnoreMembers(LIgnoreList)
-      .ApplyConfig;
+    .BackToConfig;
 
-  Assert.AreEqual(_Result, TTestUtils.SerializeObject(FTestStd, LConfig));
+  Assert.AreEqual(_Result, TTestUtils.SerializeObject(FTestStd, LConfig.BuildSettings));
 end;
 
 initialization

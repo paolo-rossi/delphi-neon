@@ -1,14 +1,20 @@
 inherited frmSerializationDelphi: TfrmSerializationDelphi
   Caption = 'frmSerializationDelphi'
   ClientWidth = 971
+  StyleElements = [seFont, seClient, seBorder]
   OnCreate = FormCreate
-  ExplicitWidth = 983
+  ExplicitWidth = 987
   TextHeight = 13
   inherited memoLog: TMemo
     Width = 971
+    StyleElements = [seFont, seClient, seBorder]
     ExplicitWidth = 967
   end
   inherited pnlLeft: TPanel
+    StyleElements = [seFont, seClient, seBorder]
+    inherited pnlSerialize: TPanel
+      StyleElements = [seFont, seClient, seBorder]
+    end
     inherited catSerialize: TCategoryButtons
       Categories = <
         item
@@ -30,6 +36,9 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
             end>
         end>
     end
+    inherited memoSerialize: TMemo
+      StyleElements = [seFont, seClient, seBorder]
+    end
     object btnShowDetailsLeft: TButton
       Left = 19
       Top = 174
@@ -48,9 +57,11 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
   end
   inherited pnlRight: TPanel
     Width = 468
+    StyleElements = [seFont, seClient, seBorder]
     ExplicitWidth = 464
     inherited pnlDeserialize: TPanel
       Width = 468
+      StyleElements = [seFont, seClient, seBorder]
       ExplicitWidth = 464
     end
     inherited catDeserialize: TCategoryButtons
@@ -76,6 +87,7 @@ inherited frmSerializationDelphi: TfrmSerializationDelphi
     end
     inherited memoDeserialize: TMemo
       Width = 315
+      StyleElements = [seFont, seClient, seBorder]
       ExplicitWidth = 311
     end
     object btnShowDetails: TButton

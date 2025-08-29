@@ -113,8 +113,9 @@ begin
   LConfig := TNeonConfiguration.Default
     .Rules.ForClass<TTestClass>
       .SetIgnoreMembers(LIgnoreList)
-      .ApplyConfig;
-  TTestUtils.SerializeObject(FObj, LConfig);
+    .BackToConfig;
+
+  TTestUtils.SerializeObject(FObj, LConfig.BuildSettings);
 
   Assert.Pass('Typed Config');
 end;

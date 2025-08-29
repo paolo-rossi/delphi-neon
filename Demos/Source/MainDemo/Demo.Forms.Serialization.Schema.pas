@@ -54,7 +54,7 @@ type
     procedure actSerMiscTValueDictExecute(Sender: TObject);
     procedure actSerMiscTValueExecute(Sender: TObject);
   private
-    function BuildConfig: INeonConfiguration;
+    function BuildConfig: TNeonSettings;
   public
     { Public declarations }
   end;
@@ -153,9 +153,9 @@ begin
   //SerializeSimple(TValue.From<TValue>(LValue));
 end;
 
-function TfrmSerializationSchema.BuildConfig: INeonConfiguration;
+function TfrmSerializationSchema.BuildConfig: TNeonSettings;
 begin
-  Result := frmConfiguration.BuildSerializerConfig([TSerializersType.CustomNeon]);
+  Result := frmConfiguration.BuildSerializerSettings([TSerializersType.CustomNeon]);
 end;
 
 end.

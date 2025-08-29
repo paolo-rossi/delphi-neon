@@ -89,8 +89,8 @@ var
 begin
   LObj := TFilterClass.Create;
   try
-    DeserializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LObj.Free;
   end;
@@ -102,8 +102,8 @@ var
 begin
   LPerson := TPerson.Create;
   try
-    DeserializeObject(LPerson, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LPerson, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LPerson, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LPerson, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LPerson.Free;
   end;
@@ -115,8 +115,8 @@ var
 begin
   LSimple := TCaseClass.Create;
   try
-    DeserializeObject(LSimple, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LSimple, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LSimple, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LSimple, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LSimple.Free;
   end;
@@ -128,8 +128,8 @@ var
 begin
   LMap := TObjectDictionary<TAddress, TNote>.Create([doOwnsKeys, doOwnsValues]);
   try
-    DeserializeObject(LMap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LMap, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LMap, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LMap, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LMap.Free;
   end;
@@ -141,8 +141,8 @@ var
 begin
   LList := TList<Double>.Create;
   try
-    DeserializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LList, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LList, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LList.Free;
   end;
@@ -154,8 +154,8 @@ var
 begin
   LList := TAddressBook.Create;
   try
-    DeserializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LList, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LList, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LList.Free;
   end;
@@ -167,8 +167,8 @@ var
 begin
   LStreamable := TStreamableSample.Create;
   try
-    DeserializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LStreamable, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LStreamable, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LStreamable.Free;
   end;
@@ -180,8 +180,8 @@ var
 begin
   LStreamable := TStreamableComposition.Create;
   try
-    DeserializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LStreamable, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LStreamable, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LStreamable.Free;
   end;
@@ -205,7 +205,7 @@ begin
     LPerson.Map.Add('third', TNote.Create(Now, 'Third Object'));
     LPerson.Map.Add('fourth', TNote.Create(Now, 'Fourth Object'));
 
-    SerializeObject(LPerson, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LPerson, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LPerson.Free;
   end;
@@ -217,7 +217,7 @@ var
 begin
   LObj := TFilterClass.DefaultValues;
   try
-    SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LObj, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LObj.Free;
   end;
@@ -229,7 +229,7 @@ var
 begin
   LSimple := TCaseClass.DefaultValues;
   try
-    SerializeObject(LSimple, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LSimple, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LSimple.Free;
   end;
@@ -243,7 +243,7 @@ begin
   try
     LMap.Add(TAddress.Create('Piacenza', 'Italy'), TNote.Create(Now, 'Lorem ipsum dolor sit amet'));
     LMap.Add(TAddress.Create('Dublin', 'Ireland'), TNote.Create(Now + 0.2, 'Fusce in libero posuere'));
-    SerializeObject(LMap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LMap, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LMap.Free;
   end;
@@ -258,7 +258,7 @@ begin
     LList.Add(34.9);
     LList.Add(10.0);
 
-    SerializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LList.Free;
   end;
@@ -276,7 +276,7 @@ begin
     LBook.NoteList.Add('Note 2');
     LBook.NoteList.Add('Note 3');
 
-    SerializeObject(LBook, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LBook, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LBook.Free;
   end;
@@ -289,7 +289,7 @@ begin
   LStreamable := TStreamableSample.Create;
   try
     LStreamable.AsString := 'Paolo';
-    SerializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LStreamable.Free;
   end;
@@ -304,7 +304,7 @@ begin
     LStreamable.InValue := 233;
     LStreamable.Stream.AsString := 'Paolo';
 
-    SerializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LStreamable, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LStreamable.Free;
   end;

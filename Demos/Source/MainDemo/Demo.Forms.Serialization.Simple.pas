@@ -126,8 +126,8 @@ var
 begin
   LTypeClass := TTypeClass.Create;
   try
-    DeserializeObject(LTypeClass, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LTypeClass, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LTypeClass, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LTypeClass, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LTypeClass.Free;
   end;
@@ -139,8 +139,8 @@ var
 begin
   LVariantObj := TVariantEntity.Create;
   try
-    DeserializeObject(LVariantObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LVariantObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LVariantObj, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LVariantObj, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LVariantObj.Free;
   end;
@@ -187,7 +187,7 @@ var
 begin
   LTypeObj := TTypeClass.Create;
   try
-    SerializeObject(LTypeObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LTypeObj, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LTypeObj.Free;
   end;
@@ -206,7 +206,7 @@ begin
   LVariantObj.Prop5 := Now();
 
   try
-    SerializeObject(LVariantObj, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LVariantObj, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LVariantObj.Free;
   end;

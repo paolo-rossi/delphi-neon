@@ -1,7 +1,15 @@
 inherited frmSerializationSchema: TfrmSerializationSchema
   Caption = 'frmSerializationSchema'
+  StyleElements = [seFont, seClient, seBorder]
   TextHeight = 13
+  inherited memoLog: TMemo
+    StyleElements = [seFont, seClient, seBorder]
+  end
   inherited pnlLeft: TPanel
+    StyleElements = [seFont, seClient, seBorder]
+    inherited pnlSerialize: TPanel
+      StyleElements = [seFont, seClient, seBorder]
+    end
     inherited catSerialize: TCategoryButtons
       Categories = <
         item
@@ -35,10 +43,15 @@ inherited frmSerializationSchema: TfrmSerializationSchema
             end>
         end>
     end
+    inherited memoSerialize: TMemo
+      StyleElements = [seFont, seClient, seBorder]
+    end
   end
   inherited pnlRight: TPanel
+    StyleElements = [seFont, seClient, seBorder]
     inherited pnlDeserialize: TPanel
       Visible = False
+      StyleElements = [seFont, seClient, seBorder]
     end
     inherited catDeserialize: TCategoryButtons
       Categories = <
@@ -63,6 +76,9 @@ inherited frmSerializationSchema: TfrmSerializationSchema
               Action = actDesMiscTValueDict
             end>
         end>
+    end
+    inherited memoDeserialize: TMemo
+      StyleElements = [seFont, seClient, seBorder]
     end
   end
   inherited aclMain: TActionList

@@ -183,19 +183,19 @@ type
     /// </summary>
     function WriteDataMember(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; overload;
   public
-    constructor Create(const AConfig: INeonConfiguration);
+    constructor Create(const ASettings: TNeonSettings);
 
     /// <summary>
     ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType
     /// </summary>
     class function TypeToJSONSchema(AType: TRttiType): TJSONObject; overload;
-    class function TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration): TJSONObject; overload;
+    class function TypeToJSONSchema(AType: TRttiType; AConfig: TNeonSettings): TJSONObject; overload;
 
     /// <summary>
     ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType
     /// </summary>
     class function ClassToJSONSchema(AClass: TClass): TJSONObject; overload;
-    class function ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration): TJSONObject; overload;
+    class function ClassToJSONSchema(AClass: TClass; AConfig: TNeonSettings): TJSONObject; overload;
   end;
 
 implementation
@@ -207,17 +207,17 @@ uses
 
 class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass): TJSONObject;
 begin
-  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), TNeonConfiguration.Default);
+  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), TNeonSettings.Default);
 end;
 
-class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration): TJSONObject;
+class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; AConfig: TNeonSettings): TJSONObject;
 begin
   Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), AConfig);
 end;
 
-constructor TNeonSchemaGenerator.Create(const AConfig: INeonConfiguration);
+constructor TNeonSchemaGenerator.Create(const ASettings: TNeonSettings);
 begin
-  inherited Create(AConfig);
+  inherited Create(ASettings);
   FOperation := TNeonOperation.Serialize;
 end;
 
@@ -245,7 +245,7 @@ begin
   Result := Assigned(AStream);
 end;
 
-class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration): TJSONObject;
+class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AConfig: TNeonSettings): TJSONObject;
 var
   LGenerator: TNeonSchemaGenerator;
 begin
@@ -259,7 +259,7 @@ end;
 
 class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType): TJSONObject;
 begin
-  Result := TypeToJSONSchema(AType, TNeonConfiguration.Default);
+  Result := TypeToJSONSchema(AType, TNeonSettings.Default);
 end;
 
 function TNeonSchemaGenerator.WriteArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
@@ -282,7 +282,7 @@ function TNeonSchemaGenerator.WriteDataMember(AType: TRttiType): TJSONObject;
 var
   LNeonObject: TNeonRttiObject;
 begin
-  LNeonObject := TNeonRttiObject.Create(AType, FOperation);
+  LNeonObject := TNeonRttiObject.Create(FGlobalSettings, AType);
   LNeonObject.ParseAttributes;
   try
     Result := WriteDataMember(AType, LNeonObject);
@@ -450,7 +450,7 @@ begin
 
   LEnumArray := TJSONArray.Create;
   for LIndex := LTypeData.MinValue to LTypeData.MaxValue do
-    LEnumArray.Add(TTypeInfoUtils.EnumToString(AType.Handle, LIndex, ANeonObject));
+    LEnumArray.Add(ANeonObject.EnumToString(AType.Handle, LIndex));
 
   Result := TJSONObject.Create
     .AddPair('type', 'string')
@@ -486,24 +486,20 @@ end;
 procedure TNeonSchemaGenerator.WriteMembers(AType: TRttiType; AResult: TJSONObject);
 var
   LJSONValue: TJSONObject;
-  LMembers: TNeonRttiMembers;
+  LADT: TNeonRttiADT;
   LNeonMember: TNeonRttiMember;
 begin
-  LMembers := GetNeonMembers(AType);
-  LMembers.FilterSerialize(nil);
+  LADT := GetNeonADT(AType);
 
-  for LNeonMember in LMembers do
+  for LNeonMember in LADT.FilterSer(nil) do
   begin
-    if LNeonMember.Serializable then
-    begin
-      try
-        LJSONValue := WriteDataMember(LNeonMember.RttiType, LNeonMember);
-        if Assigned(LJSONValue) then
-          (AResult as TJSONObject).AddPair(GetNameFromMember(LNeonMember), LJSONValue);
-      except
-        LogError(Format('Error converting property [%s] of object [%s]',
-          [LNeonMember.Name, AType.Name]));
-      end;
+    try
+      LJSONValue := WriteDataMember(LNeonMember.RttiType, LNeonMember);
+      if Assigned(LJSONValue) then
+        (AResult as TJSONObject).AddPair(LNeonMember.ComputedName, LJSONValue);
+    except
+      AddError(Format('Error converting property [%s] of object [%s]',
+        [LNeonMember.Name, AType.Name]));
     end;
   end;
 end;

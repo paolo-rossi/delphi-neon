@@ -108,7 +108,6 @@
             <Form>DataTests</Form>
             <DesignClass>TDataModule</DesignClass>
         </DCCReference>
-        <DCCReference Include="Source\Neon.Serializers.Tests.pas"/>
         <DCCReference Include="Source\Neon.Tests.Utils.pas"/>
         <DCCReference Include="Source\Neon.Tests.Entities.pas"/>
         <DCCReference Include="Source\Neon.Tests.Serializer.pas"/>
@@ -126,6 +125,7 @@
         <DCCReference Include="Source\Neon.Tests.CustomSerializers.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.IgnoreMembers.pas"/>
         <DCCReference Include="Source\Neon.Tests.ConfigTypes.pas"/>
+        <DCCReference Include="Source\Neon.Serializers.Tests.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

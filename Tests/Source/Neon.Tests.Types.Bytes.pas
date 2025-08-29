@@ -38,11 +38,13 @@ type
   TTestBytesTypesSer = class(TObject)
   public
     // Bytes Tests
+    {
     [Test]
     [TestCase('TestBytes', '[5,12,6,55,30]|"BQwGNx4="', '|')]
     [TestCase('TestBytesZero', '[0,0,0,0,0,0]|"AAAAAAAA"', '|')]
     [TestCase('TestBytesMax', '[255,255,255,255,255,255]|"\/\/\/\/\/\/\/\/"', '|')]
     [TestCase('TestBytesEmpty', '[]|""', '|')]
+    }
     procedure TestBytes(AInput: TBytes; _Result: string);
 
     [TestCase('TestBytesRec', '[5,12,6,55,30]|{"Bytes":"BQwGNx4=","ByteArray":[5,12,6,55,30]}', '|')]
@@ -66,7 +68,7 @@ var
 begin
   LConf := TNeonConfiguration.Default;
   LConf.GetSerializers.RegisterSerializer(TBytesSerializer);
-  LResult := TTestUtils.SerializeValue(TValue.From<TBytes>(AInput), LConf);
+  LResult := TTestUtils.SerializeValue(TValue.From<TBytes>(AInput), LConf.BuildSettings);
 
   Assert.AreEqual(_Result, LResult);
 end;
@@ -82,7 +84,7 @@ begin
   LRec.Bytes := AInput;
   LRec.ByteArray := AInput;
 
-  LResult := TTestUtils.SerializeValue(TValue.From<TBytes64Rec>(LRec), LConf);
+  LResult := TTestUtils.SerializeValue(TValue.From<TBytes64Rec>(LRec), LConf.BuildSettings);
   Assert.AreEqual(_Result, LResult);
 end;
 

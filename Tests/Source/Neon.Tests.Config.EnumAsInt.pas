@@ -73,7 +73,7 @@ var
   LConfig: INeonConfiguration;
 begin
   LConfig := TNeonConfiguration.Default.SetEnumAsInt(True);
-  Assert.AreEqual(_Result, TTestUtils.DeserializeValueTo<TDuplicates>(AValue, lConfig));
+  Assert.AreEqual(_Result, TTestUtils.DeserializeValueTo<TDuplicates>(AValue, LConfig.BuildSettings));
 end;
 
 procedure TTestConfigEnumAsInt.TestSerialize(const AValue: TDuplicates; _Result: string);
@@ -81,7 +81,7 @@ var
   LConfig: INeonConfiguration;
 begin
   LConfig := TNeonConfiguration.Default.SetEnumAsInt(True);
-  Assert.AreEqual(_Result, TTestUtils.SerializeValue(TValue.From<TDuplicates>(aValue), LConfig));
+  Assert.AreEqual(_Result, TTestUtils.SerializeValue(TValue.From<TDuplicates>(aValue), LConfig.BuildSettings));
 end;
 
 procedure TTestConfigEnumAsInt.TestReadOutOfBounds(const AValue: String; _Result: TDuplicates);
@@ -90,7 +90,7 @@ var
 begin
   LConfig := TNeonConfiguration.Default.SetEnumAsInt(True);
   Assert.WillRaise(
-    procedure begin TTestUtils.DeserializeValueTo<TDuplicates>(AValue, lConfig) end,
+    procedure begin TTestUtils.DeserializeValueTo<TDuplicates>(AValue, LConfig.BuildSettings) end,
     ENeonException
   );
 end;

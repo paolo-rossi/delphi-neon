@@ -164,25 +164,25 @@ type
   public
     [TestCase('TestObj', '{"Obj":{"Breed":"Bulldog"}}|Bulldog', '|')]
     procedure TestObjType(const AInput, ABreed: string);
-  public
+
     [TestCase('TestArrayItemType', '{"Pets":[{"$Type":0,"Name":"Ant"},{"$Type":1,"Name":"Cat"},{"$Type":3,"Name":"WatchDog"}],"OtherPets":[{"$Type":1,"Name":"Cat"},{"$Type":3,"Name":"WatchDog"},{"$Type":0,"Name":"Ant"}]}', '|')]
     procedure TestArrayItemType(const AInput: string);
 
     [TestCase('TestArrayItemValues', '{"Pets":[{"$Type":3,"Name":"WatchDog","Race":"German shepherd","Strength":12},{"$Type":3,"Name":"WatchDog","Race":"Bulldog","Strength":14}]}|26', '|')]
     procedure TestArrayItemValues(const AInput: string; _Result: Integer);
-  public
+
     [TestCase('TestStaticItemType', '{"Pets":[{"$Type":0,"Name":"Ant"},{"$Type":1,"Name":"Cat","Mood":"Sleepy"},{"$Type":3,"Name":"WatchDog","Breed":"Bulldog","Strength":12}]}', '|')]
     procedure TestStaticItemType(const AInput: string);
 
     [TestCase('TestStaticItemValues', '{"Pets":[{"$Type":0,"Name":"Ant"},{"$Type":3,"Name":"WatchDog","Race":"German shepherd","Strength":12},{"$Type":3,"Name":"WatchDog","Race":"Bulldog","Strength":14}]}|26', '|')]
     procedure TestStaticItemValues(const AInput: string; _Result: Integer);
-  public
+
     [TestCase('TestListItemType', '{"Pets":[{"$Type":0,"Name":"Ant"},{"$Type":1,"Name":"Cat","Mood":"Sleepy"},{"$Type":3,"Name":"WatchDog","Breed":"Bulldog","Strength":12}]}', '|')]
     procedure TestListItemType(const AInput: string);
 
     [TestCase('TestListItemValues', '{"Pets":[{"$Type":3,"Name":"WatchDog","Race":"German shepherd","Strength":12},{"$Type":3,"Name":"WatchDog","Race":"Bulldog","Strength":14}]}|26', '|')]
     procedure TestListItemValues(const AInput: string; _Result: Integer);
-  public
+
     [TestCase('TestDictItemType', '{"Pets":{"ant":{"$Type":0,"Name":"Ant"},"cat":{"$Type":1,"Name":"Cat","Mood":"Sleepy"},"watchdog":{"$Type":3,"Name":"WatchDog","Breed":"Bulldog","Strength":12}}}', '|')]
     procedure TestDictItemType(const AInput: string);
 
@@ -223,7 +223,7 @@ end;
 
 procedure TTestItemFactory.TestArrayItemType(const AInput: string);
 begin
-  TTestUtils.DeserializeObject(AInput, FItemsArray, FNeonConfig);
+  TTestUtils.DeserializeObject(AInput, FItemsArray, FNeonConfig.BuildSettings);
 
   Assert.IsTrue(FItemsArray.HasItemOfType(FItemsArray.Pets, TCat));
   Assert.IsTrue(FItemsArray.HasItemOfType(FItemsArray.Pets, TWatchDog));
@@ -239,7 +239,7 @@ var
   LResult: Integer;
 begin
   LResult := 0;
-  TTestUtils.DeserializeObject(AInput, FItemsArray, FNeonConfig);
+  TTestUtils.DeserializeObject(AInput, FItemsArray, FNeonConfig.BuildSettings);
 
   for LPet in FItemsArray.Pets do
     if LPet is TWatchDog then
@@ -249,7 +249,7 @@ end;
 
 procedure TTestItemFactory.TestDictItemType(const AInput: string);
 begin
-  TTestUtils.DeserializeObject(AInput, FItemsDict, FNeonConfig);
+  TTestUtils.DeserializeObject(AInput, FItemsDict, FNeonConfig.BuildSettings);
   Assert.IsTrue(FItemsDict.HasItemOfType(TCat));
   Assert.IsTrue(FItemsDict.HasItemOfType(TWatchDog));
 end;
@@ -260,7 +260,7 @@ var
   LResult: Integer;
 begin
   LResult := 0;
-  TTestUtils.DeserializeObject(AInput, FItemsDict, FNeonConfig);
+  TTestUtils.DeserializeObject(AInput, FItemsDict, FNeonConfig.BuildSettings);
 
   for LPet in FItemsDict.Pets do
     if LPet.Value is TWatchDog then
@@ -270,7 +270,7 @@ end;
 
 procedure TTestItemFactory.TestListItemType(const AInput: string);
 begin
-  TTestUtils.DeserializeObject(AInput, FItemsList, FNeonConfig);
+  TTestUtils.DeserializeObject(AInput, FItemsList, FNeonConfig.BuildSettings);
   Assert.IsTrue(FItemsList.HasItemOfType(TCat));
   Assert.IsTrue(FItemsList.HasItemOfType(TWatchDog));
 end;
@@ -281,7 +281,7 @@ var
   LResult: Integer;
 begin
   LResult := 0;
-  TTestUtils.DeserializeObject(AInput, FItemsList, FNeonConfig);
+  TTestUtils.DeserializeObject(AInput, FItemsList, FNeonConfig.BuildSettings);
 
   for LPet in FItemsList.Pets do
     if LPet is TWatchDog then
@@ -291,14 +291,14 @@ end;
 
 procedure TTestItemFactory.TestObjType(const AInput, ABreed: string);
 begin
-  TTestUtils.DeserializeObject(AInput, FTestObj, FNeonConfig);
-  Assert.IsTrue(FTestObj.Obj is TDog);
-  Assert.IsTrue((FTestObj.Obj as TDog).Breed = ABreed);
+  TTestUtils.DeserializeObject(AInput, FTestObj, FNeonConfig.BuildSettings);
+  Assert.IsTrue(FTestObj.Obj is TDog, 'Object must be TDog');
+  Assert.IsTrue((FTestObj.Obj as TDog).Breed = ABreed, 'Breed is ' + ABreed);
 end;
 
 procedure TTestItemFactory.TestStaticItemType(const AInput: string);
 begin
-  TTestUtils.DeserializeObject(AInput, FItemsStatic, FNeonConfig);
+  TTestUtils.DeserializeObject(AInput, FItemsStatic, FNeonConfig.BuildSettings);
   Assert.IsTrue(FItemsStatic.Pets[1] is TCat);
   Assert.IsTrue(FItemsStatic.Pets[2] is TWatchDog);
 end;
@@ -309,7 +309,7 @@ var
   LResult: Integer;
 begin
   LResult := 0;
-  TTestUtils.DeserializeObject(AInput, FItemsStatic, FNeonConfig);
+  TTestUtils.DeserializeObject(AInput, FItemsStatic, FNeonConfig.BuildSettings);
 
   for LPet in FItemsStatic.Pets do
     if LPet is TWatchDog then

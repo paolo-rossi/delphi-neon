@@ -51,22 +51,22 @@ type
     frmConfiguration: TframeConfiguration;
     procedure Log(const ALog: string; AWhere: TStrings); overload;
     procedure LogError(const ALog: string); overload;
-    procedure LogError(ALog: TStrings); overload;
+    procedure LogError(ALog: TArray<string>); overload;
 
-    procedure SerializeObject(AObject: TObject; AWhere: TStrings; AConfig: INeonConfiguration);
-    procedure DeserializeObject(AObject: TObject; AWhere: TStrings; AConfig: INeonConfiguration);
+    procedure SerializeObject(AObject: TObject; AWhere: TStrings; ASettings: TNeonSettings);
+    procedure DeserializeObject(AObject: TObject; AWhere: TStrings; ASettings: TNeonSettings);
 
-    procedure SerializeValueFrom<T>(const AValue: TValue; AWhere: TStrings; AConfig: INeonConfiguration);
-    function DeserializeValueTo<T>(AWhere: TStrings; AConfig: INeonConfiguration): T; overload;
-    function DeserializeValueTo<T>(const AValue: T; AWhere: TStrings; AConfig: INeonConfiguration): T; overload;
+    procedure SerializeValueFrom<T>(const AValue: TValue; AWhere: TStrings; ASettings: TNeonSettings);
+    function DeserializeValueTo<T>(AWhere: TStrings; ASettings: TNeonSettings): T; overload;
+    function DeserializeValueTo<T>(const AValue: T; AWhere: TStrings; ASettings: TNeonSettings): T; overload;
 
     procedure SerializeSimple<T>(const AValue: T);
     procedure DeserializeSimple<T>; overload;
     procedure DeserializeSimple<T>(const AValue: T); overload;
   public
-    constructor CreateEx(AOwner: TComponent; AConfigForm: TframeConfiguration; AColor: TColor);
+    constructor CreateEx(AOwner: TComponent; AConfigForm: TFrameConfiguration; AColor: TColor);
   public
-    class function CreateTabForm(AOwner: TComponent; AConfigForm: TframeConfiguration; AColor: TColor): TfrmSerializationBase;
+    class function CreateTabForm(AOwner: TComponent; AConfigForm: TFrameConfiguration; AColor: TColor): TfrmSerializationBase;
   end;
 
   TfrmSerializationClass = class of TfrmSerializationBase;
@@ -91,17 +91,17 @@ begin
   pnlDeserialize.Color := AColor;
 end;
 
-procedure TfrmSerializationBase.SerializeObject(AObject: TObject; AWhere: TStrings; AConfig: INeonConfiguration);
+procedure TfrmSerializationBase.SerializeObject(AObject: TObject; AWhere: TStrings; ASettings: TNeonSettings);
 var
   LJSON: TJSONValue;
   LWriter: TNeonSerializerJSON;
 begin
-  LWriter := TNeonSerializerJSON.Create(AConfig);
+  LWriter := TNeonSerializerJSON.Create(ASettings);
   try
     LJSON := LWriter.ObjectToJSON(AObject);
     try
-      Log(TNeon.Print(LJSON, AConfig.GetPrettyPrint), AWhere);
-      LogError(LWriter.Errors);
+      Log(TNeon.Print(LJSON, ASettings.PrettyPrint), AWhere);
+      LogError(LWriter.Errors.ToStrings);
     finally
       LJSON.Free;
     end;
@@ -116,7 +116,7 @@ begin
   Result := Self.CreateEx(AOwner, AConfigForm, AColor);
 end;
 
-procedure TfrmSerializationBase.DeserializeObject(AObject: TObject; AWhere: TStrings; AConfig: INeonConfiguration);
+procedure TfrmSerializationBase.DeserializeObject(AObject: TObject; AWhere: TStrings; ASettings: TNeonSettings);
 var
   LJSON: TJSONValue;
   LReader: TNeonDeserializerJSON;
@@ -126,10 +126,10 @@ begin
     raise Exception.Create('Error parsing JSON string');
 
   try
-    LReader := TNeonDeserializerJSON.Create(AConfig);
+    LReader := TNeonDeserializerJSON.Create(ASettings);
     try
       LReader.JSONToObject(AObject, LJSON);
-      LogError(LReader.Errors);
+      LogError(LReader.Errors.ToStrings);
     finally
       LReader.Free;
     end;
@@ -143,10 +143,10 @@ var
   LVal: T;
 begin
   LVal := DeserializeValueTo<T>(
-    memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
 
   SerializeValueFrom<T>(
-    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
 end;
 
 procedure TfrmSerializationBase.DeserializeSimple<T>(const AValue: T);
@@ -154,14 +154,14 @@ var
   LVal: T;
 begin
   LVal := DeserializeValueTo<T>(AValue,
-    memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
 
   SerializeValueFrom<T>(
-    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    TValue.From<T>(LVal), memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
 end;
 
 function TfrmSerializationBase.DeserializeValueTo<T>(const AValue: T; AWhere: TStrings;
-  AConfig: INeonConfiguration): T;
+  ASettings: TNeonSettings): T;
 var
   LJSON: TJSONValue;
   LValue: TValue;
@@ -172,10 +172,10 @@ begin
     raise Exception.Create('Error parsing JSON string');
 
   try
-    LReader := TNeonDeserializerJSON.Create(AConfig);
+    LReader := TNeonDeserializerJSON.Create(ASettings);
     try
       LValue := LReader.JSONToTValue(LJSON, TRttiUtils.Context.GetType(TypeInfo(T)), TValue.From<T>(AValue));
-      LogError(LReader.Errors);
+      LogError(LReader.Errors.ToStrings);
       Result := LValue.AsType<T>;
     finally
       LReader.Free;
@@ -190,9 +190,12 @@ begin
   AWhere.Text := ALog;
 end;
 
-procedure TfrmSerializationBase.LogError(ALog: TStrings);
+procedure TfrmSerializationBase.LogError(ALog: TArray<string>);
+var
+  LError: string;
 begin
-  memoLog.Lines.AddStrings(ALog);
+  for LError in ALog do
+    memoLog.Lines.Add(LError);
 end;
 
 procedure TfrmSerializationBase.LogError(const ALog: string);
@@ -200,17 +203,17 @@ begin
   memoLog.Lines.Add(ALog);
 end;
 
-procedure TfrmSerializationBase.SerializeValueFrom<T>(const AValue: TValue; AWhere: TStrings; AConfig: INeonConfiguration);
+procedure TfrmSerializationBase.SerializeValueFrom<T>(const AValue: TValue; AWhere: TStrings; ASettings: TNeonSettings);
 var
   LJSON: TJSONValue;
   LWriter: TNeonSerializerJSON;
 begin
-  LWriter := TNeonSerializerJSON.Create(AConfig);
+  LWriter := TNeonSerializerJSON.Create(ASettings);
   try
     LJSON := LWriter.ValueToJSON(AValue);
     try
-      Log(TNeon.Print(LJSON, AConfig.GetPrettyPrint), AWhere);
-      LogError(LWriter.Errors);
+      Log(TNeon.Print(LJSON, ASettings.PrettyPrint), AWhere);
+      LogError(LWriter.Errors.ToStrings);
     finally
       LJSON.Free;
     end;
@@ -219,7 +222,7 @@ begin
   end;
 end;
 
-function TfrmSerializationBase.DeserializeValueTo<T>(AWhere: TStrings; AConfig: INeonConfiguration): T;
+function TfrmSerializationBase.DeserializeValueTo<T>(AWhere: TStrings; ASettings: TNeonSettings): T;
 var
   LJSON: TJSONValue;
   LValue: TValue;
@@ -230,10 +233,10 @@ begin
     raise Exception.Create('Error parsing JSON string');
 
   try
-    LReader := TNeonDeserializerJSON.Create(AConfig);
+    LReader := TNeonDeserializerJSON.Create(ASettings);
     try
       LValue := LReader.JSONToTValue(LJSON, TRttiUtils.Context.GetType(TypeInfo(T)));
-      LogError(LReader.Errors);
+      LogError(LReader.Errors.ToStrings);
       Result := LValue.AsType<T>;
     finally
       LReader.Free;
@@ -246,7 +249,7 @@ end;
 procedure TfrmSerializationBase.SerializeSimple<T>(const AValue: T);
 begin
   SerializeValueFrom<T>(
-    TValue.From<T>(AValue), memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    TValue.From<T>(AValue), memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
 end;
 
 end.

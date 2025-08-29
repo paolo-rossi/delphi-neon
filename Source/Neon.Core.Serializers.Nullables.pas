@@ -365,7 +365,7 @@ var
   LNullValue: NullDateTime;
 begin
   if AValue is TJSONString then
-    LNullValue := TJSONUtils.JSONToDateTime(AValue.Value, AContext.GetConfiguration.GetUseUTCDate)
+    LNullValue := TJSONUtils.JSONToDateTime(AValue.Value, AContext.GetSettings.UseUTCDate)
   else if AValue is TJSONNull then
     LNullValue := nil
   else
@@ -397,7 +397,7 @@ begin
     end;
   end;
 
-  Result := TJSONString.Create(TJSONUtils.DateTimeToJSON(LValue.Value, AContext.GetConfiguration.GetUseUTCDate))
+  Result := TJSONString.Create(TJSONUtils.DateTimeToJSON(LValue.Value, AContext.GetSettings.UseUTCDate))
 end;
 
 procedure RegisterNullableSerializers(ARegistry: TNeonSerializerRegistry);

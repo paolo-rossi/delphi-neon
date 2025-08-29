@@ -201,7 +201,7 @@ var
       begin
         LOp := 'Deserialization';
         if AParam.JsonLib = 'Neon' then
-          TNeon.JSONToObject(AObject, AJSON, TNeonConfiguration.Default)
+          TNeon.JSONToObject(AObject, AJSON, TNeonConfiguration.Default.BuildSettings)
         else
           TJson.JsonToObject(AObject, AJSON);
 

@@ -118,7 +118,7 @@ begin
 
   LConfig := TNeonConfiguration.Default;
   LConfig.SetAutoCreate(AAutoCreate);
-  TTestUtils.DeserializeObject(TFile.ReadAllText(LFileName), FNotCreated, LConfig);
+  TTestUtils.DeserializeObject(TFile.ReadAllText(LFileName), FNotCreated, LConfig.BuildSettings);
 
   if AAutoCreate then
   begin
@@ -143,7 +143,7 @@ begin
 
   LConfig := TNeonConfiguration.Default;
   LConfig.SetAutoCreate(AAutoCreate);
-  TTestUtils.DeserializeObject(TFile.ReadAllText(LFileName), FAlreadyCreated, LConfig);
+  TTestUtils.DeserializeObject(TFile.ReadAllText(LFileName), FAlreadyCreated, LConfig.BuildSettings);
   Assert.IsNotNull(FNotCreated.Recursive);
 
   if ASubObject then

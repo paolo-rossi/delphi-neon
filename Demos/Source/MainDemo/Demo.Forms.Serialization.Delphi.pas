@@ -72,21 +72,21 @@ uses
 
 procedure TfrmSerializationDelphi.actDesBitmapExecute(Sender: TObject);
 begin
-  DeserializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  DeserializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   MessageDlg('Bitmap has been loaded from JSON. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSerializationDelphi.actDesDataSetExecute(Sender: TObject);
 begin
   frmDetails.dsPersons.EmptyDataSet;
-  DeserializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-  SerializeObject(frmDetails.dsPersons, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+  DeserializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+  SerializeObject(frmDetails.dsPersons, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   MessageDlg('DataSet has been populated from JSON. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSerializationDelphi.actDesImageExecute(Sender: TObject);
 begin
-  DeserializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  DeserializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   MessageDlg('Picture has been loaded from JSON. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
@@ -96,8 +96,8 @@ var
 begin
   LList := TStringList.Create;
   try
-    DeserializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
-    SerializeObject(LList, memoDeserialize.Lines, frmConfiguration.BuildSerializerConfig);
+    DeserializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
+    SerializeObject(LList, memoDeserialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LList.Free;
   end;
@@ -109,14 +109,14 @@ var
 begin
   LFileName := ExtractFilePath(Application.ExeName) + '..\Data\neon-logo-600.bmp';
   frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
-  SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  SerializeObject(frmDetails.imgNeon.Picture.Bitmap, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   frmDetails.ClearImage;
   MessageDlg('Bitmap has been cleared. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
 
 procedure TfrmSerializationDelphi.actSerDataSetExecute(Sender: TObject);
 begin
-  SerializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  SerializeObject(frmDetails.dsPersons, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   frmDetails.EmptyDataSet;
   MessageDlg('DataSet has been emptied, you can change manually the JSON. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
@@ -127,7 +127,7 @@ var
 begin
   LFileName := ExtractFilePath(Application.ExeName) + '..\Data\neon-logo-600.bmp';
   frmDetails.imgNeon.Picture.Bitmap.LoadFromFile(LFileName);
-  SerializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+  SerializeObject(frmDetails.imgNeon, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   frmDetails.ClearImage;
   MessageDlg('Picture has been cleared. Click the "Show details" button', mtInformation, [mbOK], 0);
 end;
@@ -141,7 +141,7 @@ begin
     LList.Add('Paolo');
     LList.Add('Marco');
     LList.Add('Nando');
-    SerializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerConfig);
+    SerializeObject(LList, memoSerialize.Lines, frmConfiguration.BuildSerializerSettings);
   finally
     LList.Free;
   end;

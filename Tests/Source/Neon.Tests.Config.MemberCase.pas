@@ -101,21 +101,21 @@ procedure TTestConfigMemberCase.TestPascalCase(const AMethod: string);
 begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
-    TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.Default));
+    TTestUtils.SerializeObject(FCaseObj1, TNeonSettings.Default));
 end;
 
 procedure TTestConfigMemberCase.TestScreamingSnakeCase(const AMethod: string);
 begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
-    TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.ScreamingSnake));
+    TTestUtils.SerializeObject(FCaseObj1, TNeonSettings.ScreamingSnake));
 end;
 
 procedure TTestConfigMemberCase.TestSnakeCase(const AMethod: string);
 begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
-    TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.Snake));
+    TTestUtils.SerializeObject(FCaseObj1, TNeonSettings.Snake));
 end;
 
 procedure TTestConfigMemberCase.TestUpperCase(const AMethod: string);
@@ -126,21 +126,21 @@ begin
   LConfig.SetMemberCase(TNeonCase.UpperCase);
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
-    TTestUtils.SerializeObject(FCaseObj1, LConfig));
+    TTestUtils.SerializeObject(FCaseObj1, LConfig.BuildSettings));
 end;
 
 procedure TTestConfigMemberCase.TestCamelCase(const AMethod: string);
 begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
-    TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.Camel));
+    TTestUtils.SerializeObject(FCaseObj1, TNeonSettings.Camel));
 end;
 
 procedure TTestConfigMemberCase.TestKebabCase(const AMethod: string);
 begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
-    TTestUtils.SerializeObject(FCaseObj1, TNeonConfiguration.Kebab));
+    TTestUtils.SerializeObject(FCaseObj1, TNeonSettings.Kebab));
 end;
 
 procedure TTestConfigMemberCase.TestLowerCase(const AMethod: string);
@@ -151,7 +151,7 @@ begin
   LConfig.SetMemberCase(TNeonCase.LowerCase);
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
-    TTestUtils.SerializeObject(FCaseObj1, LConfig));
+    TTestUtils.SerializeObject(FCaseObj1, LConfig.BuildSettings));
 end;
 
 initialization

@@ -1,11 +1,17 @@
 inherited frmSerializationCustom: TfrmSerializationCustom
   Caption = 'frmSerializationCustom'
+  StyleElements = [seFont, seClient, seBorder]
   TextHeight = 13
   inherited memoLog: TMemo
     TabOrder = 2
+    StyleElements = [seFont, seClient, seBorder]
   end
   inherited pnlLeft: TPanel
     TabOrder = 0
+    StyleElements = [seFont, seClient, seBorder]
+    inherited pnlSerialize: TPanel
+      StyleElements = [seFont, seClient, seBorder]
+    end
     inherited catSerialize: TCategoryButtons
       Categories = <
         item
@@ -63,9 +69,16 @@ inherited frmSerializationCustom: TfrmSerializationCustom
             end>
         end>
     end
+    inherited memoSerialize: TMemo
+      StyleElements = [seFont, seClient, seBorder]
+    end
   end
   inherited pnlRight: TPanel
     TabOrder = 1
+    StyleElements = [seFont, seClient, seBorder]
+    inherited pnlDeserialize: TPanel
+      StyleElements = [seFont, seClient, seBorder]
+    end
     inherited catDeserialize: TCategoryButtons
       Categories = <
         item
@@ -122,6 +135,9 @@ inherited frmSerializationCustom: TfrmSerializationCustom
               Action = actDesDates
             end>
         end>
+    end
+    inherited memoDeserialize: TMemo
+      StyleElements = [seFont, seClient, seBorder]
     end
   end
   inherited aclMain: TActionList

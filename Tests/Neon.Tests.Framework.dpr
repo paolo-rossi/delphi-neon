@@ -36,7 +36,6 @@ uses
   {$ENDIF }
   DUnitX.TestFramework,
   Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule},
-  Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',
   Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas',
   Neon.Tests.Entities in 'Source\Neon.Tests.Entities.pas',
   Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas',
@@ -53,8 +52,8 @@ uses
   Neon.Tests.Attributes.Factory in 'Source\Neon.Tests.Attributes.Factory.pas',
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
   Neon.Tests.Config.IgnoreMembers in 'Source\Neon.Tests.Config.IgnoreMembers.pas',
-  Neon.Tests.ConfigTypes in 'Source\Neon.Tests.ConfigTypes.pas';
-
+  Neon.Tests.ConfigTypes in 'Source\Neon.Tests.ConfigTypes.pas',
+  Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas';
 var
   LRunner : ITestRunner;
   LResults : IRunResults;

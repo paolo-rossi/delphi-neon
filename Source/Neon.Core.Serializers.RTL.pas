@@ -234,7 +234,7 @@ begin
   // Check the TypeInfo of AData as TJSONValue and AValue
   if not (LJSONData.ClassType = AValue.ClassType) then
   begin
-    AContext.LogError(Format('TJSONValueSerializer: %s and %s not compatible',
+    AContext.AddError(Format('TJSONValueSerializer: %s and %s not compatible',
       [LJSONData.ClassName, AValue.ClassName]));
     Exit;
   end;
@@ -385,7 +385,7 @@ var
   LFormat: NeonFormatAttribute;
 begin
   LVal := AValue.AsType<TBytes>;
-  LFormat := ANeonObject.GetAttribute<NeonFormatAttribute>;
+  LFormat := ANeonObject.GetMemberAttribute<NeonFormatAttribute>;
 
   if Length(LVal) = 0 then
   begin

@@ -64,7 +64,7 @@ type
     FCustomCaseAlgo: TCaseFunc;
   public
     procedure Initialize;
-    function BuildSerializerConfig(ASerializers: TSerializersSet = [TSerializersType.CustomNeon]): INeonConfiguration;
+    function BuildSerializerSettings(ASerializers: TSerializersSet = [TSerializersType.CustomNeon]): TNeonSettings;
 
     procedure RegisterNeonSerializers(ARegistry: TNeonSerializerRegistry);
     procedure UnregisterNeonSerializers(ARegistry: TNeonSerializerRegistry);
@@ -85,31 +85,33 @@ uses
 
 {$R *.dfm}
 
-function TframeConfiguration.BuildSerializerConfig(ASerializers: TSerializersSet): INeonConfiguration;
+function TframeConfiguration.BuildSerializerSettings(ASerializers:
+    TSerializersSet = [TSerializersType.CustomNeon]): TNeonSettings;
 var
+  LBuilder: INeonConfigurator;
   LVis: TNeonVisibility;
   LMembers: TNeonMembersSet;
 begin
   LVis := [];
   LMembers := [TNeonMembers.Standard];
-  Result := TNeonConfiguration.Default;
+  LBuilder := TNeonConfiguration.Default;
 
   // Case settings
-  Result.SetMemberCustomCase(nil);
+  LBuilder.SetMemberCustomCase(nil);
   if rbCaseUnchanged.Checked then
-    Result.SetMemberCase(TNeonCase.Unchanged);
+    LBuilder.SetMemberCase(TNeonCase.Unchanged);
   if rbCasePascal.Checked then
-    Result.SetMemberCase(TNeonCase.PascalCase);
+    LBuilder.SetMemberCase(TNeonCase.PascalCase);
   if rbCaseCamel.Checked then
-    Result.SetMemberCase(TNeonCase.CamelCase);
+    LBuilder.SetMemberCase(TNeonCase.CamelCase);
   if rbCaseSnake.Checked then
-    Result.SetMemberCase(TNeonCase.SnakeCase);
+    LBuilder.SetMemberCase(TNeonCase.SnakeCase);
   if rbCaseLower.Checked then
-    Result.SetMemberCase(TNeonCase.LowerCase);
+    LBuilder.SetMemberCase(TNeonCase.LowerCase);
   if rbCaseUpper.Checked then
-    Result.SetMemberCase(TNeonCase.UpperCase);
+    LBuilder.SetMemberCase(TNeonCase.UpperCase);
   if rbCaseCustom.Checked then
-    Result
+    LBuilder
       .SetMemberCase(TNeonCase.CustomCase)
       .SetMemberCustomCase(FCustomCaseAlgo);
 
@@ -118,7 +120,7 @@ begin
     LMembers := LMembers + [TNeonMembers.Fields];
   if chkMemberProperties.Checked then
     LMembers := LMembers + [TNeonMembers.Properties];
-  Result.SetMembers(LMembers);
+  LBuilder.SetMembers(LMembers);
 
   // Visibility settings
   if chkVisibilityPrivate.Checked then
@@ -129,29 +131,31 @@ begin
     LVis := LVis + [mvPublic];
   if chkVisibilityPublished.Checked then
     LVis := LVis + [mvPublished];
-  Result.SetVisibility(LVis);
+  LBuilder.SetVisibility(LVis);
 
   // F Prefix setting
-  Result.SetIgnoreFieldPrefix(chkIgnorePrefix.Checked);
+  LBuilder.SetIgnoreFieldPrefix(chkIgnorePrefix.Checked);
 
   // Use UTC Date
-  Result.SetUseUTCDate(chkUseUTCDate.Checked);
+  LBuilder.SetUseUTCDate(chkUseUTCDate.Checked);
 
   // Pretty Printing
-  Result.SetPrettyPrint(chkPrettyPrinting.Checked);
+  LBuilder.SetPrettyPrint(chkPrettyPrinting.Checked);
 
   // AutoCreate
-  Result.SetAutoCreate(chkAutoCreate.Checked);
+  LBuilder.SetAutoCreate(chkAutoCreate.Checked);
 
   // Strict Types
-  Result.SetStrictTypes(chkStrictTypes.Checked);
+  LBuilder.SetStrictTypes(chkStrictTypes.Checked);
 
   //Custom Serializers
   if TSerializersType.CustomNeon in ASerializers then
-    RegisterNeonSerializers(Result.GetSerializers);
+    RegisterNeonSerializers(LBuilder.GetSerializers);
 
   if TSerializersType.CustomDemo in ASerializers then
-    RegisterDemoSerializers(Result.GetSerializers);
+    RegisterDemoSerializers(LBuilder.GetSerializers);
+
+  Result := LBuilder.BuildSettings;
 end;
 
 procedure TframeConfiguration.Initialize;

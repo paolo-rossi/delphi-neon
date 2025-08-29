@@ -21,8 +21,6 @@ object frmBenchmarks: TfrmBenchmarks
     BevelOuter = bvNone
     Caption = 'pnlFooter'
     TabOrder = 2
-    ExplicitTop = 535
-    ExplicitWidth = 1084
     object imgLogo: TImage
       Left = 0
       Top = 0
@@ -6036,7 +6034,6 @@ object frmBenchmarks: TfrmBenchmarks
       ParentFont = False
       ScrollBars = ssVertical
       TabOrder = 0
-      ExplicitWidth = 843
     end
   end
   object chtSer: TChart
@@ -6058,7 +6055,6 @@ object frmBenchmarks: TfrmBenchmarks
     Align = alLeft
     BevelOuter = bvNone
     TabOrder = 0
-    ExplicitHeight = 486
     DefaultCanvas = 'TGDIPlusCanvas'
     ColorPaletteIndex = 13
     object serNeonSer: TBarSeries
@@ -6107,8 +6103,6 @@ object frmBenchmarks: TfrmBenchmarks
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1
-    ExplicitWidth = 534
-    ExplicitHeight = 486
     DefaultCanvas = 'TGDIPlusCanvas'
     ColorPaletteIndex = 13
     object serNeonDes: TBarSeries
@@ -6145,7 +6139,6 @@ object frmBenchmarks: TfrmBenchmarks
     Height = 49
     Align = alTop
     TabOrder = 3
-    ExplicitWidth = 1084
     DesignSize = (
       1088
       49)
@@ -6184,7 +6177,6 @@ object frmBenchmarks: TfrmBenchmarks
       Images = imgMain24
       TabOrder = 0
       OnClick = btnHelpClick
-      ExplicitLeft = 948
     end
     object grpClassType: TGroupBox
       Left = 1
