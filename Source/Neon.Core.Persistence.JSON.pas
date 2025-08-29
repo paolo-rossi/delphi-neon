@@ -2205,7 +2205,10 @@ var
 begin
   LJSON := ValueToJSON(AValue, AConfig);
   try
-    Result := Print(LJSON, AConfig.GetPrettyPrint);
+    if Assigned(LJSON) then
+      Result := Print(LJSON, AConfig.GetPrettyPrint)
+    else
+      Result := '';
   finally
     LJSON.Free;
   end;
