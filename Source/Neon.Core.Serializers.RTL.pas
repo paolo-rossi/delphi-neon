@@ -334,11 +334,19 @@ end;
 
 function TTValueSerializer.Serialize(const AValue: TValue;
   ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+var
+  LValue: TValue;
 begin
-  if AValue.Kind = tkRecord then
+  Result := nil;
+
+  if AValue.TypeInfo = TypeInfo(TValue) then
+  begin
+    LValue := AValue.AsType<TValue>;
+    if not Assigned(TRttiUtils.Context.GetType(LValue.TypeInfo)) then
+      Exit(nil);
+
     Result := AContext.WriteDataMember(AValue.AsType<TValue>, False)
-  else
-    Result := nil;
+  end;
 end;
 
 { TBytesSerializer }
