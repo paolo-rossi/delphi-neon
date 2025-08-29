@@ -376,7 +376,7 @@ begin
       Result := WriteSet(AType, ANeonObject);
     end;
 
-    tkRecord:
+     tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
     begin
       if IsNullable(AType, LNeonNullable) then
         Result := WriteNullable(AType, ANeonObject, LNeonNullable)
