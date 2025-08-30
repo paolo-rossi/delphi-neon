@@ -80,7 +80,8 @@ type
     class var FContext: TRttiContext;
   public
     // TRttiObject helpers functions
-    class function FindAttribute<T: TCustomAttribute>(AType: TRttiObject): T; static;
+    class function FindAttribute<T: TCustomAttribute>(AType: TRttiObject): T; overload; static;
+    class function FindAttribute<T: TCustomAttribute>(const Attributes: TArray<TCustomAttribute>): T; overload; static;
 
     class function HasAttribute<T: TCustomAttribute>(AClass: TClass): Boolean; overload; static;
 
@@ -358,6 +359,22 @@ begin
         end;
       end;
     end;
+end;
+
+class function TRttiUtils.FindAttribute<T>(const Attributes: TArray<TCustomAttribute>): T;
+var
+  LAttribute: TCustomAttribute;
+begin
+  Result := nil;
+  for LAttribute in Attributes do
+  begin
+    if LAttribute.InheritsFrom(TClass(T)) then
+    begin
+      Result := LAttribute as T;
+
+      Break;
+    end;
+  end;
 end;
 
 class function TRttiUtils.ForEachAttribute<T>(AInstance: TObject;

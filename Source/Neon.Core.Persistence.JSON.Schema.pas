@@ -271,7 +271,7 @@ procedure TNeonSchemaGenerator.SetSchemaProperties(AJSON: TJSONObject; ANeonObje
 var
   LSchema: JsonSchemaAttribute;
 begin
-  LSchema := ANeonObject.AsRttiType.GetAttribute<JsonSchemaAttribute>;
+  LSchema := TRttiUtils.FindAttribute<JsonSchemaAttribute>(ANeonObject.Attributes);
   if Assigned(LSchema) then
   begin
     LSchema.ParseTags;
