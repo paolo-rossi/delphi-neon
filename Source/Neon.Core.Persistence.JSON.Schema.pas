@@ -29,6 +29,7 @@ uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs,
   System.TypInfo, System.Generics.Collections, System.JSON, Data.DB,
 
+  Neon.Core.Tags,
   Neon.Core.Types,
   Neon.Core.Attributes,
   Neon.Core.Persistence,
@@ -36,11 +37,26 @@ uses
   Neon.Core.Utils;
 
 type
+  JsonSchemaAttribute = class(TCustomAttribute)
+  private
+    FTagString: string;
+    FTags: TAttributeTags;
+  public
+    constructor Create(const ATagString: string);
+    destructor Destroy; override;
+
+    procedure ParseTags();
+
+    property TagString: string read FTagString write FTagString;
+    property Tags: TAttributeTags read FTags write FTags;
+  end;
+
   /// <summary>
-  ///   JSON Schema (OpenAPI version) generator
+  ///   JSON Schema generator
+  ///   JSON Schema version supported: Draft 2020-12
   /// </summary>
   TNeonSchemaGenerator = class(TNeonBase)
-  private
+  protected
     /// <summary>
     ///   Writer for members of objects and records
     /// </summary>
@@ -172,7 +188,7 @@ type
     /// </remarks>
     function WriteNullable(AType: TRttiType; ANeonObject: TNeonRttiObject; ANullable: INeonTypeInfoNullable): TJSONObject;
     function IsNullable(AType: TRttiType; out ANullable: INeonTypeInfoNullable): Boolean;
-  protected
+
     /// <summary>
     ///   Function to be called by a custom serializer method (ISerializeContext)
     /// </summary>
@@ -182,6 +198,11 @@ type
     ///   This method chooses the right Writer based on the Kind of the AValue parameter
     /// </summary>
     function WriteDataMember(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; overload;
+
+    /// <summary>
+    ///   This method sets additional schema properties (based on JsonSchema attribute)
+    /// </summary>
+    procedure SetSchemaProperties(AJSON: TJSONObject; ANeonObject: TNeonRttiObject);
   public
     constructor Create(const AConfig: INeonConfiguration);
 
@@ -197,6 +218,7 @@ type
     class function ClassToJSONSchema(AClass: TClass): TJSONObject; overload;
     class function ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration): TJSONObject; overload;
   end;
+
 
 implementation
 
@@ -243,6 +265,27 @@ function TNeonSchemaGenerator.IsStreamable(AType: TRttiType; out AStream: INeonT
 begin
   AStream := TNeonTypeInfoStream.GuessType(AType);
   Result := Assigned(AStream);
+end;
+
+procedure TNeonSchemaGenerator.SetSchemaProperties(AJSON: TJSONObject; ANeonObject: TNeonRttiObject);
+var
+  LSchema: JsonSchemaAttribute;
+begin
+  ANeonObject.AsRttiType.GetAttribute<JsonSchemaAttribute>;
+  if Assigned(LSchema) then
+  begin
+    LSchema.ParseTags;
+
+    if LSchema.Tags.Exists('description') then
+      AJSON.AddPair('description', LSchema.Tags.GetValueAs<string>('description'));
+
+    if LSchema.Tags.Exists('required') then
+      AJSON.AddPair('required', True);
+
+    if LSchema.Tags.Exists('readOnly') then
+      AJSON.AddPair('readOnly', True);
+
+  end;
 end;
 
 class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration): TJSONObject;
@@ -395,6 +438,8 @@ begin
     end;
 
   end;
+
+  SetSchemaProperties(Result, ANeonObject);
 end;
 
 function TNeonSchemaGenerator.WriteDataSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
@@ -485,7 +530,7 @@ end;
 
 procedure TNeonSchemaGenerator.WriteMembers(AType: TRttiType; AResult: TJSONObject);
 var
-  LJSONValue: TJSONObject;
+  LJSONObj: TJSONObject;
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
 begin
@@ -497,9 +542,10 @@ begin
     if LNeonMember.Serializable then
     begin
       try
-        LJSONValue := WriteDataMember(LNeonMember.RttiType, LNeonMember);
-        if Assigned(LJSONValue) then
-          (AResult as TJSONObject).AddPair(GetNameFromMember(LNeonMember), LJSONValue);
+        LJSONObj := WriteDataMember(LNeonMember.RttiType, LNeonMember);
+
+        if Assigned(LJSONObj) then
+          (AResult as TJSONObject).AddPair(GetNameFromMember(LNeonMember), LJSONObj);
       except
         LogError(Format('Error converting property [%s] of object [%s]',
           [LNeonMember.Name, AType.Name]));
@@ -615,6 +661,25 @@ begin
 }
   Result :=nil;
   //TJSONString.Create(AValue.AsVariant);
+end;
+
+{ JsonSchemaAttribute }
+
+constructor JsonSchemaAttribute.Create(const ATagString: string);
+begin
+  FTagString := ATagString;
+  FTags := TAttributeTags.Create();
+end;
+
+destructor JsonSchemaAttribute.Destroy;
+begin
+  FTags.Free;
+  inherited;
+end;
+
+procedure JsonSchemaAttribute.ParseTags;
+begin
+  FTags.Parse(FTagString);
 end;
 
 end.
