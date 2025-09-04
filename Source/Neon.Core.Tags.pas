@@ -207,24 +207,14 @@ end;
 
 function TAttributeTags.GetValueAs<T>(const AName: string): T;
 var
-  LValueStr: string;
   LValue: TValue;
-  LInfo: PTypeInfo;
+  LType: TRttiType;
 begin
-  if not FTagMap.TryGetValue(AName, LValueStr) then
-    raise Exception.CreateFmt('Value for %s not found', [AName]);
+  if not Exists(AName) then
+    raise Exception.CreateFmt('Key names "%s" not found', [AName]);
 
-  LInfo := System.TypeInfo(T);
-  case LInfo.Kind of
-    tkInteger, tkInt64: LValue := StrToInt64(LValueStr);
-    tkChar, tkString, tkWChar, tkLString,
-    tkWString, tkUString: LValue := LValueStr;
-    tkFloat: StrToFloat(LValueStr);
-    //tkEnumeration: ;
-    //tkSet: ;
-  end;
-
-  LValue := LValueStr;
+  LType := FContext.GetType(System.TypeInfo(T));
+  LValue := ExtractValue(AName, LType);
   Result := LValue.AsType<T>;
 end;
 
