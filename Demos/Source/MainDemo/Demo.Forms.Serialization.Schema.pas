@@ -119,7 +119,17 @@ procedure TfrmSerializationSchema.actSerJSONSchemaExecute(Sender: TObject);
 var
   LJSON: TJSONObject;
 begin
-  LJSON := TNeonSchemaGenerator.ClassToJSONSchema(TCaseClass);
+  LJSON := TNeonSchemaGenerator.ClassToJSONSchema(MyException, TNeonConfiguration.Camel
+    .Rules.ForClass<Exception>
+    .AddIgnoreMembers([
+      'BaseException',
+      'HelpContext',
+      'InnerException',
+      'StackTrace',
+      'StackInfo'
+    ])
+    .ApplyConfig
+  );
   try
     memoSerialize.Lines.Text := TNeon.Print(LJSON, True);
   finally

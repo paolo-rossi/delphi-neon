@@ -253,6 +253,8 @@ type
 
     class function PascalToKebab(const AString: string): string;
     class function KebabToPascal(const AString: string): string;
+
+    class function ConvertCase(const AName: string; ACase: TNeonCase; ACaseFunc: TCaseFunc): string;
   end;
 
   /// <summary>
@@ -548,6 +550,8 @@ begin
   else
     LMemberName := AMember.Name;
 
+  Result := TCaseAlgorithm.ConvertCase(LMemberName, FConfig.MemberCase, FConfig.MemberCustomCase);
+  {
   case FConfig.MemberCase of
     TNeonCase.Unchanged : Result := LMemberName;
     TNeonCase.LowerCase : Result := LowerCase(LMemberName);
@@ -560,6 +564,7 @@ begin
 
     TNeonCase.CustomCase: Result := FConfig.MemberCustomCase(LMemberName);
   end;
+  }
 end;
 
 function TNeonBase.GetNeonMembers(AType: TRttiType): TNeonRttiMembers;
@@ -1060,6 +1065,28 @@ begin
   LNew := UpperCase(LOld).Chars[0];
 
   Result := Result.Replace(LOld, LNew, []);
+end;
+
+class function TCaseAlgorithm.ConvertCase(const AName: string; ACase: TNeonCase;
+  ACaseFunc: TCaseFunc): string;
+begin
+  Result := AName;
+  case ACase of
+    TNeonCase.Unchanged : Result := AName;
+    TNeonCase.LowerCase : Result := LowerCase(AName);
+    TNeonCase.UpperCase : Result := UpperCase(AName);
+    TNeonCase.PascalCase: Result := AName;
+    TNeonCase.CamelCase : Result := PascalToCamel(AName);
+    TNeonCase.SnakeCase : Result := PascalToSnake(AName);
+    TNeonCase.KebabCase : Result := PascalToKebab(AName);
+    TNeonCase.ScreamingSnakeCase : Result := PascalToScreamingSnake(AName);
+
+    TNeonCase.CustomCase:
+    begin
+      if Assigned(ACaseFunc) then
+        Result := ACaseFunc(AName);
+    end;
+  end;
 end;
 
 class function TCaseAlgorithm.KebabToPascal(const AString: string): string;

@@ -37,6 +37,16 @@ uses
 {$SCOPEDENUMS ON}
 
 type
+  MyException = class(Exception)
+  private
+    FStatus: Integer;
+  public
+    constructor Create(const AMsg: string; AStatus: Integer);
+
+    property Status: Integer read FStatus write FStatus;
+  end;
+
+
   TCustomDate = type TDateTime;
 
   TDates = record
@@ -873,6 +883,14 @@ destructor TNodeObject.Destroy;
 begin
   FNodes.Free;
   inherited;
+end;
+
+{ MyException }
+
+constructor MyException.Create(const AMsg: string; AStatus: Integer);
+begin
+  inherited Create(AMsg);
+  FStatus := AStatus;
 end;
 
 initialization
