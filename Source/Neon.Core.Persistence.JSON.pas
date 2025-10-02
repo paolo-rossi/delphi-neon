@@ -1740,6 +1740,8 @@ var
   LNullable: IDynamicNullable;
   LValue: TValue;
   LValueType: TRttiType;
+  LNewParam: TNeonDeserializerParam;
+  LNewData: TValue;
 begin
   Result := False;
   LNullable := TDynamicNullable.GuessType(AData);
@@ -1747,7 +1749,13 @@ begin
   begin
     Result := True;
     LValueType := TRttiUtils.Context.GetType(LNullable.GetValueType);
-    LValue := JSONToTValue(AParam.JSONValue, LValueType);
+
+    LNewParam.JSONValue := AParam.JSONValue;
+    LNewParam.NeonObject := AParam.NeonObject;
+    LNewParam.RttiType := LValueType;
+    LNewData := TValue.Empty.Cast(LValueType.Handle);
+    LValue := ReadDataMember(LNewParam, LNewData, False);
+
     LNullable.SetValue(LValue);
   end;
 end;
