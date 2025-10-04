@@ -498,7 +498,7 @@ type
   end;
 
   TTypeInfoUtils = class
-    class function EnumToString(ATypeInfo: PTypeInfo; AValue: Integer; ANeonObject: TNeonRttiObject): string; static;
+    class function EnumToString(ATypeInfo: PTypeInfo; AValue: Integer): string; static;
   end;
 
   {$ENDREGION}
@@ -1751,23 +1751,34 @@ end;
 
 { TTypeInfoUtils }
 
-class function TTypeInfoUtils.EnumToString(ATypeInfo: PTypeInfo; AValue: Integer;
-    ANeonObject: TNeonRttiObject): string;
+class function TTypeInfoUtils.EnumToString(ATypeInfo: PTypeInfo; AValue: Integer): string;
 var
+  LEnumType: TRttiType;
+  LAttribute: NeonEnumNamesAttribute;
+  LNeonEnumNames: TArray<string>;
   LTypeData: PTypeData;
 begin
   Result := '';
+
+  // Get NeonEnumNames directly from AValue.TypeInfo
+  LEnumType := TRttiUtils.Context.GetType(ATypeInfo);
+  LAttribute := TRttiUtils.FindAttribute<NeonEnumNamesAttribute>(LEnumType);
+  if Assigned(LAttribute) then
+    LNeonEnumNames := (LAttribute as NeonEnumNamesAttribute).Names
+  else
+    LNeonEnumNames := [];
+
 
   LTypeData := GetTypeData(ATypeInfo);
   if (AValue >= LTypeData.MinValue) and (AValue <= LTypeData.MaxValue) then
   begin
     Result := GetEnumName(ATypeInfo, AValue);
 
-    if Length(ANeonObject.NeonEnumNames) > 0 then
+    if Length(LNeonEnumNames) > 0 then
     begin
-      if (AValue >= Low(ANeonObject.NeonEnumNames)) and
-         (AValue <= High(ANeonObject.NeonEnumNames)) then
-        Result := ANeonObject.NeonEnumNames[AValue]
+      if (AValue >= Low(LNeonEnumNames)) and
+         (AValue <= High(LNeonEnumNames)) then
+        Result := LNeonEnumNames[AValue]
     end;
   end
   else

@@ -509,7 +509,7 @@ begin
 
   LEnumArray := TJSONArray.Create;
   for LIndex := LTypeData.MinValue to LTypeData.MaxValue do
-    LEnumArray.Add(TTypeInfoUtils.EnumToString(AType.Handle, LIndex, ANeonObject));
+    LEnumArray.Add(TTypeInfoUtils.EnumToString(AType.Handle, LIndex));
 
   Result := TJSONObject.Create
     .AddPair('type', 'string')

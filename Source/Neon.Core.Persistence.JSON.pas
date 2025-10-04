@@ -837,7 +837,7 @@ begin
   end
   else
   begin
-    LName := TTypeInfoUtils.EnumToString(AValue.TypeInfo, AValue.AsOrdinal, ANeonObject);
+    LName := TTypeInfoUtils.EnumToString(AValue.TypeInfo, AValue.AsOrdinal);
     Result := TJSONString.Create(LName);
   end;
 end;
