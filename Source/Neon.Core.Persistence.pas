@@ -220,6 +220,7 @@ type
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
+    function SetIgnoreReadOnlyProps(AValue: Boolean): INeonConfiguration;
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetIgnoreMembers(const AMemberList: TArray<string>): INeonConfiguration;
@@ -286,6 +287,7 @@ type
     FMemberCase: TNeonCase;
     FMemberCustomCase: TCaseFunc;
     FIgnoreFieldPrefix: Boolean;
+    FIgnoreReadOnlyProps: Boolean;	
     FUseUTCDate: Boolean;
     FPrettyPrint: Boolean;
     FSerializers: TNeonSerializerRegistry;
@@ -315,6 +317,7 @@ type
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
+    function SetIgnoreReadOnlyProps(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
@@ -339,6 +342,7 @@ type
     property MemberCustomCase: TCaseFunc read FMemberCustomCase write FMemberCustomCase;
     property Visibility: TNeonVisibility read FVisibility write FVisibility;
     property IgnoreFieldPrefix: Boolean read FIgnoreFieldPrefix write FIgnoreFieldPrefix;
+    property IgnoreReadOnlyProps: Boolean read FIgnoreReadOnlyProps write FIgnoreReadOnlyProps;
     property UseUTCDate: Boolean read FUseUTCDate write FUseUTCDate;
     property RaiseExceptions: Boolean read FRaiseExceptions write FRaiseExceptions;
     property EnumAsInt: Boolean read FEnumAsInt write FEnumAsInt;
@@ -855,6 +859,12 @@ begin
   Result := Self;
 end;
 
+function TNeonConfiguration.SetIgnoreReadOnlyProps(AValue: Boolean): INeonConfiguration;
+begin
+  FIgnoreReadOnlyProps := AValue;
+  Result := Self;
+end;
+
 function TNeonConfiguration.SetStrictTypes(AValue: Boolean): INeonConfiguration;
 begin
   FStrictTypes := AValue;
@@ -1252,9 +1262,9 @@ begin
     if IgnoredName(LMember.Name) then
       Continue;
 
-    if not LMember.IsWritable and
-       not (LMember.TypeKind in [tkClass, tkInterface]) then
-      Continue;
+    if FConfig.IgnoreReadOnlyProps then
+      if not LMember.IsWritable and not (LMember.TypeKind in [tkClass, tkInterface]) then
+        Continue;
 
     if MatchesVisibility(LMember.Visibility) then
     if MatchesMemberChoice(LMember.MemberType) then
