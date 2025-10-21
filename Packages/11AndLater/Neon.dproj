@@ -104,6 +104,7 @@
         <DCCReference Include="..\..\Source\Neon.Core.TypeInfo.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Types.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Utils.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Tags.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

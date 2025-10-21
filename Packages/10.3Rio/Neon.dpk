@@ -67,7 +67,8 @@ contains
   Neon.Core.Serializers.Nullables in '..\..\Source\Neon.Core.Serializers.Nullables.pas',
   Neon.Core.TypeInfo in '..\..\Source\Neon.Core.TypeInfo.pas',
   Neon.Core.Types in '..\..\Source\Neon.Core.Types.pas',
-  Neon.Core.Utils in '..\..\Source\Neon.Core.Utils.pas';
+  Neon.Core.Utils in '..\..\Source\Neon.Core.Utils.pas',
+  Neon.Core.Tags in '..\..\Source\Neon.Core.Tags.pas';
 
 end.
 
