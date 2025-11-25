@@ -723,6 +723,9 @@ end;
 
 function TNeonSchemaGenerator.WriteString(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
+  if ANeonObject.NeonRawValue then
+    Exit(TJSONObject.Create);
+
   Result := TJSONObject.Create
     .AddPair('type', 'string');
 end;
