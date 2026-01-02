@@ -1694,7 +1694,7 @@ var
 begin
   Result := nil;
   for LPair in FTypeConfigs do
-    if LPair.Key.QualifiedName = AType.QualifiedName then
+    if LPair.Key = AType then
       Exit(LPair.Value);
 end;
 
@@ -1716,7 +1716,7 @@ var
   LConfig: TConfigPair;
 begin
   for LConfig in FTypeConfigs do
-    if AType.QualifiedName = LConfig.Key.QualifiedName then
+    if AType = LConfig.Key then
       if (LConfig.Value as TNeonConfigurationType).IgnoreMember(AMember) then
         Exit(True);
 
