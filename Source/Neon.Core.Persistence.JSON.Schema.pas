@@ -289,10 +289,10 @@ begin
       AJSON.AddPair('description', LSchema.Tags.GetValueAs<string>('description'));
 
     if LSchema.Tags.Exists('required') then
-      AJSON.AddPair('required', True);
+      AJSON.AddPair('required', TJSONBool.Create(True));
 
     if LSchema.Tags.Exists('readOnly') then
-      AJSON.AddPair('readOnly', True);
+      AJSON.AddPair('readOnly', TJSONBool.Create(True));
 
   end;
 end;
