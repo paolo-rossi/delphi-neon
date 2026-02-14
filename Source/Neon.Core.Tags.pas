@@ -53,6 +53,7 @@ type
 
     function Exists(const AName: string): Boolean;
     function GetValueAs<T>(const AName: string): T;
+    function GetBoolValue(const AName: string): Boolean;
 
     property TagMap: TDictionary<string, string> read FTagMap write FTagMap;
     property Count: Integer read GetCount;
@@ -192,6 +193,17 @@ begin
   end;
 end;
 
+function TAttributeTags.GetBoolValue(const AName: string): Boolean;
+begin
+  if not Exists(AName) then
+    Exit(False);
+
+  if GetValue(AName) = '' then
+    Exit(True);
+
+  Result := GetValueAs<Boolean>(AName);
+end;
+
 function TAttributeTags.GetCount: Integer;
 begin
   Result := FTagMap.Count;
@@ -210,8 +222,7 @@ var
   LValue: TValue;
   LType: TRttiType;
 begin
-  if not Exists(AName) then
-    raise Exception.CreateFmt('Key names "%s" not found', [AName]);
+  Result := Default(T);
 
   LType := FContext.GetType(System.TypeInfo(T));
   LValue := ExtractValue(AName, LType);
