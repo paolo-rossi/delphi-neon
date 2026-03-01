@@ -222,8 +222,6 @@ var
   LValue: TValue;
   LType: TRttiType;
 begin
-  Result := Default(T);
-
   LType := FContext.GetType(System.TypeInfo(T));
   LValue := ExtractValue(AName, LType);
   Result := LValue.AsType<T>;

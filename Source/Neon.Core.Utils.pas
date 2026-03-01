@@ -629,8 +629,7 @@ begin
   end;
 end;
 
-class function TRttiUtils.IsObjectOfType<T>(ARttiType: TRttiType;
-  const AAllowInherithance: Boolean): Boolean;
+class function TRttiUtils.IsObjectOfType<T>(ARttiType: TRttiType; const AAllowInherithance: Boolean): Boolean;
 begin
   Result := TRttiUtils.IsObjectOfType(ARttiType, TClass(T), AAllowInherithance);
 end;
@@ -651,8 +650,7 @@ begin
   end;
 end;
 
-class function TRttiUtils.CreateInstance(AClass: TClass;
-  const Args: array of TValue): TObject;
+class function TRttiUtils.CreateInstance(AClass: TClass; const Args: array of TValue): TObject;
 var
   LType: TRttiType;
 begin

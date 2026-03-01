@@ -277,6 +277,13 @@ begin
 
   LOriginalJSON := AValue.AsObject as TJSONValue;
 
+  if not Assigned(LOriginalJSON) then
+    case ANeonObject.NeonInclude.Value of
+      IncludeIf.NotNull:    Exit(nil);
+      IncludeIf.NotEmpty:   Exit(nil);
+      IncludeIf.NotDefault: Exit(nil);
+    end;
+
   if LOriginalJSON is TJSONObject then
     LEmpty := (LOriginalJSON as TJSONObject).Count = 0;
 
@@ -285,7 +292,6 @@ begin
 
   if LEmpty then
     case ANeonObject.NeonInclude.Value of
-      IncludeIf.NotNull:    Exit(nil);
       IncludeIf.NotEmpty:   Exit(nil);
       IncludeIf.NotDefault: Exit(nil);
     end;
