@@ -60,7 +60,7 @@ type
     /// <summary>
     ///   Writer for members of objects and records
     /// </summary>
-    procedure WriteMembers(AType: TRttiType; AResult: TJSONObject);
+    function WriteMembers(AType: TRttiType; AResult: TJSONObject): TJSONArray;
 
     /// <summary>
     ///   Writer for string types
@@ -123,17 +123,9 @@ type
     function WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
-    ///   Writer for a record type
-    /// </summary>
-    /// <remarks>
-    ///   For records the engine serialize the fields by default
-    /// </remarks>
-    function WriteRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
-
-    /// <summary>
     ///   Writer for a standard TObject (descendants)  type (no list, stream or streamable)
     /// </summary>
-    function WriteObject(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+    function WriteObjectOrRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for an Interface type
@@ -413,7 +405,7 @@ begin
       else if IsStreamable(AType, LNeonStream) then
         Result := WriteStreamable(AType, ANeonObject, LNeonStream)
       else
-        Result := WriteObject(AType, ANeonObject);
+        Result := WriteObjectOrRecord(AType, ANeonObject);
     end;
 
     tkArray:
@@ -438,7 +430,7 @@ begin
       if IsNullable(AType, LNeonNullable) then
         Result := WriteNullable(AType, ANeonObject, LNeonNullable)
       else
-        Result := WriteRecord(AType, ANeonObject);
+        Result := WriteObjectOrRecord(AType, ANeonObject);
     end;
 
     tkInterface:
@@ -571,12 +563,12 @@ begin
 
 end;
 
-procedure TNeonSchemaGenerator.WriteMembers(AType: TRttiType; AResult: TJSONObject);
+function TNeonSchemaGenerator.WriteMembers(AType: TRttiType; AResult: TJSONObject): TJSONArray;
 var
   LJSONObj: TJSONObject;
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
-  LRequiredArray: TJSONArray;
+  LNeonName: string;
 
   procedure SetRequiredArray(AObj: TJSONObject; var AReqArray: TJSONArray);
   var
@@ -588,14 +580,14 @@ var
       begin
         if not Assigned(AReqArray) then
           AReqArray := TJSONArray.Create;
-        AReqArray.Add(LNeonMember.Name)
+        AReqArray.Add(LNeonName);
       end;
     finally
       LPair.Free;
     end;
   end;
 begin
-  LRequiredArray := nil;
+  Result := nil;
   LMembers := GetNeonMembers(AType);
   LMembers.FilterSerialize(nil);
 
@@ -607,8 +599,9 @@ begin
         LJSONObj := WriteDataMember(LNeonMember.RttiType, LNeonMember);
         if Assigned(LJSONObj) then
         begin
-          SetRequiredArray(LJSONObj, LRequiredArray);
-          AResult.AddPair(GetNameFromMember(LNeonMember), LJSONObj);
+          LNeonName := GetNameFromMember(LNeonMember);
+          SetRequiredArray(LJSONObj, Result);
+          AResult.AddPair(LNeonName, LJSONObj);
         end;
       except
         LogError(Format('Error converting property [%s] of object [%s]',
@@ -616,9 +609,6 @@ begin
       end;
     end;
   end;
-
-  if Assigned(LRequiredArray) then
-    AResult.AddPair('required', LRequiredArray);
 end;
 
 function TNeonSchemaGenerator.WriteNullable(AType: TRttiType; ANeonObject: TNeonRttiObject; ANullable: INeonTypeInfoNullable): TJSONObject;
@@ -629,17 +619,21 @@ begin
     Result := WriteDataMember(ANullable.GetBaseType)
 end;
 
-function TNeonSchemaGenerator.WriteObject(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+function TNeonSchemaGenerator.WriteObjectOrRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 var
   LProperties: TJSONObject;
+  LRequired: TJSONArray;
 begin
   LProperties := TJSONObject.Create;
 
-  WriteMembers(AType, LProperties);
+  LRequired := WriteMembers(AType, LProperties);
 
   Result := TJSONObject.Create
     .AddPair('type', 'object')
     .AddPair('properties', LProperties);
+
+  if Assigned(LRequired) then
+    Result.AddPair('required', LRequired);
 end;
 
 function TNeonSchemaGenerator.WriteEnumerable(AType: TRttiType; ANeonObject: TNeonRttiObject; AList: INeonTypeInfoList): TJSONObject;
@@ -686,19 +680,6 @@ begin
       .AddPair('properties', props);
 
   Result.AddPair('innerException', inner);
-end;
-
-function TNeonSchemaGenerator.WriteRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
-var
-  LProperties: TJSONObject;
-begin
-  LProperties := TJSONObject.Create;
-
-  WriteMembers(AType, LProperties);
-
-  Result := TJSONObject.Create
-    .AddPair('type', 'object')
-    .AddPair('properties', LProperties);
 end;
 
 function TNeonSchemaGenerator.WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
