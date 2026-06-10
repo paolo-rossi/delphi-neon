@@ -27,7 +27,8 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs,
-  System.TypInfo, System.Generics.Collections, System.JSON,
+  System.TypInfo, System.Generics.Collections, System.Generics.Defaults,
+  System.JSON,
 
   Neon.Core.Types,
   Neon.Core.Attributes,
@@ -1023,6 +1024,20 @@ var
   LJSONName: TJSONValue;
   LJSONValue: TJSONValue;
   LKeyValue, LValValue: TValue;
+  LPairs: TObjectList<TJSONPair>;
+  LPair: TJSONPair;
+
+  function PairKeyComparer(AReverse: Boolean): IComparer<TJSONPair>;
+  begin
+    Result := TComparer<TJSONPair>.Construct(
+      function(const ALeft, ARight: TJSONPair): Integer
+      begin
+        Result := CompareStr(ALeft.JsonString.Value, ARight.JsonString.Value);
+        if AReverse then
+          Result := -Result;
+      end);
+  end;
+
 begin
   // Not an EnumerableMap object
   if not Assigned(AMap) then
@@ -1049,27 +1064,44 @@ begin
 
   Result := TJSONObject.Create;
   try
-    while AMap.MoveNext do
-    begin
-      LKeyValue := AMap.CurrentKey;
-      LValValue := AMap.CurrentValue;
+    LPairs := TObjectList<TJSONPair>.Create(True);
+    try
+      while AMap.MoveNext do
+      begin
+        LKeyValue := AMap.CurrentKey;
+        LValValue := AMap.CurrentValue;
 
-      LJSONName := WriteDataMember(LKeyValue);
-      try
-        LJSONValue := WriteDataMember(LValValue);
+        LJSONName := WriteDataMember(LKeyValue);
+        try
+          LJSONValue := WriteDataMember(LValValue);
 
-        if LJSONName is TJSONString then
-          LName := (LJSONName as TJSONString).Value
-        else if AMap.KeyIsString then
-          LName := AMap.KeyToString(LKeyValue);
+          if LJSONName is TJSONString then
+            LName := (LJSONName as TJSONString).Value
+          else if AMap.KeyIsString then
+            LName := AMap.KeyToString(LKeyValue);
 
-        (Result as TJSONObject).AddPair(LName, LJSONValue);
+          LPairs.Add(TJSONPair.Create(LName, LJSONValue));
 
-        if LName.IsEmpty then
-          raise ENeonException.Create(TNeonError.DICT_KEY_INVALID);
-      finally
-        LJSONName.Free;
+          if LName.IsEmpty then
+            raise ENeonException.Create(TNeonError.DICT_KEY_INVALID);
+        finally
+          LJSONName.Free;
+        end;
       end;
+
+      case FConfig.MapSort of
+        TNeonSort.Rtti: ; // Default, keep the map enumeration order
+        TNeonSort.RttiReverse: LPairs.Reverse;
+        TNeonSort.Alpha: LPairs.Sort(PairKeyComparer(False));
+        TNeonSort.AlphaReverse: LPairs.Sort(PairKeyComparer(True));
+      end;
+
+      for LPair in LPairs do
+        (Result as TJSONObject).AddPair(LPair);
+      // The pairs are now owned by the resulting JSON object
+      LPairs.OwnsObjects := False;
+    finally
+      LPairs.Free;
     end;
   except
     on E: Exception do

@@ -216,6 +216,7 @@ type
     // Member-related settings
     function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
     function SetMemberSort(AValue: TNeonSort): INeonConfiguration;
+    function SetMapSort(AValue: TNeonSort): INeonConfiguration;
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
@@ -284,6 +285,7 @@ type
     FVisibility: TNeonVisibility;
     FMembers: TNeonMembersSet;
     FMemberSort: TNeonSort;
+    FMapSort: TNeonSort;
     FMemberCase: TNeonCase;
     FMemberCustomCase: TCaseFunc;
     FIgnoreFieldPrefix: Boolean;
@@ -313,6 +315,7 @@ type
 
     function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
     function SetMemberSort(AValue: TNeonSort): INeonConfiguration;
+    function SetMapSort(AValue: TNeonSort): INeonConfiguration;
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
@@ -338,6 +341,7 @@ type
 
     property Members: TNeonMembersSet read FMembers write FMembers;
     property MemberSort: TNeonSort read FMemberSort write FMemberSort;
+    property MapSort: TNeonSort read FMapSort write FMapSort;
     property MemberCase: TNeonCase read FMemberCase write FMemberCase;
     property MemberCustomCase: TCaseFunc read FMemberCustomCase write FMemberCustomCase;
     property Visibility: TNeonVisibility read FVisibility write FVisibility;
@@ -807,6 +811,12 @@ end;
 function TNeonConfiguration.SetMemberSort(AValue: TNeonSort): INeonConfiguration;
 begin
   FMemberSort := AValue;
+  Result := Self;
+end;
+
+function TNeonConfiguration.SetMapSort(AValue: TNeonSort): INeonConfiguration;
+begin
+  FMapSort := AValue;
   Result := Self;
 end;
 
