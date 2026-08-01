@@ -559,11 +559,11 @@ begin
 
   FCurrentProperty := TRttiUtils.Context.GetType(FInstance.ClassInfo).GetProperty(CURRENT_PROP);
   if not Assigned(FCurrentProperty) then
-    raise ENeonException.CreateFmt('Property [%s] not found', [CURRENT_PROP]);
+    raise ENeonException.CreateFmt(SNeonErrorPropertyNotFoundF1, [CURRENT_PROP]);
 
   FMoveNextMethod := TRttiUtils.Context.GetType(FInstance.ClassInfo).GetMethod(MOVENEXT_METH);
   if not Assigned(FMoveNextMethod) then
-    raise ENeonException.CreateFmt('Method [%s] not found', [MOVENEXT_METH]);
+    raise ENeonException.CreateFmt(SNeonErrorMethodNotFoundF1, [MOVENEXT_METH]);
 end;
 
 function TDynamicMap.TEnumerator.Current: TValue;
@@ -615,7 +615,7 @@ begin
 
   LContainedType := LTypeInfoMethod.Invoke(AInstance, []).AsType<PTypeInfo>;
   if LContainedType = nil then
-    raise ENeonException.Create('Nullable contains type with no RTTI');
+    raise ENeonException.Create(SNeonErrorNullableNoRtti);
 
   LHasValueMethod := LType.GetMethod('GetHasValue');
   if not Assigned(LHasValueMethod) then

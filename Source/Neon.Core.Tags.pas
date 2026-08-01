@@ -197,7 +197,7 @@ var
   LValue: TValue;
 begin
   if not ((AEntity.Kind = tkClass) or (AEntity.Kind = tkRecord)) then
-    raise ENeonException.Create(TNeonError.TAG_TARGET_INVALID);
+    raise ENeonException.Create(SNeonErrorTagTargetInvalid);
 
   LInstance := nil;
   LEntityType := FContext.GetType(AEntity.TypeInfo);
@@ -227,7 +227,7 @@ var
   LValue: TValue;
 begin
   if not ((AEntity.Kind = tkClass) or (AEntity.Kind = tkRecord)) then
-    raise ENeonException.Create(TNeonError.TAG_TARGET_INVALID);
+    raise ENeonException.Create(SNeonErrorTagTargetInvalid);
 
   LInstance := nil;
   LEntityType := FContext.GetType(AEntity.TypeInfo);
@@ -354,7 +354,7 @@ begin
           if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
             TValue.Make(LOrdinal, AType.Handle, Result)
           else
-            raise ENeonException.Create(TNeonError.ENUM_NAMES);
+            raise ENeonException.Create(SNeonErrorEnumNames);
         end;
 
       end;
@@ -417,7 +417,7 @@ begin
       1: FTagMap.AddOrSetValue(LFrag[0].Trim, '');                          // Named tag without value (bool true)
       2: FTagMap.AddOrSetValue(LFrag[0].Trim, UnquoteValue(LFrag[1].Trim)); // Named tag with value
     else
-      raise ENeonException.CreateFmt(TNeonError.TAG_PARSE_F1, [LTrimmedPart]);
+      raise ENeonException.CreateFmt(SNeonErrorTagParseF1, [LTrimmedPart]);
     end;
   end;
 end;

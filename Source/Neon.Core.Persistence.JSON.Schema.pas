@@ -604,7 +604,7 @@ begin
           AResult.AddPair(LNeonName, LJSONObj);
         end;
       except
-        LogError(Format('Error converting property [%s] of object [%s]',
+        LogError(Format(SNeonErrorConvertPropF2,
           [LNeonMember.Name, AType.Name]));
       end;
     end;

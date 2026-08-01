@@ -82,6 +82,7 @@ type
 implementation
 
 uses
+  Neon.Core.Types,
   Neon.Core.Utils;
 
 { Nullable<T> }
@@ -147,7 +148,7 @@ end;
 function Nullable<T>.GetValue: T;
 begin
   if not HasValue then
-    raise ENullableException.Create('Nullable type has no value');
+    raise ENullableException.Create(SNeonErrorNullableNoValue);
   Result := FValue;
 end;
 

@@ -234,8 +234,7 @@ begin
   // Check the TypeInfo of AData as TJSONValue and AValue
   if not (LJSONData.ClassType = AValue.ClassType) then
   begin
-    AContext.LogError(Format('TJSONValueSerializer: %s and %s not compatible',
-      [LJSONData.ClassName, AValue.ClassName]));
+    AContext.LogError(Format(SNeonErrorSerializerIncompatibleF2, [LJSONData.ClassName, AValue.ClassName]));
     Exit;
   end;
 
@@ -422,7 +421,7 @@ var
   LVal: TBytes;
 begin
   if not (AValue is TJSONString) then
-    raise ENeonException.Create('JSONValue must be a string');
+    raise ENeonException.Create(SNeonErrorJSONNotString);
 
   LVal := TBase64.Decode(AValue.Value);
   Result := TValue.From<TBytes>(LVal);
@@ -452,7 +451,7 @@ var
   LItem: TJSONValue;
 begin
   if not (AValue is TJSONArray) then
-    raise ENeonException.Create('The JSON must be an array');
+    raise ENeonException.Create(SNeonErrorJSONNotArray);
 
   LArray := AValue as TJSONArray;
   LColl := AData.AsType<TCollection>;
@@ -464,7 +463,7 @@ begin
       Continue;
 
     if not (LItem is TJSONObject) then
-      ENeonException.Create('The item must be an object');
+      raise ENeonException.Create(SNeonErrorJSONItemNotObject);
 
     LItemColl := LColl.Add;
     AContext.ReadDataMember(LItem, LType, LItemColl);

@@ -275,7 +275,7 @@ begin
       end;
     end;
   else
-    raise Exception.CreateFmt('Error creating type [%s]', [AType.Name]);
+    raise Exception.CreateFmt(SNeonErrorCreateTypeF1, [AType.Name]);
   end;
 end;
 
@@ -593,7 +593,7 @@ begin
   else if AObject is TRttiManagedField then
     Result := TRttiManagedField(AObject).FieldType
   else
-    raise Exception.Create('Object doesn''t have a type');
+    raise Exception.Create(SNeonErrorObjectNoType);
 end;
 
 class function TRttiUtils.HasAttribute<T>(AClass: TClass): Boolean;
@@ -679,7 +679,7 @@ begin
     end;
   end;
   if not Assigned(Result) then
-    raise Exception.CreateFmt('TRttiUtils.CreateInstance: can''t create object [%s]', [AType.Name]);
+    raise Exception.CreateFmt(SNeonErrorCreateInstanceF1, [AType.Name]);
 end;
 
 class function TRttiUtils.CreateInstance(const ATypeName: string; const Args: array of TValue): TObject;
@@ -822,14 +822,14 @@ begin
   if AJSON is TJSONBool then
     Result := (AJSON as TJSONBool).AsBoolean
   else
-    raise ENeonException.Create('The JSON value is not boolean');
+    raise ENeonException.Create(SNeonErrorJSONNotBoolean);
 {$ELSE}
   if AJSON is TJSONTrue then
     Result := True
   else if AJSON is TJSONFalse then
     Result := False
   else
-    raise ENeonException.Create('The JSON value is not boolean');
+    raise ENeonException.Create(SNeonErrorJSONNotBoolean);
 {$ENDIF}
 end;
 
@@ -1512,7 +1512,7 @@ var
   LIndex: Integer;
 begin
   if not (AJSONValue is TJSONArray) then
-    raise ENeonException.Create('JSONToDataSet: The JSON must be an array');
+    raise ENeonException.Create(SNeonErrorDataSetJSONNotArray);
 
   LJSONArray := AJSONValue as TJSONArray;
 

@@ -115,7 +115,7 @@ begin
   else if AValue is TJSONNull then
     LNullValue := nil
   else
-    raise ENeonException.Create(Self.ClassName + '.Deserialize: incompatible types');
+    raise ENeonException.Create(Self.ClassName + SNeonErrorDeserializeIncompatible);
 
   Result := TValue.From<NullString>(LNullValue);
 end;
@@ -166,7 +166,7 @@ begin
   else if AValue is TJSONNull then
     LNullValue := nil
   else
-    raise ENeonException.Create(Self.ClassName + '.Deserialize: incompatible types');
+    raise ENeonException.Create(Self.ClassName + SNeonErrorDeserializeIncompatible);
 
   Result := TValue.From<NullBoolean>(LNullValue);
 end;
@@ -216,7 +216,7 @@ begin
   else if AValue is TJSONNull then
     LNullValue := nil
   else
-    raise ENeonException.Create(Self.ClassName + '.Deserialize: incompatible types');
+    raise ENeonException.Create(Self.ClassName + SNeonErrorDeserializeIncompatible);
 
   Result := TValue.From<NullInteger>(LNullValue);
 end;
@@ -267,7 +267,7 @@ begin
   else if AValue is TJSONNull then
     LNullValue := nil
   else
-    raise ENeonException.Create(Self.ClassName + '.Deserialize: incompatible types');
+    raise ENeonException.Create(Self.ClassName + SNeonErrorDeserializeIncompatible);
 
   Result := TValue.From<NullInt64>(LNullValue);
 end;
@@ -318,7 +318,7 @@ begin
   else if AValue is TJSONNull then
     LNullValue := nil
   else
-    raise ENeonException.Create(Self.ClassName + '.Deserialize: incompatible types');
+    raise ENeonException.Create(Self.ClassName + SNeonErrorDeserializeIncompatible);
 
   Result := TValue.From<NullDouble>(LNullValue);
 end;
@@ -369,7 +369,7 @@ begin
   else if AValue is TJSONNull then
     LNullValue := nil
   else
-    raise ENeonException.Create(Self.ClassName + '.Deserialize: incompatible types');
+    raise ENeonException.Create(Self.ClassName + SNeonErrorDeserializeIncompatible);
 
   Result := TValue.From<NullDateTime>(LNullValue);
 end;

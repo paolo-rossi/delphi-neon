@@ -947,7 +947,7 @@ end;
 function TNeonRttiMember.GetValue(AInstance: Pointer): TValue;
 begin
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
+    TNeonMemberType.Unknown: raise ENeonException.Create(SNeonErrorFieldProp);
     TNeonMemberType.Prop   : Result := MemberAsProperty.GetValue(AInstance);
     TNeonMemberType.Field  : Result := MemberAsField.GetValue(AInstance);
   end;
@@ -973,7 +973,7 @@ function TNeonRttiMember.IsReadable: Boolean;
 begin
   Result := False;
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
+    TNeonMemberType.Unknown: raise ENeonException.Create(SNeonErrorFieldProp);
     TNeonMemberType.Prop   : Result := MemberAsProperty.IsReadable;
     TNeonMemberType.Field  : Result := True;
   end;
@@ -983,7 +983,7 @@ function TNeonRttiMember.IsWritable: Boolean;
 begin
   Result := False;
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
+    TNeonMemberType.Unknown: raise ENeonException.Create(SNeonErrorFieldProp);
     TNeonMemberType.Prop   : Result := MemberAsProperty.IsWritable;
     TNeonMemberType.Field  : Result := True;
   end;
@@ -1008,7 +1008,7 @@ function TNeonRttiMember.RttiType: TRttiType;
 begin
   Result := nil;
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
+    TNeonMemberType.Unknown: raise ENeonException.Create(SNeonErrorFieldProp);
     TNeonMemberType.Prop   : Result := MemberAsProperty.PropertyType;
     TNeonMemberType.Field  : Result := MemberAsField.FieldType;
   end;
@@ -1027,7 +1027,7 @@ begin
       LMethodName := LIncludeAttribute.IncludeValue.IncludeFunction;
       FMethodIf := FParent.FType.GetMethod(LMethodName);
       if not Assigned(FMethodIf) then
-        raise ENeonException.CreateFmt(TNeonError.NO_METHOD_F2, [LMethodName, FParent.AsRttiType.Name]);
+        raise ENeonException.CreateFmt(SNeonErrorNoMethodF2, [LMethodName, FParent.AsRttiType.Name]);
 
       FMethodIfContext := TNeonIgnoreIfContext.Create(Self.Name, FOperation);
     end;
@@ -1050,7 +1050,7 @@ function TNeonRttiMember.TypeKind: TTypeKind;
 begin
   Result := tkUnknown;
   case FMemberType of
-    TNeonMemberType.Unknown: raise ENeonException.Create(TNeonError.FIELD_PROP);
+    TNeonMemberType.Unknown: raise ENeonException.Create(SNeonErrorFieldProp);
     TNeonMemberType.Prop   : Result := MemberAsProperty.PropertyType.TypeKind;
     TNeonMemberType.Field  : Result := MemberAsField.FieldType.TypeKind;
   end;
@@ -1672,7 +1672,7 @@ begin
   LType := TRttiUtils.Context.GetType(TypeInfo(T));
 
   if not Assigned(LType) then
-    raise ENeonException.Create('TTypeConfigurator: Unknown type T');
+    raise ENeonException.Create(SNeonErrorUnknownGenericType);
 
   // Create and register the configurator
   Result := CreateConfigForType(LType);
@@ -1792,7 +1792,7 @@ begin
     end;
   end
   else
-    raise ENeonException.CreateFmt(TNeonError.ENUM_VALUE_F1, [AValue]);
+    raise ENeonException.CreateFmt(SNeonErrorEnumValueF1, [AValue]);
 end;
 
 end.

@@ -54,25 +54,41 @@ type
   TNeonIgnoreCallback = function(const AContext: TNeonIgnoreIfContext): Boolean of object;
   TCaseFunc = reference to function (const AString: string): string;
 
-type
-  TNeonError = class
-  public const
-    PARSE = 'Error parsing JSON string';
-    NUM_EXPECTED = 'Invalid JSON value. Number expected';
-    BOOL_EXPECTED = 'Invalid JSON value. Number expected';
-    ARR_EXPECTED = 'Set deserialization: Expected JSON Array';
-    DICT_KEY_INVALID = 'Dictionary [Key]: type not supported';
-    FIELD_PROP = 'Member type must be Field or Property';
-    ENUM_INVALID = 'Invalid enum value';
-    ENUM_NAMES = 'No correspondence with enum names';
-    ENUM_VALUE_F1 = 'Enum value [%d] out of bound';
-    EMPTY_TYPE = 'Empty RttiType in JSONToValue';
-    RANGE_OUT_F2 = 'The value [%s] is outside the range for the type [%s]';
-    NO_METHOD_F2 = 'NeonInclude Method name [%s] not found in class [%s]';
-    CONVERT_NUM_F3 = 'Error converting member [%s] of type [%s]: %s';
-    TAG_TARGET_INVALID = 'You can apply tag values only to records or objects';
-    TAG_PARSE_F1 = 'Error decoding tag: [%s]';
-  end;
+resourcestring
+  { Catalog of every message Neon raises or logs, so the whole library can
+    be localized (e.g. with a translated resource DLL) without recompiling. }
+  SNeonErrorParse = 'Error parsing JSON string';
+  SNeonErrorNumExpected = 'Invalid JSON value. Number expected';
+  SNeonErrorBoolExpected = 'Invalid JSON value. Number expected';
+  SNeonErrorArrExpected = 'Set deserialization: Expected JSON Array';
+  SNeonErrorDictKeyInvalid = 'Dictionary [Key]: type not supported';
+  SNeonErrorFieldProp = 'Member type must be Field or Property';
+  SNeonErrorEnumInvalid = 'Invalid enum value';
+  SNeonErrorEnumNames = 'No correspondence with enum names';
+  SNeonErrorEnumValueF1 = 'Enum value [%d] out of bound';
+  SNeonErrorEmptyType = 'Empty RttiType in JSONToValue';
+  SNeonErrorRangeOutF2 = 'The value [%s] is outside the range for the type [%s]';
+  SNeonErrorNoMethodF2 = 'NeonInclude Method name [%s] not found in class [%s]';
+  SNeonErrorConvertNumF3 = 'Error converting member [%s] of type [%s]: %s';
+  SNeonErrorTagTargetInvalid = 'You can apply tag values only to records or objects';
+  SNeonErrorTagParseF1 = 'Error decoding tag: [%s]';
+
+  SNeonErrorPropertyNotFoundF1 = 'Property [%s] not found';
+  SNeonErrorMethodNotFoundF1 = 'Method [%s] not found';
+  SNeonErrorNullableNoRtti = 'Nullable contains type with no RTTI';
+  SNeonErrorNullableNoValue = 'Nullable type has no value';
+  SNeonErrorUnknownGenericType = 'TTypeConfigurator: Unknown type T';
+  SNeonErrorDeserializeIncompatible = '.Deserialize: incompatible types';
+  SNeonErrorJSONNotString = 'JSONValue must be a string';
+  SNeonErrorJSONNotArray = 'The JSON must be an array';
+  SNeonErrorJSONItemNotObject = 'The item must be an object';
+  SNeonErrorJSONNotBoolean = 'The JSON value is not boolean';
+  SNeonErrorDataSetJSONNotArray = 'JSONToDataSet: The JSON must be an array';
+  SNeonErrorCreateTypeF1 = 'Error creating type [%s]';
+  SNeonErrorObjectNoType = 'Object doesn''t have a type';
+  SNeonErrorCreateInstanceF1 = 'TRttiUtils.CreateInstance: can''t create object [%s]';
+  SNeonErrorConvertPropF2 = 'Error converting property [%s] of object [%s]';
+  SNeonErrorSerializerIncompatibleF2 = 'TJSONValueSerializer: %s and %s not compatible';
 
 implementation
 
