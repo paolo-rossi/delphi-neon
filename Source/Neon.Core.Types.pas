@@ -70,6 +70,8 @@ type
     RANGE_OUT_F2 = 'The value [%s] is outside the range for the type [%s]';
     NO_METHOD_F2 = 'NeonInclude Method name [%s] not found in class [%s]';
     CONVERT_NUM_F3 = 'Error converting member [%s] of type [%s]: %s';
+    TAG_TARGET_INVALID = 'You can apply tag values only to records or objects';
+    TAG_PARSE_F1 = 'Error decoding tag: [%s]';
   end;
 
 implementation

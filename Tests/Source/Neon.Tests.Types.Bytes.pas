@@ -41,7 +41,7 @@ type
     [Test]
     [TestCase('TestBytes', '[5,12,6,55,30]|"BQwGNx4="', '|')]
     [TestCase('TestBytesZero', '[0,0,0,0,0,0]|"AAAAAAAA"', '|')]
-    [TestCase('TestBytesMax', '[255,255,255,255,255,255]|"\/\/\/\/\/\/\/\/"', '|')]
+    [TestCase('TestBytesMax', '[255,255,255,255,255,255]|"////////"', '|')]
     [TestCase('TestBytesEmpty', '[]|""', '|')]
     procedure TestBytes(AInput: TBytes; _Result: string);
 
