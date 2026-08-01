@@ -56,7 +56,8 @@ uses
   Neon.Tests.ConfigTypes in 'Source\Neon.Tests.ConfigTypes.pas',
   Neon.Tests.Tags in 'Source\Neon.Tests.Tags.pas',
   Neon.Tests.StructTags in 'Source\Neon.Tests.StructTags.pas',
-  Neon.Tests.JsonSchema in 'Source\Neon.Tests.JsonSchema.pas';
+  Neon.Tests.JsonSchema in 'Source\Neon.Tests.JsonSchema.pas',
+  Neon.Tests.JsonSchemaValidator in 'Source\Neon.Tests.JsonSchemaValidator.pas';
 
 var
   LRunner : ITestRunner;

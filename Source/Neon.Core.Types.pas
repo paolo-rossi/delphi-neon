@@ -42,6 +42,7 @@ type
   TNeonVisibility = set of TMemberVisibility;
   TNeonIncludeOption = (Default, Include, Exclude);
   TNeonOperation = (Serialize, Deserialize);
+  TNeonJSchemaVersion = (None, Draft07, v202012);
 
   TNeonIgnoreIfContext = record
   public
@@ -50,7 +51,6 @@ type
     constructor Create(const AMemberName: string; AOperation: TNeonOperation);
   end;
 
-type
   TNeonIgnoreCallback = function(const AContext: TNeonIgnoreIfContext): Boolean of object;
   TCaseFunc = reference to function (const AString: string): string;
 
@@ -89,6 +89,9 @@ resourcestring
   SNeonErrorCreateInstanceF1 = 'TRttiUtils.CreateInstance: can''t create object [%s]';
   SNeonErrorConvertPropF2 = 'Error converting property [%s] of object [%s]';
   SNeonErrorSerializerIncompatibleF2 = 'TJSONValueSerializer: %s and %s not compatible';
+  SNeonErrorSchemaCycleF1 = 'Cycle detected while generating JSON Schema for type [%s]';
+  SNeonErrorSchemaRefNotFoundF1 = 'Could not resolve $ref [%s]';
+  SNeonErrorSchemaRefUnsupportedF1 = 'Unsupported $ref [%s]: only local (same-document) refs are supported';
 
 implementation
 

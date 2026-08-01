@@ -26,6 +26,8 @@ interface
 uses
   System.SysUtils, System.JSON, System.Generics.Collections,
   DUnitX.TestFramework,
+  Neon.Core.Types,
+  Neon.Core.Nullables,
   Neon.Core.Persistence.JSON.Schema;
 
 type
@@ -58,6 +60,46 @@ type
 
     [Test]
     procedure TestParseTagsIsIdempotent;
+  end;
+
+  TSchemaConstraintPerson = class
+  private
+    FName: string;
+    FAge: Integer;
+    FScore: Double;
+    FTags: TArray<string>;
+    FNickname: Nullable<string>;
+  public
+    [JsonSchema('minLength=2,maxLength=50,pattern="^[A-Z].*$"')]
+    property Name: string read FName write FName;
+
+    [JsonSchema('minimum=0,maximum=120,multipleOf=1')]
+    property Age: Integer read FAge write FAge;
+
+    [JsonSchema('exclusiveMinimum=0.0,exclusiveMaximum=100.0')]
+    property Score: Double read FScore write FScore;
+
+    [JsonSchema('minItems=1,maxItems=5,uniqueItems')]
+    property Tags: TArray<string> read FTags write FTags;
+
+    property Nickname: Nullable<string> read FNickname write FNickname;
+  end;
+
+  [JsonSchema('minProperties=1,maxProperties=10,title=A person,deprecated,default=hello')]
+  TSchemaMetaPerson = class
+  private
+    FName: string;
+  public
+    property Name: string read FName write FName;
+  end;
+
+  TSchemaTreeNode = class
+  private
+    FChildren: TObjectList<TSchemaTreeNode>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Children: TObjectList<TSchemaTreeNode> read FChildren write FChildren;
   end;
 
   [TestFixture]
@@ -94,7 +136,61 @@ type
     procedure TestMemberWithoutAttributeHasNoExtraKeys;
   end;
 
+  [TestFixture]
+  [Category('jsonschema')]
+  TTestJsonSchemaConstraints = class(TObject)
+  private
+    FSchema: TJSONObject;
+    function Properties: TJSONObject;
+  public
+    [TearDown]
+    procedure TearDown;
+
+    [Test]
+    procedure TestDefaultVersionOmitsSchemaHeader;
+
+    [Test]
+    procedure TestV202012SchemaHeader;
+
+    [Test]
+    procedure TestDraft07SchemaHeader;
+
+    [Test]
+    procedure TestStringConstraints;
+
+    [Test]
+    procedure TestIntegerNumericConstraints;
+
+    [Test]
+    procedure TestFloatNumericConstraints;
+
+    [Test]
+    procedure TestArrayConstraints;
+
+    [Test]
+    procedure TestNullableTypeUnion;
+
+    [Test]
+    procedure TestObjectConstraintsAndMetadata;
+
+    [Test]
+    procedure TestRecursionGuardRaises;
+  end;
+
 implementation
+
+{ TSchemaTreeNode }
+
+constructor TSchemaTreeNode.Create;
+begin
+  FChildren := TObjectList<TSchemaTreeNode>.Create;
+end;
+
+destructor TSchemaTreeNode.Destroy;
+begin
+  FChildren.Free;
+  inherited;
+end;
 
 { TTestJsonSchemaAttribute }
 
@@ -206,8 +302,117 @@ begin
   Assert.IsNull(LEmail.GetValue('readOnly'));
 end;
 
+{ TTestJsonSchemaConstraints }
+
+function TTestJsonSchemaConstraints.Properties: TJSONObject;
+begin
+  Result := FSchema.GetValue('properties') as TJSONObject;
+end;
+
+procedure TTestJsonSchemaConstraints.TearDown;
+begin
+  FSchema.Free;
+  FSchema := nil;
+end;
+
+procedure TTestJsonSchemaConstraints.TestDefaultVersionOmitsSchemaHeader;
+begin
+  // Default (None) is backward-compatible with pre-existing callers and lets the
+  // result be embedded as a schema fragment (e.g. under $defs) without its own $schema
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson);
+  Assert.IsNull(FSchema.GetValue('$schema'));
+end;
+
+procedure TTestJsonSchemaConstraints.TestV202012SchemaHeader;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonJSchemaVersion.v202012);
+  Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestDraft07SchemaHeader;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonJSchemaVersion.Draft07);
+  Assert.AreEqual('http://json-schema.org/draft-07/schema#', FSchema.GetValue('$schema').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestStringConstraints;
+var
+  LName: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson);
+  LName := Properties.GetValue('Name') as TJSONObject;
+  Assert.AreEqual(2, (LName.GetValue('minLength') as TJSONNumber).AsInt);
+  Assert.AreEqual(50, (LName.GetValue('maxLength') as TJSONNumber).AsInt);
+  Assert.AreEqual('^[A-Z].*$', LName.GetValue('pattern').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestIntegerNumericConstraints;
+var
+  LAge: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson);
+  LAge := Properties.GetValue('Age') as TJSONObject;
+  Assert.AreEqual(Double(0), (LAge.GetValue('minimum') as TJSONNumber).AsDouble, 0.0001);
+  Assert.AreEqual(Double(120), (LAge.GetValue('maximum') as TJSONNumber).AsDouble, 0.0001);
+  Assert.AreEqual(Double(1), (LAge.GetValue('multipleOf') as TJSONNumber).AsDouble, 0.0001);
+end;
+
+procedure TTestJsonSchemaConstraints.TestFloatNumericConstraints;
+var
+  LScore: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson);
+  LScore := Properties.GetValue('Score') as TJSONObject;
+  Assert.AreEqual(Double(0), (LScore.GetValue('exclusiveMinimum') as TJSONNumber).AsDouble, 0.0001);
+  Assert.AreEqual(Double(100), (LScore.GetValue('exclusiveMaximum') as TJSONNumber).AsDouble, 0.0001);
+end;
+
+procedure TTestJsonSchemaConstraints.TestArrayConstraints;
+var
+  LTags: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson);
+  LTags := Properties.GetValue('Tags') as TJSONObject;
+  Assert.AreEqual(1, (LTags.GetValue('minItems') as TJSONNumber).AsInt);
+  Assert.AreEqual(5, (LTags.GetValue('maxItems') as TJSONNumber).AsInt);
+  Assert.IsTrue((LTags.GetValue('uniqueItems') as TJSONBool).AsBoolean);
+end;
+
+procedure TTestJsonSchemaConstraints.TestNullableTypeUnion;
+var
+  LNickname: TJSONObject;
+  LType: TJSONArray;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson);
+  LNickname := Properties.GetValue('Nickname') as TJSONObject;
+  LType := LNickname.GetValue('type') as TJSONArray;
+  Assert.IsNotNull(LType);
+  Assert.AreEqual(2, LType.Count);
+  Assert.AreEqual('string', LType.Items[0].Value);
+  Assert.AreEqual('null', LType.Items[1].Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestObjectConstraintsAndMetadata;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaMetaPerson);
+  Assert.AreEqual(1, (FSchema.GetValue('minProperties') as TJSONNumber).AsInt);
+  Assert.AreEqual(10, (FSchema.GetValue('maxProperties') as TJSONNumber).AsInt);
+  Assert.AreEqual('A person', FSchema.GetValue('title').Value);
+  Assert.IsTrue((FSchema.GetValue('deprecated') as TJSONBool).AsBoolean);
+  Assert.AreEqual('hello', FSchema.GetValue('default').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestRecursionGuardRaises;
+begin
+  Assert.WillRaise(
+    procedure begin TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTreeNode) end,
+    ENeonException
+  );
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TTestJsonSchemaAttribute);
   TDUnitX.RegisterTestFixture(TTestJsonSchemaGenerator);
+  TDUnitX.RegisterTestFixture(TTestJsonSchemaConstraints);
 
 end.
