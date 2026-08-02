@@ -125,6 +125,7 @@
         <DCCReference Include="Source\Neon.Tests.Attributes.Factory.pas"/>
         <DCCReference Include="Source\Neon.Tests.CustomSerializers.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.IgnoreMembers.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Config.MapSort.pas"/>
         <DCCReference Include="Source\Neon.Tests.ConfigTypes.pas"/>
         <DCCReference Include="Source\Neon.Tests.Tags.pas"/>
         <DCCReference Include="Source\Neon.Tests.StructTags.pas"/>
