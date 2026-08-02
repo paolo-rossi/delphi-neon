@@ -41,6 +41,7 @@ uses
   Neon.Tests.Attributes.Factory in 'Source\Neon.Tests.Attributes.Factory.pas',
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
   Neon.Tests.Config.IgnoreMembers in 'Source\Neon.Tests.Config.IgnoreMembers.pas',
+  Neon.Tests.Config.MapSort in 'Source\Neon.Tests.Config.MapSort.pas',
   Neon.Tests.ConfigTypes in 'Source\Neon.Tests.ConfigTypes.pas',
   Neon.Tests.Tags in 'Source\Neon.Tests.Tags.pas',
   Neon.Tests.StructTags in 'Source\Neon.Tests.StructTags.pas',

@@ -1070,10 +1070,11 @@ begin
 
           LPairs.Add(TJSONPair.Create(LName, LJSONValue));
 
-        if LName.IsEmpty then
-          raise ENeonException.Create(SNeonErrorDictKeyInvalid);
-      finally
-        LJSONName.Free;
+          if LName.IsEmpty then
+            raise ENeonException.Create(SNeonErrorDictKeyInvalid);
+        finally
+          LJSONName.Free;
+        end;
       end;
 
       case FConfig.MapSort of
@@ -1083,10 +1084,10 @@ begin
         TNeonSort.AlphaReverse: LPairs.Sort(PairKeyComparer(True));
       end;
 
-      for LPair in LPairs do
-        (Result as TJSONObject).AddPair(LPair);
       // The pairs are now owned by the resulting JSON object
       LPairs.OwnsObjects := False;
+      for LPair in LPairs do
+        (Result as TJSONObject).AddPair(LPair);
     finally
       LPairs.Free;
     end;

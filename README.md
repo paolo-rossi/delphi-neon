@@ -50,6 +50,7 @@ Extensive configuration through `INeonConfiguration` interface:
 - Custom serializer registration
 - Use UTC date in serialization
 - Auto creation of nil (object) members
+- Map/dictionary key sort order (natural, reverse, alphabetical, reverse-alphabetical)
 
 ### Delphi Types Support
 
