@@ -1,22 +1,10 @@
 {******************************************************************************}
 {                                                                              }
-{  Neon: Serialization Library for Delphi                                      }
+{  Neon: JSON Serialization Library for Delphi                                 }
 {  Copyright (c) 2018 Paolo Rossi                                              }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
-{******************************************************************************}
-{                                                                              }
-{  Licensed under the Apache License, Version 2.0 (the "License");             }
-{  you may not use this file except in compliance with the License.            }
-{  You may obtain a copy of the License at                                     }
-{                                                                              }
-{      http://www.apache.org/licenses/LICENSE-2.0                              }
-{                                                                              }
-{  Unless required by applicable law or agreed to in writing, software         }
-{  distributed under the License is distributed on an "AS IS" BASIS,           }
-{  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    }
-{  See the License for the specific language governing permissions and         }
-{  limitations under the License.                                              }
+{  Licensed under the MIT license                                              }
 {                                                                              }
 {******************************************************************************}
 unit Neon.Core.DynamicTypes;
@@ -559,11 +547,11 @@ begin
 
   FCurrentProperty := TRttiUtils.Context.GetType(FInstance.ClassInfo).GetProperty(CURRENT_PROP);
   if not Assigned(FCurrentProperty) then
-    raise ENeonException.CreateFmt('Property [%s] not found', [CURRENT_PROP]);
+    raise ENeonException.CreateFmt(SNeonErrorPropertyNotFoundF1, [CURRENT_PROP]);
 
   FMoveNextMethod := TRttiUtils.Context.GetType(FInstance.ClassInfo).GetMethod(MOVENEXT_METH);
   if not Assigned(FMoveNextMethod) then
-    raise ENeonException.CreateFmt('Method [%s] not found', [MOVENEXT_METH]);
+    raise ENeonException.CreateFmt(SNeonErrorMethodNotFoundF1, [MOVENEXT_METH]);
 end;
 
 function TDynamicMap.TEnumerator.Current: TValue;
@@ -615,7 +603,7 @@ begin
 
   LContainedType := LTypeInfoMethod.Invoke(AInstance, []).AsType<PTypeInfo>;
   if LContainedType = nil then
-    raise ENeonException.Create('Nullable contains type with no RTTI');
+    raise ENeonException.Create(SNeonErrorNullableNoRtti);
 
   LHasValueMethod := LType.GetMethod('GetHasValue');
   if not Assigned(LHasValueMethod) then

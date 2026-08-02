@@ -1,22 +1,10 @@
 {******************************************************************************}
 {                                                                              }
-{  Neon: Serialization Library for Delphi                                      }
+{  Neon: JSON Serialization Library for Delphi                                 }
 {  Copyright (c) 2018 Paolo Rossi                                              }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
-{******************************************************************************}
-{                                                                              }
-{  Licensed under the Apache License, Version 2.0 (the "License");             }
-{  you may not use this file except in compliance with the License.            }
-{  You may obtain a copy of the License at                                     }
-{                                                                              }
-{      http://www.apache.org/licenses/LICENSE-2.0                              }
-{                                                                              }
-{  Unless required by applicable law or agreed to in writing, software         }
-{  distributed under the License is distributed on an "AS IS" BASIS,           }
-{  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    }
-{  See the License for the specific language governing permissions and         }
-{  limitations under the License.                                              }
+{  Licensed under the MIT license                                              }
 {                                                                              }
 {******************************************************************************}
 unit Neon.Core.Persistence.JSON.Schema;
@@ -33,6 +21,7 @@ uses
   Neon.Core.Types,
   Neon.Core.Attributes,
   Neon.Core.Persistence,
+  Neon.Core.Persistence.JSON,
   Neon.Core.TypeInfo,
   Neon.Core.Utils;
 
@@ -56,7 +45,32 @@ type
   ///   JSON Schema version supported: Draft 2020-12
   /// </summary>
   TNeonSchemaGenerator = class(TNeonBase)
+  private
+    /// <summary>
+    ///   Types currently being expanded on the current recursion path (added
+    ///   before recursing into a class/record's members, removed after) so a
+    ///   self-referencing Delphi type raises a clear error instead of a stack
+    ///   overflow
+    /// </summary>
+    FVisitedTypes: TDictionary<PTypeInfo, Boolean>;
+
+    /// <summary>
+    ///   The "$schema" meta-schema URI for the given draft
+    /// </summary>
+    class function SchemaURIFor(AVersion: TNeonJSchemaVersion): string; static;
   protected
+    /// <summary>
+    ///   Returns the schema's own scalar JSON type ('string'/'number'/'integer'/
+    ///   'boolean'), looking through a Nullable-style ["X","null"] type array
+    /// </summary>
+    function GetPrimaryJSONType(AJSON: TJSONObject): string;
+
+    /// <summary>
+    ///   Converts a JsonSchema tag value to a JSON value of the appropriate
+    ///   kind (number/integer/boolean/string) based on AJSONType
+    /// </summary>
+    function TagValueToJSON(ATags: TAttributeTags; const AName, AJSONType: string): TJSONValue;
+
     /// <summary>
     ///   Writer for members of objects and records
     /// </summary>
@@ -207,41 +221,176 @@ type
     procedure SetSchemaProperties(AJSON: TJSONObject; ANeonObject: TNeonRttiObject);
   public
     constructor Create(const AConfig: INeonConfiguration);
+    destructor Destroy; override;
 
     /// <summary>
-    ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType
+    ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType.
+    ///   AVersion selects the "$schema" URI written into the root of the result (default: None).
+    ///   If AVersion is None the function produces a JSON-Schema Fragment.
     /// </summary>
-    class function TypeToJSONSchema(AType: TRttiType): TJSONObject; overload;
-    class function TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration): TJSONObject; overload;
+    class function TypeToJSONSchema(AType: TRttiType; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+    class function TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
 
     /// <summary>
-    ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType
+    ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType.
+    ///   AVersion selects the "$schema" URI written into the root of the result (default: None).
+    ///   If AVersion is None the function produces a JSON-Schema Fragment.
     /// </summary>
-    class function ClassToJSONSchema(AClass: TClass): TJSONObject; overload;
-    class function ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration): TJSONObject; overload;
+    class function ClassToJSONSchema(AClass: TClass; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+    class function ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+  end;
+
+  /// <summary>
+  ///   One JSON Schema validation failure
+  /// </summary>
+  TJSONValidationError = record
+  public
+    /// <summary>
+    ///   JSON Pointer into the INSTANCE data being validated (not the schema),
+    ///   e.g. /items/3/name
+    /// </summary>
+    Path: string;
+    /// <summary>
+    ///   The JSON Schema keyword that failed, e.g. 'minLength', 'required', 'type'
+    /// </summary>
+    Keyword: string;
+    Message: string;
+    constructor Create(const APath, AKeyword, AMessage: string);
+  end;
+
+  /// <summary>
+  ///   The outcome of validating one JSON instance against a schema: every
+  ///   violation found (not just the first), unless StopOnFirstError is set
+  /// </summary>
+  TJSONValidationResult = record
+  public
+    IsValid: Boolean;
+    Errors: TArray<TJSONValidationError>;
+  end;
+
+  /// <summary>
+  ///   Validates a TJSONValue instance against a JSON Schema (Draft 2020-12)
+  ///   document, expressed directly as a TJSONObject/TJSONValue - no separate
+  ///   strongly-typed schema class is needed since TJSONObject already is a
+  ///   generic JSON tree.
+  /// </summary>
+  /// <remarks>
+  ///   v1 scope: $ref/$defs and $anchor are resolved locally (same document)
+  ///   only; a $ref to another document is unsupported. allOf/anyOf/oneOf/not
+  ///   are implemented; if/then/else, dependentRequired/dependentSchemas and
+  ///   unevaluatedProperties/unevaluatedItems are not yet (they need the
+  ///   annotation-tracking machinery, planned separately). format is
+  ///   annotation-only (never validated) in v1.
+  /// </remarks>
+  TJSONSchemaValidator = class
+  private
+    FRoot: TJSONValue;
+    FAnchors: TDictionary<string, TJSONValue>;
+    FStopOnFirstError: Boolean;
+
+    procedure CollectAnchors(ASchema: TJSONValue);
+    function NavigatePointer(const APointer: string): TJSONValue;
+    function ResolveRef(const ARef: string): TJSONValue;
+
+    procedure AddError(AErrors: TList<TJSONValidationError>; const APath, AKeyword, AMessage: string);
+    function ShouldStop(AErrors: TList<TJSONValidationError>; ABaseline: Integer): Boolean;
+
+    function JSONTypeName(AInstance: TJSONValue): string;
+    function InstanceMatchesType(AInstance: TJSONValue; const AType: string): Boolean;
+    function InstanceMatchesAnyType(AInstance: TJSONValue; ASchema: TJSONObject): Boolean;
+    function JSONValuesEqual(AValue1, AValue2: TJSONValue): Boolean;
+    function AsNumber(AInstance: TJSONValue; out AValue: Double): Boolean;
+    function CodepointLength(const AValue: string): Integer;
+
+    function ValidateNode(AInstance: TJSONValue; ASchema: TJSONValue; const APath: string; AErrors: TList<TJSONValidationError>): Boolean;
+    procedure ValidateNumeric(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
+    procedure ValidateString(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
+    procedure ValidateArray(AInstance: TJSONArray; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
+    procedure ValidateObject(AInstance: TJSONObject; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
+    function ValidateLogic(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>): Boolean;
+  public
+    constructor Create(ARootSchema: TJSONValue);
+    destructor Destroy; override;
+
+    function Validate(AInstance: TJSONValue): TJSONValidationResult;
+
+    /// <summary>
+    ///   When True, Validate stops at the first violation found (Errors will
+    ///   have at most one element). Default False: collect every violation.
+    /// </summary>
+    property StopOnFirstError: Boolean read FStopOnFirstError write FStopOnFirstError;
+  end;
+
+  TNeonHelper = class helper for TNeon
+  public
+    class function ValidateJSON(AJSON: TJSONValue; ASchema: TJSONValue): TJSONValidationResult;
   end;
 
 implementation
 
 uses
+  System.RegularExpressions,
   System.Variants;
 
 { TNeonSchemaGenerator }
 
-class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass): TJSONObject;
+class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; AVersion: TNeonJSchemaVersion): TJSONObject;
 begin
-  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), TNeonConfiguration.Default);
+  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), TNeonConfiguration.Default, AVersion);
 end;
 
-class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration): TJSONObject;
+class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
 begin
-  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), AConfig);
+  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), AConfig, AVersion);
 end;
 
 constructor TNeonSchemaGenerator.Create(const AConfig: INeonConfiguration);
 begin
   inherited Create(AConfig);
   FOperation := TNeonOperation.Serialize;
+  FVisitedTypes := TDictionary<PTypeInfo, Boolean>.Create;
+end;
+
+destructor TNeonSchemaGenerator.Destroy;
+begin
+  FVisitedTypes.Free;
+  inherited;
+end;
+
+function TNeonSchemaGenerator.GetPrimaryJSONType(AJSON: TJSONObject): string;
+var
+  LTypeValue: TJSONValue;
+  LItem: TJSONValue;
+begin
+  Result := '';
+  LTypeValue := AJSON.GetValue('type');
+  if not Assigned(LTypeValue) then
+    Exit;
+
+  if LTypeValue is TJSONArray then
+  begin
+    for LItem in (LTypeValue as TJSONArray) do
+      if LItem.Value <> 'null' then
+        Exit(LItem.Value);
+  end
+  else
+    Result := LTypeValue.Value;
+end;
+
+function TNeonSchemaGenerator.TagValueToJSON(ATags: TAttributeTags; const AName, AJSONType: string): TJSONValue;
+begin
+  // Only scalar (string/number/integer/boolean) values are supported; an array/object
+  // "default"/"const"/"examples" would need embedded JSON syntax in the tag string,
+  // which the flat key=value tag format does not support
+
+  if AJSONType = 'integer' then
+    Result := TJSONNumber.Create(ATags.GetValueAs<Int64>(AName))
+  else if AJSONType = 'number' then
+    Result := TJSONNumber.Create(ATags.GetValueAs<Double>(AName))
+  else if AJSONType = 'boolean' then
+    Result := TJSONBool.Create(ATags.GetValueAs<Boolean>(AName))
+  else
+    Result := TJSONString.Create(ATags.GetValueAs<string>(AName));
 end;
 
 function TNeonSchemaGenerator.IsEnumerable(AType: TRttiType; out AList: INeonTypeInfoList): Boolean;
@@ -271,39 +420,120 @@ end;
 procedure TNeonSchemaGenerator.SetSchemaProperties(AJSON: TJSONObject; ANeonObject: TNeonRttiObject);
 var
   LSchema: JsonSchemaAttribute;
+  LTags: TAttributeTags;
+  LJSONType: string;
+  LExamples: TJSONArray;
 begin
   LSchema := TRttiUtils.FindAttribute<JsonSchemaAttribute>(ANeonObject.Attributes);
-  if Assigned(LSchema) then
+  if not Assigned(LSchema) then
+    Exit;
+
+  LSchema.ParseTags;
+  LTags := LSchema.Tags;
+  LJSONType := GetPrimaryJSONType(AJSON);
+
+  // Metadata
+  if LTags.Exists('title') then
+    AJSON.AddPair('title', LTags.GetValueAs<string>('title'));
+
+  if LTags.Exists('description') then
+    AJSON.AddPair('description', LTags.GetValueAs<string>('description'));
+
+  if LTags.Exists('deprecated') then
+    AJSON.AddPair('deprecated', TJSONBool.Create(True));
+
+  if LTags.Exists('default') then
+    AJSON.AddPair('default', TagValueToJSON(LTags, 'default', LJSONType));
+
+  if LTags.Exists('const') then
+    AJSON.AddPair('const', TagValueToJSON(LTags, 'const', LJSONType));
+
+  if LTags.Exists('examples') then
   begin
-    LSchema.ParseTags;
+    LExamples := TJSONArray.Create;
+    LExamples.AddElement(TagValueToJSON(LTags, 'examples', LJSONType));
+    AJSON.AddPair('examples', LExamples);
+  end;
 
-    if LSchema.Tags.Exists('description') then
-      AJSON.AddPair('description', LSchema.Tags.GetValueAs<string>('description'));
+  // Consumed by TNeonSchemaGenerator.WriteMembers (moved into the parent's "required" array)
+  if LTags.Exists('required') then
+    AJSON.AddPair('required', TJSONBool.Create(True));
 
-    if LSchema.Tags.Exists('required') then
-      AJSON.AddPair('required', TJSONBool.Create(True));
+  if LTags.Exists('readOnly') then
+    AJSON.AddPair('readOnly', TJSONBool.Create(True));
 
-    if LSchema.Tags.Exists('readOnly') then
-      AJSON.AddPair('readOnly', TJSONBool.Create(True));
+  // Numeric constraints
+  if LTags.Exists('minimum') then
+    AJSON.AddPair('minimum', TJSONNumber.Create(LTags.GetValueAs<Double>('minimum')));
 
+  if LTags.Exists('maximum') then
+    AJSON.AddPair('maximum', TJSONNumber.Create(LTags.GetValueAs<Double>('maximum')));
+
+  if LTags.Exists('exclusiveMinimum') then
+    AJSON.AddPair('exclusiveMinimum', TJSONNumber.Create(LTags.GetValueAs<Double>('exclusiveMinimum')));
+
+  if LTags.Exists('exclusiveMaximum') then
+    AJSON.AddPair('exclusiveMaximum', TJSONNumber.Create(LTags.GetValueAs<Double>('exclusiveMaximum')));
+
+  if LTags.Exists('multipleOf') then
+    AJSON.AddPair('multipleOf', TJSONNumber.Create(LTags.GetValueAs<Double>('multipleOf')));
+
+  // String constraints
+  if LTags.Exists('minLength') then
+    AJSON.AddPair('minLength', TJSONNumber.Create(LTags.GetValueAs<Integer>('minLength')));
+
+  if LTags.Exists('maxLength') then
+    AJSON.AddPair('maxLength', TJSONNumber.Create(LTags.GetValueAs<Integer>('maxLength')));
+
+  if LTags.Exists('pattern') then
+    AJSON.AddPair('pattern', LTags.GetValueAs<string>('pattern'));
+
+  // Array constraints
+  if LTags.Exists('minItems') then
+    AJSON.AddPair('minItems', TJSONNumber.Create(LTags.GetValueAs<Integer>('minItems')));
+
+  if LTags.Exists('maxItems') then
+    AJSON.AddPair('maxItems', TJSONNumber.Create(LTags.GetValueAs<Integer>('maxItems')));
+
+  if LTags.Exists('uniqueItems') then
+    AJSON.AddPair('uniqueItems', TJSONBool.Create(True));
+
+  // Object constraints
+  if LTags.Exists('minProperties') then
+    AJSON.AddPair('minProperties', TJSONNumber.Create(LTags.GetValueAs<Integer>('minProperties')));
+
+  if LTags.Exists('maxProperties') then
+    AJSON.AddPair('maxProperties', TJSONNumber.Create(LTags.GetValueAs<Integer>('maxProperties')));
+end;
+
+class function TNeonSchemaGenerator.SchemaURIFor(AVersion: TNeonJSchemaVersion): string;
+begin
+  case AVersion of
+    TNeonJSchemaVersion.Draft07: Result := 'http://json-schema.org/draft-07/schema#';
+    TNeonJSchemaVersion.v202012: Result := 'https://json-schema.org/draft/2020-12/schema';
+  else
+    Result := '';
   end;
 end;
 
-class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration): TJSONObject;
+class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
 var
   LGenerator: TNeonSchemaGenerator;
 begin
   LGenerator := TNeonSchemaGenerator.Create(AConfig);
   try
     Result := LGenerator.WriteDataMember(AType);
+    if Assigned(Result) then
+      if (AVersion <> TNeonJSchemaVersion.None) then
+        Result.AddPair('$schema', SchemaURIFor(AVersion));
   finally
     LGenerator.Free;
   end;
 end;
 
-class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType): TJSONObject;
+class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AVersion: TNeonJSchemaVersion): TJSONObject;
 begin
-  Result := TypeToJSONSchema(AType, TNeonConfiguration.Default);
+  Result := TypeToJSONSchema(AType, TNeonConfiguration.Default, AVersion);
 end;
 
 function TNeonSchemaGenerator.WriteArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
@@ -604,19 +834,54 @@ begin
           AResult.AddPair(LNeonName, LJSONObj);
         end;
       except
-        LogError(Format('Error converting property [%s] of object [%s]',
-          [LNeonMember.Name, AType.Name]));
+        on E: ENeonException do
+          raise; // e.g. a genuine recursive-type cycle - a real error, not a per-property fluke
+        on E: Exception do
+          LogError(Format(SNeonErrorConvertPropF2,
+            [LNeonMember.Name, AType.Name]));
       end;
     end;
   end;
 end;
 
 function TNeonSchemaGenerator.WriteNullable(AType: TRttiType; ANeonObject: TNeonRttiObject; ANullable: INeonTypeInfoNullable): TJSONObject;
+var
+  LTypePair: TJSONPair;
+  LTypeArray: TJSONArray;
+  LItem: TJSONValue;
 begin
   Result := nil;
+  if not Assigned(ANullable) then
+    Exit;
 
-  if Assigned(ANullable) then
-    Result := WriteDataMember(ANullable.GetBaseType)
+  Result := WriteDataMember(ANullable.GetBaseType);
+  if not Assigned(Result) then
+    Exit;
+
+  // Reflect that the value may be absent: fold the base type's "type" into a
+  // ["<base type(s)>", "null"] union (matches how jsonschema-go's inference
+  // wraps a Go pointer type). Note: if the base schema also has "enum", the
+  // enum array itself would still need "null" added for full correctness -
+  // a known limitation, not addressed here.
+  LTypePair := Result.RemovePair('type');
+  if not Assigned(LTypePair) then
+    Exit;
+
+  try
+    LTypeArray := TJSONArray.Create;
+    if LTypePair.JsonValue is TJSONArray then
+    begin
+      for LItem in (LTypePair.JsonValue as TJSONArray) do
+        LTypeArray.Add(LItem.Value);
+    end
+    else
+      LTypeArray.Add(LTypePair.JsonValue.Value);
+
+    LTypeArray.Add('null');
+    Result.AddPair('type', LTypeArray);
+  finally
+    LTypePair.Free;
+  end;
 end;
 
 function TNeonSchemaGenerator.WriteObjectOrRecord(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
@@ -624,16 +889,24 @@ var
   LProperties: TJSONObject;
   LRequired: TJSONArray;
 begin
-  LProperties := TJSONObject.Create;
+  if FVisitedTypes.ContainsKey(AType.Handle) then
+    raise ENeonException.CreateFmt(SNeonErrorSchemaCycleF1, [AType.Name]);
 
-  LRequired := WriteMembers(AType, LProperties);
+  FVisitedTypes.Add(AType.Handle, True);
+  try
+    LProperties := TJSONObject.Create;
 
-  Result := TJSONObject.Create
-    .AddPair('type', 'object')
-    .AddPair('properties', LProperties);
+    LRequired := WriteMembers(AType, LProperties);
 
-  if Assigned(LRequired) then
-    Result.AddPair('required', LRequired);
+    Result := TJSONObject.Create
+      .AddPair('type', 'object')
+      .AddPair('properties', LProperties);
+
+    if Assigned(LRequired) then
+      Result.AddPair('required', LRequired);
+  finally
+    FVisitedTypes.Remove(AType.Handle);
+  end;
 end;
 
 function TNeonSchemaGenerator.WriteEnumerable(AType: TRttiType; ANeonObject: TNeonRttiObject; AList: INeonTypeInfoList): TJSONObject;
@@ -749,6 +1022,774 @@ procedure JsonSchemaAttribute.ParseTags;
 begin
   if FTags.Count = 0 then
     FTags.Parse(FTagString);
+end;
+
+{ TJSONValidationError }
+
+constructor TJSONValidationError.Create(const APath, AKeyword, AMessage: string);
+begin
+  Path := APath;
+  Keyword := AKeyword;
+  Message := AMessage;
+end;
+
+{ TJSONSchemaValidator }
+
+constructor TJSONSchemaValidator.Create(ARootSchema: TJSONValue);
+begin
+  FRoot := ARootSchema;
+  FAnchors := TDictionary<string, TJSONValue>.Create;
+  CollectAnchors(FRoot);
+end;
+
+destructor TJSONSchemaValidator.Destroy;
+begin
+  FAnchors.Free;
+  inherited;
+end;
+
+procedure TJSONSchemaValidator.CollectAnchors(ASchema: TJSONValue);
+var
+  LObj: TJSONObject;
+  LAnchor, LId: TJSONValue;
+  LPair: TJSONPair;
+begin
+  if not (ASchema is TJSONObject) then
+    Exit;
+
+  LObj := ASchema as TJSONObject;
+
+  LAnchor := LObj.GetValue('$anchor');
+  if Assigned(LAnchor) and (LAnchor is TJSONString) then
+    FAnchors.AddOrSetValue(LAnchor.Value, LObj);
+
+  // Draft-07's equivalent of $anchor: a fragment-only "$id" (e.g. "$id": "#foo")
+  LId := LObj.GetValue('$id');
+  if Assigned(LId) and (LId is TJSONString) and LId.Value.StartsWith('#') and (LId.Value.Length > 1) then
+    FAnchors.AddOrSetValue(LId.Value.Substring(1), LObj);
+
+  for LPair in LObj do
+  begin
+    if LPair.JsonValue is TJSONObject then
+      CollectAnchors(LPair.JsonValue as TJSONObject)
+    else if LPair.JsonValue is TJSONArray then
+      CollectAnchors(LPair.JsonValue as TJSONArray);
+  end;
+end;
+
+function TJSONSchemaValidator.NavigatePointer(const APointer: string): TJSONValue;
+var
+  LSegments: TArray<string>;
+  LSegment, LUnescaped: string;
+  LCurrent: TJSONValue;
+  LIndex: Integer;
+begin
+  if APointer = '' then
+    Exit(FRoot);
+
+  if not APointer.StartsWith('/') then
+    Exit(nil);
+
+  LSegments := APointer.Substring(1).Split(['/']);
+  LCurrent := FRoot;
+  for LSegment in LSegments do
+  begin
+    if not Assigned(LCurrent) then
+      Exit(nil);
+
+    LUnescaped := LSegment.Replace('~1', '/', [rfReplaceAll]).Replace('~0', '~', [rfReplaceAll]);
+
+    if LCurrent is TJSONObject then
+      LCurrent := (LCurrent as TJSONObject).GetValue(LUnescaped)
+    else if LCurrent is TJSONArray then
+    begin
+      if TryStrToInt(LUnescaped, LIndex) and (LIndex >= 0) and (LIndex < (LCurrent as TJSONArray).Count) then
+        LCurrent := (LCurrent as TJSONArray).Items[LIndex]
+      else
+        Exit(nil);
+    end
+    else
+      Exit(nil);
+  end;
+  Result := LCurrent;
+end;
+
+function TJSONSchemaValidator.ResolveRef(const ARef: string): TJSONValue;
+begin
+  if (ARef = '') or (ARef = '#') then
+    Exit(FRoot);
+
+  if ARef.StartsWith('#/') then
+  begin
+    Result := NavigatePointer(ARef.Substring(1));
+    if not Assigned(Result) then
+      raise ENeonException.CreateFmt(SNeonErrorSchemaRefNotFoundF1, [ARef]);
+    Exit;
+  end;
+
+  if ARef.StartsWith('#') then
+  begin
+    if not FAnchors.TryGetValue(ARef.Substring(1), Result) then
+      raise ENeonException.CreateFmt(SNeonErrorSchemaRefNotFoundF1, [ARef]);
+    Exit;
+  end;
+
+  raise ENeonException.CreateFmt(SNeonErrorSchemaRefUnsupportedF1, [ARef]);
+end;
+
+procedure TJSONSchemaValidator.AddError(AErrors: TList<TJSONValidationError>; const APath, AKeyword, AMessage: string);
+begin
+  AErrors.Add(TJSONValidationError.Create(APath, AKeyword, AMessage));
+end;
+
+function TJSONSchemaValidator.ShouldStop(AErrors: TList<TJSONValidationError>; ABaseline: Integer): Boolean;
+begin
+  Result := FStopOnFirstError and (AErrors.Count > ABaseline);
+end;
+
+function TJSONSchemaValidator.JSONTypeName(AInstance: TJSONValue): string;
+begin
+  if (not Assigned(AInstance)) or (AInstance is TJSONNull) then
+    Result := 'null'
+  else if AInstance is TJSONBool then
+    Result := 'boolean'
+  else if AInstance is TJSONObject then
+    Result := 'object'
+  else if AInstance is TJSONArray then
+    Result := 'array'
+  else if AInstance is TJSONNumber then
+  begin
+    if Frac((AInstance as TJSONNumber).AsDouble) = 0 then
+      Result := 'integer'
+    else
+      Result := 'number';
+  end
+  else
+    Result := 'string';
+end;
+
+function TJSONSchemaValidator.InstanceMatchesType(AInstance: TJSONValue; const AType: string): Boolean;
+begin
+  if AType = 'number' then
+    // an integer-valued number still satisfies "number"
+    Result := (AInstance is TJSONNumber)
+  else if AType = 'integer' then
+    Result := (AInstance is TJSONNumber) and (Frac((AInstance as TJSONNumber).AsDouble) = 0)
+  else
+    Result := JSONTypeName(AInstance) = AType;
+end;
+
+function TJSONSchemaValidator.InstanceMatchesAnyType(AInstance: TJSONValue; ASchema: TJSONObject): Boolean;
+var
+  LTypeValue: TJSONValue;
+  LItem: TJSONValue;
+begin
+  LTypeValue := ASchema.GetValue('type');
+  if not Assigned(LTypeValue) then
+    Exit(True); // no "type" constraint
+
+  if LTypeValue is TJSONArray then
+  begin
+    for LItem in (LTypeValue as TJSONArray) do
+      if InstanceMatchesType(AInstance, LItem.Value) then
+        Exit(True);
+    Result := False;
+  end
+  else
+    Result := InstanceMatchesType(AInstance, LTypeValue.Value);
+end;
+
+function TJSONSchemaValidator.JSONValuesEqual(AValue1, AValue2: TJSONValue): Boolean;
+var
+  LObj1, LObj2: TJSONObject;
+  LArr1, LArr2: TJSONArray;
+  LPair: TJSONPair;
+  I: Integer;
+begin
+  if (not Assigned(AValue1)) or (not Assigned(AValue2)) then
+    Exit(not Assigned(AValue1) and not Assigned(AValue2));
+
+  if JSONTypeName(AValue1) <> JSONTypeName(AValue2) then
+    // an integer-typed number can still equal a number-typed one (1 = 1.0)
+    if not ((AValue1 is TJSONNumber) and (AValue2 is TJSONNumber)) then
+      Exit(False);
+
+  if AValue1 is TJSONNumber then
+    Exit((AValue1 as TJSONNumber).AsDouble = (AValue2 as TJSONNumber).AsDouble);
+
+  if AValue1 is TJSONString then
+    Exit(AValue1.Value = AValue2.Value);
+
+  if AValue1 is TJSONBool then
+    Exit((AValue1 as TJSONBool).AsBoolean = (AValue2 as TJSONBool).AsBoolean);
+
+  if AValue1 is TJSONNull then
+    Exit(True);
+
+  if AValue1 is TJSONArray then
+  begin
+    LArr1 := AValue1 as TJSONArray;
+    LArr2 := AValue2 as TJSONArray;
+    if LArr1.Count <> LArr2.Count then
+      Exit(False);
+    for I := 0 to LArr1.Count - 1 do
+      if not JSONValuesEqual(LArr1.Items[I], LArr2.Items[I]) then
+        Exit(False);
+    Exit(True);
+  end;
+
+  if AValue1 is TJSONObject then
+  begin
+    LObj1 := AValue1 as TJSONObject;
+    LObj2 := AValue2 as TJSONObject;
+    if LObj1.Count <> LObj2.Count then
+      Exit(False);
+    for LPair in LObj1 do
+      if not JSONValuesEqual(LPair.JsonValue, LObj2.GetValue(LPair.JsonString.Value)) then
+        Exit(False);
+    Exit(True);
+  end;
+
+  Result := False;
+end;
+
+function TJSONSchemaValidator.AsNumber(AInstance: TJSONValue; out AValue: Double): Boolean;
+begin
+  Result := AInstance is TJSONNumber;
+  if Result then
+    AValue := (AInstance as TJSONNumber).AsDouble;
+end;
+
+function TJSONSchemaValidator.CodepointLength(const AValue: string): Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  I := 1;
+  while I <= AValue.Length do
+  begin
+    Inc(Result);
+    if (I < AValue.Length) and (Ord(AValue[I]) >= $D800) and (Ord(AValue[I]) <= $DBFF) and
+       (Ord(AValue[I + 1]) >= $DC00) and (Ord(AValue[I + 1]) <= $DFFF) then
+      Inc(I, 2)
+    else
+      Inc(I);
+  end;
+end;
+
+procedure TJSONSchemaValidator.ValidateNumeric(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
+var
+  LNumber, LBound, LQuotient: Double;
+  LValue: TJSONValue;
+begin
+  if not AsNumber(AInstance, LNumber) then
+    Exit;
+
+  LValue := ASchema.GetValue('multipleOf');
+  if Assigned(LValue) and AsNumber(LValue, LBound) and (LBound <> 0) then
+  begin
+    LQuotient := LNumber / LBound;
+    if Abs(LQuotient - Round(LQuotient)) > 1E-9 then
+      AddError(AErrors, APath, 'multipleOf', Format('%g is not a multiple of %g', [LNumber, LBound]));
+  end;
+
+  LValue := ASchema.GetValue('minimum');
+  if Assigned(LValue) and AsNumber(LValue, LBound) and (LNumber < LBound) then
+    AddError(AErrors, APath, 'minimum', Format('%g is less than the minimum of %g', [LNumber, LBound]));
+
+  LValue := ASchema.GetValue('maximum');
+  if Assigned(LValue) and AsNumber(LValue, LBound) and (LNumber > LBound) then
+    AddError(AErrors, APath, 'maximum', Format('%g is greater than the maximum of %g', [LNumber, LBound]));
+
+  LValue := ASchema.GetValue('exclusiveMinimum');
+  if Assigned(LValue) and AsNumber(LValue, LBound) and (LNumber <= LBound) then
+    AddError(AErrors, APath, 'exclusiveMinimum', Format('%g is not greater than the exclusive minimum of %g', [LNumber, LBound]));
+
+  LValue := ASchema.GetValue('exclusiveMaximum');
+  if Assigned(LValue) and AsNumber(LValue, LBound) and (LNumber >= LBound) then
+    AddError(AErrors, APath, 'exclusiveMaximum', Format('%g is not less than the exclusive maximum of %g', [LNumber, LBound]));
+end;
+
+procedure TJSONSchemaValidator.ValidateString(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
+var
+  LStr: string;
+  LLength: Integer;
+  LValue: TJSONValue;
+  LMinMax: Integer;
+begin
+  if not (AInstance is TJSONString) then
+    Exit;
+
+  LStr := AInstance.Value;
+  LLength := CodepointLength(LStr);
+
+  LValue := ASchema.GetValue('minLength');
+  if Assigned(LValue) and (LValue is TJSONNumber) then
+  begin
+    LMinMax := (LValue as TJSONNumber).AsInt;
+    if LLength < LMinMax then
+      AddError(AErrors, APath, 'minLength', Format('expected at least %d characters, got %d', [LMinMax, LLength]));
+  end;
+
+  LValue := ASchema.GetValue('maxLength');
+  if Assigned(LValue) and (LValue is TJSONNumber) then
+  begin
+    LMinMax := (LValue as TJSONNumber).AsInt;
+    if LLength > LMinMax then
+      AddError(AErrors, APath, 'maxLength', Format('expected at most %d characters, got %d', [LMinMax, LLength]));
+  end;
+
+  LValue := ASchema.GetValue('pattern');
+  if Assigned(LValue) and (LValue is TJSONString) then
+  begin
+    if not TRegEx.IsMatch(LStr, LValue.Value) then
+      AddError(AErrors, APath, 'pattern', Format('"%s" does not match pattern "%s"', [LStr, LValue.Value]));
+  end;
+end;
+
+procedure TJSONSchemaValidator.ValidateArray(AInstance: TJSONArray; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
+var
+  LPrefixItems, LItemsTuple: TJSONArray;
+  LItems, LContains, LAdditionalItems: TJSONValue;
+  LValue: TJSONValue;
+  I, J, LMinMax, LContainsCount: Integer;
+  LStartIndex, LBaseline: Integer;
+  LTemp: TList<TJSONValidationError>;
+begin
+  LBaseline := AErrors.Count;
+  LStartIndex := 0;
+
+  LValue := ASchema.GetValue('prefixItems');
+  if Assigned(LValue) and (LValue is TJSONArray) then
+  begin
+    LPrefixItems := LValue as TJSONArray;
+    for I := 0 to LPrefixItems.Count - 1 do
+    begin
+      if I >= AInstance.Count then
+        Break;
+      ValidateNode(AInstance.Items[I], LPrefixItems.Items[I], Format('%s/%d', [APath, I]), AErrors);
+      if ShouldStop(AErrors, LBaseline) then
+        Exit;
+    end;
+    LStartIndex := LPrefixItems.Count;
+  end;
+
+  LItems := ASchema.GetValue('items');
+  if Assigned(LItems) and (LItems is TJSONArray) and (LStartIndex = 0) then
+  begin
+    // Draft-07 tuple form: "items" is itself the per-index schema array,
+    // with "additionalItems" governing indexes past the tuple (2020-12's
+    // "prefixItems"/"items" split covers the same idea with different names,
+    // handled by the prefixItems branch above)
+    LItemsTuple := LItems as TJSONArray;
+    for I := 0 to LItemsTuple.Count - 1 do
+    begin
+      if I >= AInstance.Count then
+        Break;
+      ValidateNode(AInstance.Items[I], LItemsTuple.Items[I], Format('%s/%d', [APath, I]), AErrors);
+      if ShouldStop(AErrors, LBaseline) then
+        Exit;
+    end;
+    LStartIndex := LItemsTuple.Count;
+
+    LAdditionalItems := ASchema.GetValue('additionalItems');
+    if Assigned(LAdditionalItems) then
+      for I := LStartIndex to AInstance.Count - 1 do
+      begin
+        ValidateNode(AInstance.Items[I], LAdditionalItems, Format('%s/%d', [APath, I]), AErrors);
+        if ShouldStop(AErrors, LBaseline) then
+          Exit;
+      end;
+  end
+  else if Assigned(LItems) then
+    for I := LStartIndex to AInstance.Count - 1 do
+    begin
+      ValidateNode(AInstance.Items[I], LItems, Format('%s/%d', [APath, I]), AErrors);
+      if ShouldStop(AErrors, LBaseline) then
+        Exit;
+    end;
+
+  LContains := ASchema.GetValue('contains');
+  if Assigned(LContains) then
+  begin
+    LContainsCount := 0;
+    for I := 0 to AInstance.Count - 1 do
+    begin
+      LTemp := TList<TJSONValidationError>.Create;
+      try
+        if ValidateNode(AInstance.Items[I], LContains, Format('%s/%d', [APath, I]), LTemp) then
+          Inc(LContainsCount);
+      finally
+        LTemp.Free;
+      end;
+    end;
+
+    LMinMax := 1;
+    LValue := ASchema.GetValue('minContains');
+    if Assigned(LValue) and (LValue is TJSONNumber) then
+      LMinMax := (LValue as TJSONNumber).AsInt;
+    if LContainsCount < LMinMax then
+      AddError(AErrors, APath, 'contains', Format('expected at least %d matching item(s), found %d', [LMinMax, LContainsCount]));
+    if ShouldStop(AErrors, LBaseline) then
+      Exit;
+
+    LValue := ASchema.GetValue('maxContains');
+    if Assigned(LValue) and (LValue is TJSONNumber) then
+      if LContainsCount > (LValue as TJSONNumber).AsInt then
+        AddError(AErrors, APath, 'maxContains', Format('expected at most %d matching item(s), found %d', [(LValue as TJSONNumber).AsInt, LContainsCount]));
+    if ShouldStop(AErrors, LBaseline) then
+      Exit;
+  end;
+
+  LValue := ASchema.GetValue('minItems');
+  if Assigned(LValue) and (LValue is TJSONNumber) then
+  begin
+    LMinMax := (LValue as TJSONNumber).AsInt;
+    if AInstance.Count < LMinMax then
+      AddError(AErrors, APath, 'minItems', Format('expected at least %d items, got %d', [LMinMax, AInstance.Count]));
+    if ShouldStop(AErrors, LBaseline) then
+      Exit;
+  end;
+
+  LValue := ASchema.GetValue('maxItems');
+  if Assigned(LValue) and (LValue is TJSONNumber) then
+  begin
+    LMinMax := (LValue as TJSONNumber).AsInt;
+    if AInstance.Count > LMinMax then
+      AddError(AErrors, APath, 'maxItems', Format('expected at most %d items, got %d', [LMinMax, AInstance.Count]));
+    if ShouldStop(AErrors, LBaseline) then
+      Exit;
+  end;
+
+  LValue := ASchema.GetValue('uniqueItems');
+  if Assigned(LValue) and (LValue is TJSONBool) and (LValue as TJSONBool).AsBoolean then
+  begin
+    for I := 0 to AInstance.Count - 1 do
+      for J := I + 1 to AInstance.Count - 1 do
+        if JSONValuesEqual(AInstance.Items[I], AInstance.Items[J]) then
+        begin
+          AddError(AErrors, APath, 'uniqueItems', Format('items at index %d and %d are equal', [I, J]));
+          Exit;
+        end;
+  end;
+end;
+
+procedure TJSONSchemaValidator.ValidateObject(AInstance: TJSONObject; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
+var
+  LProperties, LPatternProperties: TJSONValue;
+  LAdditionalProperties, LPropertyNames, LRequired: TJSONValue;
+  LEvaluated: TDictionary<string, Boolean>;
+  LPair, LInstPair: TJSONPair;
+  LPropSchema: TJSONValue;
+  LValue: TJSONValue;
+  LMinMax, LBaseline: Integer;
+  I: Integer;
+begin
+  LBaseline := AErrors.Count;
+  LEvaluated := TDictionary<string, Boolean>.Create;
+  try
+    LProperties := ASchema.GetValue('properties');
+    if Assigned(LProperties) and (LProperties is TJSONObject) then
+      for LPair in (LProperties as TJSONObject) do
+      begin
+        LValue := AInstance.GetValue(LPair.JsonString.Value);
+        if Assigned(LValue) then
+        begin
+          ValidateNode(LValue, LPair.JsonValue, APath + '/' + LPair.JsonString.Value, AErrors);
+          LEvaluated.AddOrSetValue(LPair.JsonString.Value, True);
+          if ShouldStop(AErrors, LBaseline) then
+            Exit;
+        end;
+      end;
+
+    LPatternProperties := ASchema.GetValue('patternProperties');
+    if Assigned(LPatternProperties) and (LPatternProperties is TJSONObject) then
+      for LPair in (LPatternProperties as TJSONObject) do
+        for LInstPair in AInstance do
+          if TRegEx.IsMatch(LInstPair.JsonString.Value, LPair.JsonString.Value) then
+          begin
+            ValidateNode(LInstPair.JsonValue, LPair.JsonValue, APath + '/' + LInstPair.JsonString.Value, AErrors);
+            LEvaluated.AddOrSetValue(LInstPair.JsonString.Value, True);
+            if ShouldStop(AErrors, LBaseline) then
+              Exit;
+          end;
+
+    LAdditionalProperties := ASchema.GetValue('additionalProperties');
+    if Assigned(LAdditionalProperties) then
+      for LPair in AInstance do
+        if not LEvaluated.ContainsKey(LPair.JsonString.Value) then
+        begin
+          ValidateNode(LPair.JsonValue, LAdditionalProperties, APath + '/' + LPair.JsonString.Value, AErrors);
+          if ShouldStop(AErrors, LBaseline) then
+            Exit;
+        end;
+
+    LPropertyNames := ASchema.GetValue('propertyNames');
+    if Assigned(LPropertyNames) then
+      for LPair in AInstance do
+      begin
+        LPropSchema := TJSONString.Create(LPair.JsonString.Value);
+        try
+          ValidateNode(LPropSchema, LPropertyNames, APath + '/' + LPair.JsonString.Value, AErrors);
+        finally
+          LPropSchema.Free;
+        end;
+        if ShouldStop(AErrors, LBaseline) then
+          Exit;
+      end;
+
+    LValue := ASchema.GetValue('minProperties');
+    if Assigned(LValue) and (LValue is TJSONNumber) then
+    begin
+      LMinMax := (LValue as TJSONNumber).AsInt;
+      if AInstance.Count < LMinMax then
+        AddError(AErrors, APath, 'minProperties', Format('expected at least %d properties, got %d', [LMinMax, AInstance.Count]));
+      if ShouldStop(AErrors, LBaseline) then
+        Exit;
+    end;
+
+    LValue := ASchema.GetValue('maxProperties');
+    if Assigned(LValue) and (LValue is TJSONNumber) then
+    begin
+      LMinMax := (LValue as TJSONNumber).AsInt;
+      if AInstance.Count > LMinMax then
+        AddError(AErrors, APath, 'maxProperties', Format('expected at most %d properties, got %d', [LMinMax, AInstance.Count]));
+      if ShouldStop(AErrors, LBaseline) then
+        Exit;
+    end;
+
+    LRequired := ASchema.GetValue('required');
+    if Assigned(LRequired) and (LRequired is TJSONArray) then
+      for I := 0 to (LRequired as TJSONArray).Count - 1 do
+        if not Assigned(AInstance.GetValue((LRequired as TJSONArray).Items[I].Value)) then
+        begin
+          AddError(AErrors, APath, 'required', Format('missing required property "%s"', [(LRequired as TJSONArray).Items[I].Value]));
+          if ShouldStop(AErrors, LBaseline) then
+            Exit;
+        end;
+  finally
+    LEvaluated.Free;
+  end;
+end;
+
+function TJSONSchemaValidator.ValidateLogic(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>): Boolean;
+var
+  LAllOf, LAnyOf, LOneOf, LNot: TJSONValue;
+  LBranch: TJSONValue;
+  LTemp: TList<TJSONValidationError>;
+  LMatchedIndexes: TList<Integer>;
+  LMatchCount, I: Integer;
+
+  function IndexesToString(AIndexes: TList<Integer>): string;
+  var
+    LIndex: Integer;
+  begin
+    Result := '';
+    for LIndex in AIndexes do
+    begin
+      if Result <> '' then
+        Result := Result + ', ';
+      Result := Result + LIndex.ToString;
+    end;
+  end;
+
+begin
+  Result := True;
+
+  LAllOf := ASchema.GetValue('allOf');
+  if Assigned(LAllOf) and (LAllOf is TJSONArray) then
+    for LBranch in (LAllOf as TJSONArray) do
+    begin
+      if not ValidateNode(AInstance, LBranch, APath, AErrors) then
+      begin
+        Result := False;
+        if FStopOnFirstError then
+          Exit;
+      end;
+    end;
+
+  LAnyOf := ASchema.GetValue('anyOf');
+  if Assigned(LAnyOf) and (LAnyOf is TJSONArray) then
+  begin
+    LMatchCount := 0;
+    for LBranch in (LAnyOf as TJSONArray) do
+    begin
+      LTemp := TList<TJSONValidationError>.Create;
+      try
+        if ValidateNode(AInstance, LBranch, APath, LTemp) then
+          Inc(LMatchCount);
+      finally
+        LTemp.Free;
+      end;
+    end;
+    if LMatchCount = 0 then
+    begin
+      AddError(AErrors, APath, 'anyOf', 'instance does not match any of the schemas in "anyOf"');
+      Result := False;
+    end;
+  end;
+
+  LOneOf := ASchema.GetValue('oneOf');
+  if Assigned(LOneOf) and (LOneOf is TJSONArray) then
+  begin
+    LMatchedIndexes := TList<Integer>.Create;
+    try
+      for I := 0 to (LOneOf as TJSONArray).Count - 1 do
+      begin
+        LTemp := TList<TJSONValidationError>.Create;
+        try
+          if ValidateNode(AInstance, (LOneOf as TJSONArray).Items[I], APath, LTemp) then
+            LMatchedIndexes.Add(I);
+        finally
+          LTemp.Free;
+        end;
+      end;
+      LMatchCount := LMatchedIndexes.Count;
+      if LMatchCount = 0 then
+      begin
+        AddError(AErrors, APath, 'oneOf', 'instance does not match any of the schemas in "oneOf"');
+        Result := False;
+      end
+      else if LMatchCount > 1 then
+      begin
+        AddError(AErrors, APath, 'oneOf', Format('instance matches more than one schema in "oneOf" (indexes %s)',
+          [IndexesToString(LMatchedIndexes)]));
+        Result := False;
+      end;
+    finally
+      LMatchedIndexes.Free;
+    end;
+  end;
+
+  LNot := ASchema.GetValue('not');
+  if Assigned(LNot) then
+  begin
+    LTemp := TList<TJSONValidationError>.Create;
+    try
+      if ValidateNode(AInstance, LNot, APath, LTemp) then
+      begin
+        AddError(AErrors, APath, 'not', 'instance must not validate against the "not" schema');
+        Result := False;
+      end;
+    finally
+      LTemp.Free;
+    end;
+  end;
+end;
+
+function TJSONSchemaValidator.ValidateNode(AInstance: TJSONValue; ASchema: TJSONValue; const APath: string; AErrors: TList<TJSONValidationError>): Boolean;
+var
+  LErrorCountBefore: Integer;
+  LSchemaObj: TJSONObject;
+  LRef, LEnum, LConst: TJSONValue;
+  LEnumItem: TJSONValue;
+  LMatched: Boolean;
+begin
+  LErrorCountBefore := AErrors.Count;
+
+  // Boolean schema: `true` (or absent) always valid, `false` always invalid
+  if not Assigned(ASchema) then
+    Exit(True);
+
+  if ASchema is TJSONBool then
+  begin
+    if not (ASchema as TJSONBool).AsBoolean then
+      AddError(AErrors, APath, 'false', 'instance is not allowed (schema is `false`)');
+    Exit(AErrors.Count = LErrorCountBefore);
+  end;
+
+  if not (ASchema is TJSONObject) then
+    Exit(True); // malformed schema position - treat permissively
+
+  LSchemaObj := ASchema as TJSONObject;
+
+  // $ref
+  LRef := LSchemaObj.GetValue('$ref');
+  if Assigned(LRef) and (LRef is TJSONString) then
+  begin
+    ValidateNode(AInstance, ResolveRef(LRef.Value), APath, AErrors);
+    if FStopOnFirstError and (AErrors.Count > LErrorCountBefore) then
+      Exit(False);
+  end;
+
+  // type / types
+  if not InstanceMatchesAnyType(AInstance, LSchemaObj) then
+    AddError(AErrors, APath, 'type', Format('%s is not of the expected type', [JSONTypeName(AInstance)]));
+  if FStopOnFirstError and (AErrors.Count > LErrorCountBefore) then
+    Exit(False);
+
+  // enum
+  LEnum := LSchemaObj.GetValue('enum');
+  if Assigned(LEnum) and (LEnum is TJSONArray) then
+  begin
+    LMatched := False;
+    for LEnumItem in (LEnum as TJSONArray) do
+      if JSONValuesEqual(AInstance, LEnumItem) then
+      begin
+        LMatched := True;
+        Break;
+      end;
+    if not LMatched then
+      AddError(AErrors, APath, 'enum', 'instance does not match any value in "enum"');
+  end;
+  if FStopOnFirstError and (AErrors.Count > LErrorCountBefore) then
+    Exit(False);
+
+  // const
+  LConst := LSchemaObj.GetValue('const');
+  if Assigned(LConst) and not JSONValuesEqual(AInstance, LConst) then
+    AddError(AErrors, APath, 'const', 'instance does not match "const"');
+  if FStopOnFirstError and (AErrors.Count > LErrorCountBefore) then
+    Exit(False);
+
+  // numeric / string constraints
+  ValidateNumeric(AInstance, LSchemaObj, APath, AErrors);
+  if FStopOnFirstError and (AErrors.Count > LErrorCountBefore) then
+    Exit(False);
+
+  ValidateString(AInstance, LSchemaObj, APath, AErrors);
+  if FStopOnFirstError and (AErrors.Count > LErrorCountBefore) then
+    Exit(False);
+
+  // logic keywords (allOf/anyOf/oneOf/not) - before array/object, per spec
+  ValidateLogic(AInstance, LSchemaObj, APath, AErrors);
+  if FStopOnFirstError and (AErrors.Count > LErrorCountBefore) then
+    Exit(False);
+
+  // array / object keywords
+  if AInstance is TJSONArray then
+    ValidateArray(AInstance as TJSONArray, LSchemaObj, APath, AErrors)
+  else if AInstance is TJSONObject then
+    ValidateObject(AInstance as TJSONObject, LSchemaObj, APath, AErrors);
+
+  Result := AErrors.Count = LErrorCountBefore;
+end;
+
+function TJSONSchemaValidator.Validate(AInstance: TJSONValue): TJSONValidationResult;
+var
+  LErrors: TList<TJSONValidationError>;
+begin
+  LErrors := TList<TJSONValidationError>.Create;
+  try
+    Result.IsValid := ValidateNode(AInstance, FRoot, '', LErrors);
+    Result.Errors := LErrors.ToArray;
+  finally
+    LErrors.Free;
+  end;
+end;
+
+{ TNeonHelper }
+
+class function TNeonHelper.ValidateJSON(AJSON, ASchema: TJSONValue): TJSONValidationResult;
+var
+  LValidator: TJSONSchemaValidator;
+begin
+  LValidator := TJSONSchemaValidator.Create(ASchema);
+  try
+    Result := LValidator.Validate(AJSON);
+  finally
+    LValidator.Free;
+  end;
 end;
 
 end.

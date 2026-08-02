@@ -1,22 +1,10 @@
 {******************************************************************************}
 {                                                                              }
-{  Neon: Serialization Library for Delphi                                      }
+{  Neon: JSON Serialization Library for Delphi                                 }
 {  Copyright (c) 2018 Paolo Rossi                                              }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
-{******************************************************************************}
-{                                                                              }
-{  Licensed under the Apache License, Version 2.0 (the "License");             }
-{  you may not use this file except in compliance with the License.            }
-{  You may obtain a copy of the License at                                     }
-{                                                                              }
-{      http://www.apache.org/licenses/LICENSE-2.0                              }
-{                                                                              }
-{  Unless required by applicable law or agreed to in writing, software         }
-{  distributed under the License is distributed on an "AS IS" BASIS,           }
-{  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    }
-{  See the License for the specific language governing permissions and         }
-{  limitations under the License.                                              }
+{  Licensed under the MIT license                                              }
 {                                                                              }
 {******************************************************************************}
 unit Neon.Core.Persistence.JSON;
@@ -940,7 +928,7 @@ begin
       except
         on E: Exception do
         begin
-          LogError(Format('Error converting member [%s] of type [%s]: %s',
+          LogError(Format(SNeonErrorConvertNumF3,
             [LNeonMember.Name, AType.Name, E.Message]));
           if FConfig.RaiseExceptions then
             raise;
@@ -1082,11 +1070,10 @@ begin
 
           LPairs.Add(TJSONPair.Create(LName, LJSONValue));
 
-          if LName.IsEmpty then
-            raise ENeonException.Create(TNeonError.DICT_KEY_INVALID);
-        finally
-          LJSONName.Free;
-        end;
+        if LName.IsEmpty then
+          raise ENeonException.Create(SNeonErrorDictKeyInvalid);
+      finally
+        LJSONName.Free;
       end;
 
       case FConfig.MapSort of
@@ -1439,7 +1426,7 @@ begin
     else if not FConfig.StrictTypes  then
       Result := AParam.JSONValue.GetValue<Boolean>
     else
-      raise ENeonException.Create(TNeonError.BOOL_EXPECTED);
+      raise ENeonException.Create(SNeonErrorBoolExpected);
   end
   else
   begin
@@ -1450,7 +1437,7 @@ begin
       if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
         TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
       else
-        raise ENeonException.Create(TNeonError.ENUM_INVALID);
+        raise ENeonException.Create(SNeonErrorEnumInvalid);
     end
     else
     begin
@@ -1469,7 +1456,7 @@ begin
       if (LOrdinal >= LTypeData.MinValue) and (LOrdinal <= LTypeData.MaxValue) then
         TValue.Make(LOrdinal, AParam.RttiType.Handle, Result)
       else
-        raise ENeonException.Create(TNeonError.ENUM_NAMES);
+        raise ENeonException.Create(SNeonErrorEnumNames);
     end;
   end;
 end;
@@ -1585,7 +1572,7 @@ begin
   else
   begin
     if FConfig.StrictTypes and not (AParam.JSONValue is TJSONNumber) then
-      raise ENeonException.Create(TNeonError.NUM_EXPECTED);
+      raise ENeonException.Create(SNeonErrorNumExpected);
 
     LMax := 0;
     case GetTypeData(AParam.RttiType.Handle).FloatType of
@@ -1624,11 +1611,11 @@ begin
       LFloat := AParam.JSONValue.GetValue<Extended>;
     except
       on E: EOverflow do
-        raise ENeonException.CreateFmt(TNeonError.RANGE_OUT_F2, [AParam.JSONValue.Value, LMsg]);
+        raise ENeonException.CreateFmt(SNeonErrorRangeOutF2, [AParam.JSONValue.Value, LMsg]);
     end;
 
     if (LFloat < -LMax) or (LFloat > LMax) then
-      raise ENeonException.CreateFmt(TNeonError.RANGE_OUT_F2, [AParam.JSONValue.Value, LMsg]);
+      raise ENeonException.CreateFmt(SNeonErrorRangeOutF2, [AParam.JSONValue.Value, LMsg]);
 
     Result := LFloat;
   end;
@@ -1643,7 +1630,7 @@ begin
     Exit(TValue.Empty);
 
   if FConfig.StrictTypes and not (AParam.JSONValue is TJSONNumber) then
-    raise ENeonException.Create(TNeonError.NUM_EXPECTED);
+    raise ENeonException.Create(SNeonErrorNumExpected);
 
   LMin := GetTypeData(AParam.RttiType.Handle).MinInt64Value;
   if LMin < 0 then
@@ -1667,7 +1654,7 @@ begin
     Exit(TValue.Empty);
 
   if FConfig.StrictTypes and not (AParam.JSONValue is TJSONNumber) then
-    raise ENeonException.Create(TNeonError.NUM_EXPECTED);
+    raise ENeonException.Create(SNeonErrorNumExpected);
 
   LInt := StrToInt64(AParam.JSONValue.Value);
 
@@ -1712,7 +1699,7 @@ begin
     end;
   end;
   if (LInt < LMin) or (LInt > LMax) then
-    raise ENeonException.CreateFmt(TNeonError.RANGE_OUT_F2, [LInt.ToString, LMsg]);
+    raise ENeonException.CreateFmt(SNeonErrorRangeOutF2, [LInt.ToString, LMsg]);
 
   Result := LInt;
 end;
@@ -1758,7 +1745,7 @@ begin
       except
         on E: Exception do
         begin
-          LogError(Format(TNeonError.CONVERT_NUM_F3, [LNeonMember.Name, AType.Name, E.Message]));
+          LogError(Format(SNeonErrorConvertNumF3, [LNeonMember.Name, AType.Name, E.Message]));
           if FConfig.RaiseExceptions then
             raise;
         end;
@@ -1846,7 +1833,7 @@ begin
   if AParam.JSONValue is TJSONArray then
     LJSONArray := AParam.JSONValue as TJSONArray
   else
-    raise ENeonException.Create(TNeonError.ARR_EXPECTED);
+    raise ENeonException.Create(SNeonErrorArrExpected);
 
   LSet := 0;
   for LJSONValue in LJSONArray do
@@ -2369,7 +2356,7 @@ begin
   try
     LType := TRttiUtils.Context.GetType(TypeInfo(T));
     if not Assigned(LType) then
-      raise ENeonException.Create(TNeonError.EMPTY_TYPE);
+      raise ENeonException.Create(SNeonErrorEmptyType);
 
     case LType.TypeKind of
       tkArray, tkRecord, tkDynArray: TValue.Make(nil, TypeInfo(T), LValue);
@@ -2399,7 +2386,7 @@ begin
     Result := TJSONObject.ParseJSONValue(Data);
   {$ENDIF}
     if RaiseExc and not Assigned(Result) then
-      raise ENeonException.Create(TNeonError.PARSE);
+      raise ENeonException.Create(SNeonErrorParse);
 {$ENDIF}
 end;
 

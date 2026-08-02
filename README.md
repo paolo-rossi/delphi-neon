@@ -70,6 +70,23 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 #### Custom Serializers
 - Inherit from `TCustomSerializer` and register the new serializer class in the configuration
 
+### JSON Schema
+
+Neon can generate and validate [JSON Schema](https://json-schema.org/) documents for your Delphi types:
+- `TNeonSchemaGenerator` generates a JSON Schema document from a Delphi type (classes, records, arrays, enums...) and its Neon attributes, supporting both **Draft 2020-12** and **Draft-07**
+- `TJSONSchemaValidator` validates a `TJSONValue` against any JSON Schema document (`$ref`/`$anchor` resolution, `allOf`/`anyOf`/`oneOf`/`not`, numeric/string/array/object constraints, etc...), working directly against `TJSONObject` with no need for the original Delphi type
+- The `JsonSchemaAttribute` lets you annotate types for more complete schema generation (e.g. `title`, `description`, `format`, `examples`)
+
+### Attribute Tags
+
+`Neon.Core.Tags` offers a runtime alternative to compile-time attributes, inspired by Go's struct tags:
+- `TAttributeTags` parses a delimited tag string (e.g. `"description=A person's name,required,readOnly"`) and applies the values to a field/property via RTTI
+- `TStructTag` parses a string containing multiple named groups of tags (Go struct-tag style, e.g. `` `json:"name" neon:"required"` ``), useful when a single string needs to carry configuration for more than one concern
+
+### Localization
+
+All exception and error messages raised or logged by the library are centralized as `resourcestring` (in `Neon.Core.Types`), so the library can be localized without recompiling.
+
 
 ## Todo
 

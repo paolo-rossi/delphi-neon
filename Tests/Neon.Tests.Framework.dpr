@@ -1,22 +1,10 @@
 {******************************************************************************}
 {                                                                              }
-{  Neon: Serialization Library for Delphi                                      }
+{  Neon: JSON Serialization Library for Delphi                                 }
 {  Copyright (c) 2018 Paolo Rossi                                              }
 {  https://github.com/paolo-rossi/neon-library                                 }
 {                                                                              }
-{******************************************************************************}
-{                                                                              }
-{  Licensed under the Apache License, Version 2.0 (the "License");             }
-{  you may not use this file except in compliance with the License.            }
-{  You may obtain a copy of the License at                                     }
-{                                                                              }
-{      http://www.apache.org/licenses/LICENSE-2.0                              }
-{                                                                              }
-{  Unless required by applicable law or agreed to in writing, software         }
-{  distributed under the License is distributed on an "AS IS" BASIS,           }
-{  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    }
-{  See the License for the specific language governing permissions and         }
-{  limitations under the License.                                              }
+{  Licensed under the MIT license                                              }
 {                                                                              }
 {******************************************************************************}
 program Neon.Tests.Framework;
@@ -53,8 +41,11 @@ uses
   Neon.Tests.Attributes.Factory in 'Source\Neon.Tests.Attributes.Factory.pas',
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
   Neon.Tests.Config.IgnoreMembers in 'Source\Neon.Tests.Config.IgnoreMembers.pas',
-  Neon.Tests.Config.MapSort in 'Source\Neon.Tests.Config.MapSort.pas',
-  Neon.Tests.ConfigTypes in 'Source\Neon.Tests.ConfigTypes.pas';
+  Neon.Tests.ConfigTypes in 'Source\Neon.Tests.ConfigTypes.pas',
+  Neon.Tests.Tags in 'Source\Neon.Tests.Tags.pas',
+  Neon.Tests.StructTags in 'Source\Neon.Tests.StructTags.pas',
+  Neon.Tests.JsonSchema in 'Source\Neon.Tests.JsonSchema.pas',
+  Neon.Tests.JsonSchemaValidator in 'Source\Neon.Tests.JsonSchemaValidator.pas';
 
 var
   LRunner : ITestRunner;
