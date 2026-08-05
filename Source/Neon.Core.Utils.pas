@@ -20,6 +20,7 @@ uses
   {$ELSE}
   IdCoder, IdCoderMIME, IdGlobal,
   {$ENDIF}
+  System.Diagnostics,
   System.Generics.Collections;
 
 type
@@ -182,10 +183,18 @@ type
     class procedure Base64ToBlobField(const ABase64: string; ABlobField: TBlobField);
   end;
 
+  TNeonLogger = class
+    class procedure Console(const AMessage: string); static; inline;
+    class procedure ConsoleWatch(const AMessage: string; var AWatch: TStopwatch); static; inline;
+    class procedure Debug(const AMessage: string); static; inline;
+    class procedure DebugWatch(const AMessage: string; var AWatch: TStopwatch); static; inline;
+  end;
+
 implementation
 
 uses
   System.StrUtils, System.DateUtils, System.Math, System.Variants,
+  {$IFDEF MSWINDOWS}Winapi.Windows,{$ENDIF}
   Neon.Core.Types;
 
 class function TRttiUtils.ClassDistanceFromRoot(AClass: TClass): Integer;
@@ -1573,6 +1582,34 @@ begin
   finally
     LBlobStream.Free;
   end;
+end;
+
+{ TNeonLogger }
+
+class procedure TNeonLogger.Console(const AMessage: string);
+begin
+  WriteLn(AMessage);
+end;
+
+class procedure TNeonLogger.ConsoleWatch(const AMessage: string; var AWatch: TStopWatch);
+begin
+  AWatch.Stop;
+  WriteLn(AMessage + ' - msec: ' + AWatch.ElapsedMilliseconds.ToString);
+end;
+
+class procedure TNeonLogger.Debug(const AMessage: string);
+begin
+  {$IFDEF MSWINDOWS}
+  OutputDebugString(PChar(AMessage));
+  {$ENDIF}
+end;
+
+class procedure TNeonLogger.DebugWatch(const AMessage: string; var AWatch: TStopwatch);
+begin
+  AWatch.Stop;
+  {$IFDEF MSWINDOWS}
+  OutputDebugString(PChar(AMessage + ' - msec: ' + AWatch.ElapsedMilliseconds.ToString));
+  {$ENDIF}
 end;
 
 end.
