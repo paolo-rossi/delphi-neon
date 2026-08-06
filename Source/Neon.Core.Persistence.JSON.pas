@@ -541,6 +541,7 @@ implementation
 
 uses
   System.Math,
+  System.Diagnostics,
   System.DateUtils,
   System.Variants;
 
@@ -637,11 +638,18 @@ function TNeonSerializerJSON.WriteDataMember(const AValue: TValue; ACustomProces
 var
   LNeonObject: TNeonRttiObject;
   LRttiType: TRttiType;
+  LStamp: Int64;
 begin
+  // This overload is called per-element for arrays/lists/map keys+values,
+  // so it re-resolves RTTI and re-parses attributes on every single call
+  // instead of once per type - worth profiling separately from the actual
+  // Write<Kind> dispatch below to see how much that costs.
+  LStamp := TNeonLogger.ProfileBegin;
   LRttiType := TRttiUtils.Context.GetType(AValue.TypeInfo);
 
   LNeonObject := TNeonRttiObject.Create(LRttiType, FOperation);
   LNeonObject.ParseAttributes;
+  TNeonLogger.ProfileEnd('Serialize:RttiResolve', LStamp);
   try
     Result := WriteDataMember(AValue, ACustomProcess, LNeonObject);
   finally
@@ -897,7 +905,10 @@ var
   LJSONValue: TJSONValue;
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
+  LStamp: Int64;
 begin
+  LStamp := TNeonLogger.ProfileBegin;
+  try
   LMembers := GetNeonMembers(AType);
   LMembers.FilterSerialize(AInstance);
 
@@ -936,6 +947,9 @@ begin
       end;
     end;
   end;
+  finally
+    TNeonLogger.ProfileEnd('Serialize:Members', LStamp);
+  end;
 end;
 
 function TNeonSerializerJSON.WriteNullable(const AValue: TValue; ANeonObject: TNeonRttiObject; ANullable: IDynamicNullable): TJSONValue;
@@ -964,45 +978,57 @@ function TNeonSerializerJSON.WriteObject(const AValue: TValue; ANeonObject: TNeo
 var
   LObject: TObject;
   LType: TRttiType;
+  LStamp: Int64;
 begin
-  LObject := AValue.AsObject;
-
-  if LObject = nil then
-    Exit(nil);
-
-  LType := TRttiUtils.Context.GetType(LObject.ClassType);
-
-  Result := TJSONObject.Create;
+  LStamp := TNeonLogger.ProfileBegin;
   try
-    WriteMembers(LType, LObject, Result);
-    case ANeonObject.NeonInclude.Value of
-      IncludeIf.NotEmpty, IncludeIf.NotDefault:
-      begin
-        if (Result as TJSONObject).Count = 0 then
-          FreeAndNil(Result);
+    LObject := AValue.AsObject;
+
+    if LObject = nil then
+      Exit(nil);
+
+    LType := TRttiUtils.Context.GetType(LObject.ClassType);
+
+    Result := TJSONObject.Create;
+    try
+      WriteMembers(LType, LObject, Result);
+      case ANeonObject.NeonInclude.Value of
+        IncludeIf.NotEmpty, IncludeIf.NotDefault:
+        begin
+          if (Result as TJSONObject).Count = 0 then
+            FreeAndNil(Result);
+        end;
       end;
+    except
+      FreeAndNil(Result);
     end;
-  except
-    FreeAndNil(Result);
+  finally
+    TNeonLogger.ProfileEnd('Serialize:Object', LStamp);
   end;
 end;
 
 function TNeonSerializerJSON.WriteEnumerable(const AValue: TValue; ANeonObject: TNeonRttiObject; AList: IDynamicList): TJSONValue;
 var
   LJSONValue: TJSONValue;
+  LStamp: Int64;
 begin
-  // Not an enumerable object
-  if not Assigned(AList) then
-    Exit(nil);
-  if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
-    if AList.Count = 0 then
+  LStamp := TNeonLogger.ProfileBegin;
+  try
+    // Not an enumerable object
+    if not Assigned(AList) then
       Exit(nil);
+    if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
+      if AList.Count = 0 then
+        Exit(nil);
 
-  Result := TJSONArray.Create;
-  while AList.MoveNext do
-  begin
-    LJSONValue := WriteDataMember(AList.Current);
-    (Result as TJSONArray).AddElement(LJSONValue);
+    Result := TJSONArray.Create;
+    while AList.MoveNext do
+    begin
+      LJSONValue := WriteDataMember(AList.Current);
+      (Result as TJSONArray).AddElement(LJSONValue);
+    end;
+  finally
+    TNeonLogger.ProfileEnd('Serialize:Enumerable', LStamp);
   end;
 end;
 
@@ -1014,6 +1040,7 @@ var
   LKeyValue, LValValue: TValue;
   LPairs: TObjectList<TJSONPair>;
   LPair: TJSONPair;
+  LStamp: Int64;
 
   function PairKeyComparer(AReverse: Boolean): IComparer<TJSONPair>;
   begin
@@ -1027,6 +1054,8 @@ var
   end;
 
 begin
+  LStamp := TNeonLogger.ProfileBegin;
+  try
   // Not an EnumerableMap object
   if not Assigned(AMap) then
     Exit(nil);
@@ -1098,12 +1127,18 @@ begin
       FreeAndNil(Result);
     end;
   end;
+  finally
+    TNeonLogger.ProfileEnd('Serialize:EnumerableMap', LStamp);
+  end;
 end;
 
 function TNeonSerializerJSON.WriteRecord(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LType: TRttiType;
+  LStamp: Int64;
 begin
+  LStamp := TNeonLogger.ProfileBegin;
+  try
   Result := TJSONObject.Create;
   LType := TRttiUtils.Context.GetType(AValue.TypeInfo);
   try
@@ -1118,6 +1153,9 @@ begin
     end;
   except
     FreeAndNil(Result);
+  end;
+  finally
+    TNeonLogger.ProfileEnd('Serialize:Record', LStamp);
   end;
 end;
 
@@ -1340,11 +1378,16 @@ function TNeonDeserializerJSON.ReadDataMember(AJSONValue: TJSONValue;
     AType: TRttiType; const AData: TValue; ACustomProcess: Boolean): TValue;
 var
   LParam: TNeonDeserializerParam;
+  LStamp: Int64;
 begin
+  // Mirrors the serializer's per-call RTTI resolve/attribute-parse cost -
+  // see the comment on TNeonSerializerJSON.WriteDataMember (entry overload).
+  LStamp := TNeonLogger.ProfileBegin;
   LParam.JSONValue := AJSONValue;
   LParam.RttiType := AType;
   LParam.NeonObject := TNeonRttiObject.Create(AType, FOperation);
   LParam.NeonObject.ParseAttributes;
+  TNeonLogger.ProfileEnd('Deserialize:RttiResolve', LStamp);
   try
     Result := ReadDataMember(LParam, AData, ACustomProcess);
   finally
@@ -1469,7 +1512,10 @@ var
   LJSONArray: TJSONArray;
   LIndex: Integer;
   LParam: TNeonDeserializerParam;
+  LStamp: Int64;
 begin
+  LStamp := TNeonLogger.ProfileBegin;
+  try
   Result := False;
   LParam.NeonObject := AParam.NeonObject;
   LList := TDynamicList.GuessType(AData.AsObject);
@@ -1495,6 +1541,9 @@ begin
       LList.Add(LItemValue);
     end;
   end;
+  finally
+    TNeonLogger.ProfileEnd('Deserialize:Enumerable', LStamp);
+  end;
 end;
 
 function TNeonDeserializerJSON.ReadEnumerableMap(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
@@ -1507,7 +1556,10 @@ var
 {$ENDIF}
   LKey, LValue: TValue;
   LParamKey, LParamValue: TNeonDeserializerParam;
+  LStamp: Int64;
 begin
+  LStamp := TNeonLogger.ProfileBegin;
+  try
   Result := False;
   LParamKey.NeonObject := AParam.NeonObject;
   LParamValue.NeonObject := AParam.NeonObject;
@@ -1552,6 +1604,9 @@ begin
     finally
       LEnum.Free;
     end;
+  end;
+  finally
+    TNeonLogger.ProfileEnd('Deserialize:EnumerableMap', LStamp);
   end;
 end;
 
@@ -1716,7 +1771,10 @@ var
   LNeonMember: TNeonRttiMember;
   LMemberValue: TValue;
   LParam: TNeonDeserializerParam;
+  LStamp: Int64;
 begin
+  LStamp := TNeonLogger.ProfileBegin;
+  try
   LMembers := GetNeonMembers(AType);
   LMembers.FilterDeserialize(AInstance);
 
@@ -1753,6 +1811,9 @@ begin
       end;
     end;
   end;
+  finally
+    TNeonLogger.ProfileEnd('Deserialize:Members', LStamp);
+  end;
 end;
 
 function TNeonDeserializerJSON.ReadNullable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
@@ -1784,38 +1845,50 @@ function TNeonDeserializerJSON.ReadObject(const AParam: TNeonDeserializerParam; 
 var
   LJSONObject: TJSONObject;
   LPData: Pointer;
+  LStamp: Int64;
 begin
-  if AParam.JSONValue is TJSONNull then
-    Exit(TValue.Empty);
+  LStamp := TNeonLogger.ProfileBegin;
+  try
+    if AParam.JSONValue is TJSONNull then
+      Exit(TValue.Empty);
 
-  Result := AData;
-  LPData := AData.AsObject;
-  if not Assigned(LPData) then
-    Exit;
+    Result := AData;
+    LPData := AData.AsObject;
+    if not Assigned(LPData) then
+      Exit;
 
-  LJSONObject := AParam.JSONValue as TJSONObject;
-  if (AParam.RttiType.TypeKind = tkClass) or (AParam.RttiType.TypeKind = tkInterface) then
-    ReadMembers(AParam.RttiType, LPData, LJSONObject);
+    LJSONObject := AParam.JSONValue as TJSONObject;
+    if (AParam.RttiType.TypeKind = tkClass) or (AParam.RttiType.TypeKind = tkInterface) then
+      ReadMembers(AParam.RttiType, LPData, LJSONObject);
+  finally
+    TNeonLogger.ProfileEnd('Deserialize:Object', LStamp);
+  end;
 end;
 
 function TNeonDeserializerJSON.ReadRecord(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 var
   LJSONObject: TJSONObject;
   LPData: Pointer;
+  LStamp: Int64;
 begin
-  if AParam.JSONValue is TJSONNull then
-    Exit(TValue.Empty);
+  LStamp := TNeonLogger.ProfileBegin;
+  try
+    if AParam.JSONValue is TJSONNull then
+      Exit(TValue.Empty);
 
-  Result := AData;
-  LPData := AData.GetReferenceToRawData;
+    Result := AData;
+    LPData := AData.GetReferenceToRawData;
 
-  if not Assigned(LPData) then
-    Exit;
+    if not Assigned(LPData) then
+      Exit;
 
-  // Objects, Records, Interfaces are all represented by JSON objects
-  LJSONObject := AParam.JSONValue as TJSONObject;
+    // Objects, Records, Interfaces are all represented by JSON objects
+    LJSONObject := AParam.JSONValue as TJSONObject;
 
-  ReadMembers(AParam.RttiType, LPData, LJSONObject);
+    ReadMembers(AParam.RttiType, LPData, LJSONObject);
+  finally
+    TNeonLogger.ProfileEnd('Deserialize:Record', LStamp);
+  end;
 end;
 
 function TNeonDeserializerJSON.ReadSet(const AParam: TNeonDeserializerParam): TValue;

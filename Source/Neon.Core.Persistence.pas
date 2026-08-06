@@ -502,6 +502,7 @@ type
 implementation
 
 uses
+  System.Diagnostics,
   System.RegularExpressions,
   Neon.Core.Utils;
 
@@ -568,6 +569,7 @@ var
   LFields, LProps: TArray<TRttiMember>;
   LMember: TRttiMember;
   LNeonMember: TNeonRttiMember;
+  LStamp: Int64;
 
   function AlphaComparer(AReverse: Boolean): IComparer<TNeonRttiMember>;
   begin
@@ -583,8 +585,16 @@ var
   end;
 
 begin
+  // Cache hit (the steady-state path, once every type has been seen once)
+  // and cache miss (the one-off build below) are lumped into one section:
+  // over many calls for the same type, hits dominate the average.
+  LStamp := TNeonLogger.ProfileBegin;
   if FMemberRegistry.TryGetValue(AType.Handle, Result) then
+  begin
+    TNeonLogger.ProfileEnd('Core:GetNeonMembers', LStamp);
     Exit(Result);
+  end;
+  TNeonLogger.ProfileEnd('Core:GetNeonMembers', LStamp);
 
   Result := TNeonRttiMembers.Create(FConfig, AType, FOperation);
 
@@ -1335,11 +1345,15 @@ begin
 end;
 
 constructor TNeonRttiObject.Create(ARttiObject: TRttiObject; AOperation: TNeonOperation);
+var
+  LStamp: Int64;
 begin
+  LStamp := TNeonLogger.ProfileBegin;
   FRttiObject := ARttiObject;
   FOperation := AOperation;
   FAttributes := FRttiObject.GetAttributes;
   FNeonMembers := [];
+  TNeonLogger.ProfileEnd('Core:RttiObjectCreate', LStamp);
 end;
 
 function TNeonRttiObject.GetAttribute<T>: T;
@@ -1401,11 +1415,15 @@ begin
 end;
 
 procedure TNeonRttiObject.ParseAttributes;
+var
+  LStamp: Int64;
 begin
+  LStamp := TNeonLogger.ProfileBegin;
   if Length(FTypeAttributes) > 0 then
     InternalParseAttributes(FTypeAttributes);
   if Length(FAttributes) > 0 then
     InternalParseAttributes(FAttributes);
+  TNeonLogger.ProfileEnd('Core:ParseAttributes', LStamp);
 end;
 
 procedure TNeonRttiObject.ProcessAttribute(AAttribute: TCustomAttribute);
@@ -1510,51 +1528,60 @@ var
   LInfo: TSerializerInfo;
   LClass: TCustomSerializerClass;
   LDistanceMax: Integer;
+  LStamp: Int64;
 begin
-  Result := nil;
-  LClass := nil;
-  LDistanceMax := 0;
-
-  FRegistryCacheLock.Enter;
+  // Called on every single WriteDataMember/ReadDataMember dispatch (not
+  // just once per type), so even the cache-hit fast path's lock+lookup
+  // cost is worth seeing in aggregate.
+  LStamp := TNeonLogger.ProfileBegin;
   try
-    if FRegistryCache.TryGetValue(ATypeInfo, Result) then
-      Exit(Result);
-  finally
-    FRegistryCacheLock.Leave
-  end;
+    Result := nil;
+    LClass := nil;
+    LDistanceMax := 0;
 
-  for LInfo in FRegistryClass do
-  begin
-    if LInfo.SerializerClass.CanHandle(ATypeInfo) then
-    begin
-      if LInfo.Distance = -1 then
-      begin
-        LClass := LInfo.SerializerClass;
-        Break;
-      end
-      else
-      begin
-        if LInfo.Distance > LDistanceMax then
-        begin
-          LDistanceMax := LInfo.Distance;
-          LClass := LInfo.SerializerClass;
-        end;
-      end;
-    end;
-  end;
-
-  if Assigned(LClass) then
-  begin
     FRegistryCacheLock.Enter;
     try
       if FRegistryCache.TryGetValue(ATypeInfo, Result) then
         Exit(Result);
-
-      Result := LClass.Create;
-      FRegistryCache.Add(ATypeInfo, Result);
     finally
       FRegistryCacheLock.Leave
     end;
+
+    for LInfo in FRegistryClass do
+    begin
+      if LInfo.SerializerClass.CanHandle(ATypeInfo) then
+      begin
+        if LInfo.Distance = -1 then
+        begin
+          LClass := LInfo.SerializerClass;
+          Break;
+        end
+        else
+        begin
+          if LInfo.Distance > LDistanceMax then
+          begin
+            LDistanceMax := LInfo.Distance;
+            LClass := LInfo.SerializerClass;
+          end;
+        end;
+      end;
+    end;
+
+    if Assigned(LClass) then
+    begin
+      FRegistryCacheLock.Enter;
+      try
+        if FRegistryCache.TryGetValue(ATypeInfo, Result) then
+          Exit(Result);
+
+        Result := LClass.Create;
+        FRegistryCache.Add(ATypeInfo, Result);
+      finally
+        FRegistryCacheLock.Leave
+      end;
+    end;
+  finally
+    TNeonLogger.ProfileEnd('Core:GetCustomSerializer', LStamp);
   end;
 end;
 

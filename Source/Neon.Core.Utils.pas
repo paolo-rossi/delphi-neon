@@ -184,16 +184,33 @@ type
   end;
 
   TNeonLogger = class
+  private
+    class var FProfileEnabled: Boolean;
+    class var FProfileData: TDictionary<string, TPair<Int64, Int64>>;
+  public
     class procedure Console(const AMessage: string); static; inline;
     class procedure ConsoleWatch(const AMessage: string; var AWatch: TStopwatch); static; inline;
     class procedure Debug(const AMessage: string); static; inline;
     class procedure DebugWatch(const AMessage: string; var AWatch: TStopwatch); static; inline;
+
+    /// <summary>
+    ///   Lightweight, opt-in profiler: accumulates total elapsed time and
+    ///   call count per named section (e.g. "Serialize:Object"). Disabled
+    ///   by default, in which case ProfileBegin/ProfileEnd cost only a
+    ///   boolean check, so it is safe to leave the calls in shipped code.
+    /// </summary>
+    class property ProfileEnabled: Boolean read FProfileEnabled write FProfileEnabled;
+    class procedure ProfileReset; static;
+    class function ProfileBegin: Int64; static; inline;
+    class procedure ProfileEnd(const ASection: string; AStartStamp: Int64); static;
+    class function ProfileReport: string; static;
   end;
 
 implementation
 
 uses
   System.StrUtils, System.DateUtils, System.Math, System.Variants,
+  System.Generics.Defaults,
   {$IFDEF MSWINDOWS}Winapi.Windows,{$ENDIF}
   Neon.Core.Types;
 
@@ -1611,5 +1628,96 @@ begin
   OutputDebugString(PChar(AMessage + ' - msec: ' + AWatch.ElapsedMilliseconds.ToString));
   {$ENDIF}
 end;
+
+class procedure TNeonLogger.ProfileReset;
+begin
+  if not Assigned(FProfileData) then
+    FProfileData := TDictionary<string, TPair<Int64, Int64>>.Create
+  else
+    FProfileData.Clear;
+end;
+
+class function TNeonLogger.ProfileBegin: Int64;
+begin
+  if FProfileEnabled then
+    Result := TStopwatch.GetTimeStamp
+  else
+    Result := 0;
+end;
+
+class procedure TNeonLogger.ProfileEnd(const ASection: string; AStartStamp: Int64);
+var
+  LElapsed: Int64;
+  LEntry: TPair<Int64, Int64>;
+begin
+  if not FProfileEnabled then
+    Exit;
+
+  LElapsed := TStopwatch.GetTimeStamp - AStartStamp;
+
+  if not Assigned(FProfileData) then
+    FProfileData := TDictionary<string, TPair<Int64, Int64>>.Create;
+
+  if FProfileData.TryGetValue(ASection, LEntry) then
+    FProfileData[ASection] := TPair<Int64, Int64>.Create(LEntry.Key + LElapsed, LEntry.Value + 1)
+  else
+    FProfileData.Add(ASection, TPair<Int64, Int64>.Create(LElapsed, 1));
+end;
+
+class function TNeonLogger.ProfileReport: string;
+type
+  TSectionStat = TPair<string, TPair<Int64, Int64>>;
+var
+  LStats: TList<TSectionStat>;
+  LStat: TSectionStat;
+  LPair: TPair<string, TPair<Int64, Int64>>;
+  LFreq: Int64;
+  LTotalMs, LGrandTotalMs: Double;
+  LSB: TStringBuilder;
+begin
+  if not Assigned(FProfileData) or (FProfileData.Count = 0) then
+    Exit('(no profiling data - TNeonLogger.ProfileEnabled was False during the run)');
+
+  LFreq := TStopwatch.Frequency;
+  LStats := TList<TSectionStat>.Create;
+  try
+    for LPair in FProfileData do
+      LStats.Add(LPair);
+
+    LStats.Sort(TComparer<TSectionStat>.Construct(
+      function(const L, R: TSectionStat): Integer
+      begin
+        Result := TComparer<Int64>.Default.Compare(R.Value.Key, L.Value.Key);
+      end));
+
+    LGrandTotalMs := 0;
+    for LStat in LStats do
+      LGrandTotalMs := LGrandTotalMs + (LStat.Value.Key / LFreq) * 1000;
+
+    LSB := TStringBuilder.Create;
+    try
+      LSB.AppendLine(Format('  %-24s %10s %14s %12s %8s',
+        ['Section', 'Calls', 'Total (ms)', 'Avg (us)', '% ']));
+      LSB.Append('  ').AppendLine(StringOfChar('-', 68));
+      for LStat in LStats do
+      begin
+        LTotalMs := (LStat.Value.Key / LFreq) * 1000;
+        LSB.AppendLine(Format('  %-24s %10d %14.3f %12.3f %7.1f%%',
+          [LStat.Key, LStat.Value.Value, LTotalMs, (LTotalMs * 1000) / LStat.Value.Value,
+           IfThen(LGrandTotalMs > 0, LTotalMs / LGrandTotalMs * 100, 0)]));
+      end;
+      Result := LSB.ToString;
+    finally
+      LSB.Free;
+    end;
+  finally
+    LStats.Free;
+  end;
+end;
+
+initialization
+
+finalization
+  FreeAndNil(TNeonLogger.FProfileData);
 
 end.
