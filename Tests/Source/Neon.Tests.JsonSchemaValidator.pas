@@ -43,8 +43,10 @@ type
     [TestCase('minLength: ignores non-strings', '{"minLength":2}|1|True', '|')]
     [TestCase('maxLength: exact length ok', '{"maxLength":2}|"fo"|True', '|')]
     [TestCase('maxLength: too long', '{"maxLength":2}|"foo"|False', '|')]
+    [TestCase('maxLength: ignores non-strings', '{"maxLength":2}|12345|True', '|')]
     [TestCase('pattern: matches', '{"pattern":"^[A-Z]+$"}|"ABC"|True', '|')]
     [TestCase('pattern: does not match', '{"pattern":"^[A-Z]+$"}|"abc"|False', '|')]
+    [TestCase('pattern: ignores non-strings', '{"pattern":"^[A-Z]+$"}|1|True', '|')]
     procedure TestString(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]

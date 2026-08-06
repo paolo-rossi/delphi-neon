@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{F551D465-BD70-4243-AB07-C95C4B91DDFD}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="ProfilingConsole\ProfilingConsole.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="BenchmarksConsole\BenchmarksConsole.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="ProfilingConsole">
+        <MSBuild Projects="ProfilingConsole\ProfilingConsole.dproj"/>
+    </Target>
+    <Target Name="ProfilingConsole:Clean">
+        <MSBuild Projects="ProfilingConsole\ProfilingConsole.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="ProfilingConsole:Make">
+        <MSBuild Projects="ProfilingConsole\ProfilingConsole.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="BenchmarksConsole">
+        <MSBuild Projects="BenchmarksConsole\BenchmarksConsole.dproj"/>
+    </Target>
+    <Target Name="BenchmarksConsole:Clean">
+        <MSBuild Projects="BenchmarksConsole\BenchmarksConsole.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="BenchmarksConsole:Make">
+        <MSBuild Projects="BenchmarksConsole\BenchmarksConsole.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="ProfilingConsole;BenchmarksConsole"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="ProfilingConsole:Clean;BenchmarksConsole:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="ProfilingConsole:Make;BenchmarksConsole:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

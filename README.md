@@ -34,6 +34,12 @@ This new demo tries to compare the standard TJSON serialization engine with the 
 
 ![Neon Benchmarks Demo](https://user-images.githubusercontent.com/4686497/216270908-0a702077-02fe-4295-bce5-8da78ee46599.png)
 
+### Console Demos
+Two console applications (grouped in `Demos/Source/ConsoleDemos.groupproj`) for measuring **Neon** without a UI in the way:
+
+- **BenchmarksConsole** compares **Neon** against `REST.Json` and `System.JSON.Serializers` (`TJsonSerializer`) on the same datasets, with a separate source object per library. It prints a summary table, writes the report to disk and saves one pretty-printed JSON sample per library so the output can be diffed for correctness, not just timed
+- **ProfilingConsole** breaks **Neon**'s own work down by internal stage (RTTI resolve, member preparation, object/enumerable/map/record writing, the dynamic-type probes...) using the `TNeonLogger` profiler. It runs three scenarios — one flat object per call, many flat objects per call and many composite objects per call — to show what the per-type caches do and do not amortize
+
 ### A Neon Introduction by Holger Flick (Video)
 [![Modern Delphi web development #7](https://img.youtube.com/vi/djzfeS9k4KU/0.jpg)](https://www.youtube.com/watch?v=djzfeS9k4KU)
 
@@ -87,6 +93,24 @@ Neon can generate and validate [JSON Schema](https://json-schema.org/) documents
 ### Localization
 
 All exception and error messages raised or logged by the library are centralized as `resourcestring` (in `Neon.Core.Types`), so the library can be localized without recompiling.
+
+### Profiling
+
+`TNeonLogger` (in `Neon.Core.Utils`) contains a lightweight, opt-in profiler that accumulates elapsed time and call count per named section of the engine (`Serialize:Object`, `Core:GetNeonMembers`, `Dynamic:GuessList`, ...):
+
+```delphi
+TNeonLogger.ProfileReset;
+TNeonLogger.ProfileEnabled := True;
+try
+  LJSON := TNeon.ObjectToJSON(AObject, LConfig);
+  LJSON.Free;
+finally
+  TNeonLogger.ProfileEnabled := False;
+end;
+WriteLn(TNeonLogger.ProfileReport);  // Section | Calls | Total (ms) | Avg (us) | %
+```
+
+It is disabled by default, in which case the instrumentation costs a single boolean check, so the calls are safe to leave in place. Timings are *inclusive* of nested calls, so the rows show where time is nested rather than a flat, mutually-exclusive breakdown.
 
 
 ## Todo

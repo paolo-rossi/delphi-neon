@@ -64,3 +64,12 @@ __recovery/
 
 # Castalia statistics file (since XE7 Castalia is distributed with Delphi)
 *.stat
+
+# Output directories of the demos and of the test suite: built binaries plus
+# whatever they write at run time (benchmark logs, CSV/JSON reports, JSON
+# samples, DUnitX NUnit XML)
+Demos/Bin/
+Tests/Bin/
+
+# Third-party sources fetched locally to run the tests (not vendored)
+Libs/

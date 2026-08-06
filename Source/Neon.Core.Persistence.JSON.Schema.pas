@@ -1317,7 +1317,10 @@ var
   LValue: TJSONValue;
   LMinMax: Integer;
 begin
-  if not (AInstance is TJSONString) then
+  // minLength/maxLength/pattern apply to strings only. TJSONNumber descends
+  // from TJSONString in the RTL, so the plain "is" test would let numbers
+  // through and measure their textual representation
+  if not (AInstance is TJSONString) or (AInstance is TJSONNumber) then
     Exit;
 
   LStr := AInstance.Value;

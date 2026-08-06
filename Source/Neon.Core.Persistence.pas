@@ -411,6 +411,9 @@ type
     FMember: TRttiMember;
     FParent: TNeonRttiType;
     FSerializable: Boolean;
+    FStaticSerializable: Boolean;
+    FJSONName: string;
+    FJSONNameCached: Boolean;
     FMethodIf: TRttiMethod;
     FMethodIfContext: TNeonIgnoreIfContext;
     function MemberAsProperty: TRttiProperty; inline;
@@ -421,6 +424,31 @@ type
     function EvalIncludeIf(AInstance: Pointer): TNeonIncludeOption;
   protected
     procedure ProcessAttribute(AAttribute: TCustomAttribute); override;
+
+    /// <summary>
+    ///   True if a [NeonInclude(IncludeIf.CustomFunction)] method must be
+    ///   invoked on every instance to decide whether this member is
+    ///   serializable. When False the decision is purely type-based and is
+    ///   computed once by TNeonRttiMembers.Prepare.
+    /// </summary>
+    function HasIncludeIf: Boolean; inline;
+
+    /// <summary>
+    ///   Serialized (JSON) name of the member, as computed by
+    ///   TNeonBase.GetNameFromMember. Both of its inputs (the member and the
+    ///   configuration) are fixed for the lifetime of the serializer, so the
+    ///   (allocating) case conversion is done once per member instead of once
+    ///   per object. Returns False until SetJSONName has been called.
+    /// </summary>
+    function TryGetJSONName(out AName: string): Boolean; inline;
+    procedure SetJSONName(const AValue: string);
+
+    /// <summary>
+    ///   Type-level part of the serializable decision (visibility, member
+    ///   choice, ignore lists, readability/writability). Used as the fallback
+    ///   when a per-instance IncludeIf function cannot decide.
+    /// </summary>
+    property StaticSerializable: Boolean read FStaticSerializable write FStaticSerializable;
   public
     constructor Create(AMember: TRttiMember; AParent: TNeonRttiType; AOperation: TNeonOperation);
 
@@ -436,8 +464,8 @@ type
     function Visibility: TMemberVisibility;
     function IsField: Boolean;
     function IsProperty: Boolean;
-    property Name: string read GetName;
 
+    property Name: string read GetName;
     property Serializable: Boolean read FSerializable write FSerializable;
   end;
 
@@ -446,10 +474,20 @@ type
     FOperation: TNeonOperation;
     FConfig: TNeonConfiguration;
     FParent: TNeonRttiType;
+    FPrepared: Boolean;
+    FHasInstanceChecks: Boolean;
   private
     function IgnoredName(const AName: string): Boolean; inline;
     function MatchesVisibility(AVisibility: TMemberVisibility): Boolean;
     function MatchesMemberChoice(AMemberType: TNeonMemberType): Boolean;
+
+    /// <summary>
+    ///   Resolves, once per type, every part of the serializable decision that
+    ///   does not depend on the instance being processed, storing it in each
+    ///   member's Serializable/StaticSerializable. Works on FOperation, which
+    ///   is fixed when the list is built.
+    /// </summary>
+    procedure Prepare;
   public
     constructor Create(AConfig: TNeonConfiguration; AType: TRttiType; AOperation: TNeonOperation);
     destructor Destroy; override;
@@ -532,36 +570,33 @@ function TNeonBase.GetNameFromMember(AMember: TNeonRttiMember): string;
 var
   LMemberName: string;
 begin
-  if not AMember.NeonProperty.IsEmpty then
-    Exit(AMember.NeonProperty);
+  // The name depends only on the member and the configuration, both fixed for
+  // the lifetime of this serializer, so it is computed once per member and
+  // cached: without this the case conversion below allocates a new string for
+  // every member of every object written/read.
+  if AMember.TryGetJSONName(Result) then
+    Exit;
 
-  if FConfig.IgnoreFieldPrefix and AMember.IsField then
+  if not AMember.NeonProperty.IsEmpty then
+    Result := AMember.NeonProperty
+  else
   begin
-    if AMember.Name.StartsWith('F', True) and
-       (AMember.Visibility in [mvPrivate, mvProtected])
-    then
-      LMemberName := AMember.Name.Substring(1)
+    if FConfig.IgnoreFieldPrefix and AMember.IsField then
+    begin
+      if AMember.Name.StartsWith('F', True) and
+         (AMember.Visibility in [mvPrivate, mvProtected])
+      then
+        LMemberName := AMember.Name.Substring(1)
+      else
+        LMemberName := AMember.Name;
+    end
     else
       LMemberName := AMember.Name;
-  end
-  else
-    LMemberName := AMember.Name;
 
-  Result := TCaseAlgorithm.ConvertCase(LMemberName, FConfig.MemberCase, FConfig.MemberCustomCase);
-  {
-  case FConfig.MemberCase of
-    TNeonCase.Unchanged : Result := LMemberName;
-    TNeonCase.LowerCase : Result := LowerCase(LMemberName);
-    TNeonCase.UpperCase : Result := UpperCase(LMemberName);
-    TNeonCase.PascalCase: Result := LMemberName;
-    TNeonCase.CamelCase : Result := TCaseAlgorithm.PascalToCamel(LMemberName);
-    TNeonCase.SnakeCase : Result := TCaseAlgorithm.PascalToSnake(LMemberName);
-    TNeonCase.KebabCase : Result := TCaseAlgorithm.PascalToKebab(LMemberName);
-    TNeonCase.ScreamingSnakeCase : Result := TCaseAlgorithm.PascalToScreamingSnake(LMemberName);
-
-    TNeonCase.CustomCase: Result := FConfig.MemberCustomCase(LMemberName);
+    Result := TCaseAlgorithm.ConvertCase(LMemberName, FConfig.MemberCase, FConfig.MemberCustomCase);
   end;
-  }
+
+  AMember.SetJSONName(Result);
 end;
 
 function TNeonBase.GetNeonMembers(AType: TRttiType): TNeonRttiMembers;
@@ -952,6 +987,25 @@ begin
   Result := FMember.Name;
 end;
 
+function TNeonRttiMember.HasIncludeIf: Boolean;
+begin
+  // FMethodIf is resolved in ProcessAttribute during construction
+  Result := Assigned(FMethodIf);
+end;
+
+function TNeonRttiMember.TryGetJSONName(out AName: string): Boolean;
+begin
+  Result := FJSONNameCached;
+  if Result then
+    AName := FJSONName;
+end;
+
+procedure TNeonRttiMember.SetJSONName(const AValue: string);
+begin
+  FJSONName := AValue;
+  FJSONNameCached := True;
+end;
+
 function TNeonRttiMember.GetValue(AInstance: Pointer): TValue;
 begin
   case FMemberType of
@@ -1208,75 +1262,126 @@ begin
   inherited;
 end;
 
-procedure TNeonRttiMembers.FilterDeserialize(AInstance: Pointer);
+procedure TNeonRttiMembers.Prepare;
 var
+  LIndex: Integer;
   LMember: TNeonRttiMember;
+  LStatic: Boolean;
+  LStamp: Int64;
 begin
-  for LMember in Self do
-  begin
-    if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = IncludeIf.Always) then
+  LStamp := TNeonLogger.ProfileBegin;
+  try
+    FHasInstanceChecks := False;
+
+    for LIndex := 0 to Count - 1 do
     begin
-      LMember.Serializable := True;
-      Continue;
+      LMember := Items[LIndex];
+
+      // NeonInclude(Always) and NeonIgnore short-circuit every other check,
+      // matching the original evaluation order (and skipping the RTTI probes
+      // below entirely, as the original did)
+      if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = IncludeIf.Always) then
+      begin
+        LMember.StaticSerializable := True;
+        LMember.Serializable := True;
+        Continue;
+      end;
+
+      if LMember.NeonIgnore then
+      begin
+        LMember.StaticSerializable := False;
+        LMember.Serializable := False;
+        Continue;
+      end;
+
+      // Type-level exclusions: the answer is the same for every instance.
+      // Kept in the original evaluation order, because IgnoreReadOnlyProps
+      // probes the member type (which is not guaranteed to have RTTI) and so
+      // must stay behind the ignore-list check that used to shield it
+      if FOperation = TNeonOperation.Serialize then
+        LStatic := LMember.IsReadable
+      else
+        LStatic := LMember.IsWritable;
+
+      if LStatic then
+        LStatic := not IgnoredName(LMember.Name);
+
+      if LStatic and (FOperation = TNeonOperation.Serialize) and FConfig.IgnoreReadOnlyProps then
+        if not LMember.IsWritable and not (LMember.TypeKind in [tkClass, tkInterface]) then
+          LStatic := False;
+
+      if LStatic then
+        LStatic := MatchesVisibility(LMember.Visibility) and
+                   MatchesMemberChoice(LMember.MemberType);
+
+      LMember.StaticSerializable := LStatic;
+      LMember.Serializable := LStatic;
+
+      // Only serialization consults a per-instance IncludeIf function
+      if (FOperation = TNeonOperation.Serialize) and LMember.HasIncludeIf then
+        FHasInstanceChecks := True;
     end;
 
-    if LMember.NeonIgnore then
-      Continue;
+    FPrepared := True;
+  finally
+    TNeonLogger.ProfileEnd('Core:PrepareMembers', LStamp);
+  end;
+end;
 
-    if IgnoredName(LMember.Name) then
-      Continue;
-
-    if not LMember.IsWritable then
-      Continue;
-
-    if MatchesVisibility(LMember.Visibility) then
-      if MatchesMemberChoice(LMember.MemberType) then
-        LMember.Serializable := True;
+procedure TNeonRttiMembers.FilterDeserialize(AInstance: Pointer);
+var
+  LStamp: Int64;
+begin
+  LStamp := TNeonLogger.ProfileBegin;
+  try
+    // Deserialization filtering has no instance-dependent checks at all, so
+    // the decision resolved in Prepare holds for every instance of the type.
+    if not FPrepared then
+      Prepare;
+  finally
+    TNeonLogger.ProfileEnd('Core:FilterDeserialize', LStamp);
   end;
 end;
 
 procedure TNeonRttiMembers.FilterSerialize(AInstance: Pointer);
 var
+  LIndex: Integer;
   LMember: TNeonRttiMember;
+  LStamp: Int64;
 begin
-  for LMember in Self do
-  begin
-    if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = IncludeIf.Always) then
+  LStamp := TNeonLogger.ProfileBegin;
+  try
+    if not FPrepared then
+      Prepare;
+
+    // No [NeonInclude(CustomFunction)] member on this type: what Prepare
+    // computed is already correct, so there is nothing to redo per instance.
+    if not FHasInstanceChecks then
+      Exit;
+
+    for LIndex := 0 to Count - 1 do
     begin
-      LMember.Serializable := True;
-      Continue;
-    end;
+      LMember := Items[LIndex];
 
-    if LMember.NeonIgnore then
-      Continue;
-
-    case LMember.EvalIncludeIf(AInstance) of
-      TNeonIncludeOption.Include:
-      begin
-        LMember.Serializable := True;
+      if not LMember.HasIncludeIf then
         Continue;
+
+      // Handled unconditionally by Prepare, and both win over the IncludeIf
+      // function in the original evaluation order
+      if LMember.NeonInclude.Present and (LMember.NeonInclude.Value = IncludeIf.Always) then
+        Continue;
+      if LMember.NeonIgnore then
+        Continue;
+
+      case LMember.EvalIncludeIf(AInstance) of
+        TNeonIncludeOption.Include: LMember.Serializable := True;
+        TNeonIncludeOption.Exclude: LMember.Serializable := False;
+      else
+        LMember.Serializable := LMember.StaticSerializable;
       end;
-      TNeonIncludeOption.Exclude:
-      begin
-        LMember.Serializable := False;
-        Continue;
-      end;
     end;
-
-    // Exclusions
-    if not LMember.IsReadable then
-      Continue;
-
-    if IgnoredName(LMember.Name) then
-      Continue;
-
-    if FConfig.IgnoreReadOnlyProps then
-      if not LMember.IsWritable and not (LMember.TypeKind in [tkClass, tkInterface]) then
-        Continue;
-
-    if MatchesVisibility(LMember.Visibility) then
-    if MatchesMemberChoice(LMember.MemberType) then
-      LMember.Serializable := True;
+  finally
+    TNeonLogger.ProfileEnd('Core:FilterSerialize', LStamp);
   end;
 end;
 
