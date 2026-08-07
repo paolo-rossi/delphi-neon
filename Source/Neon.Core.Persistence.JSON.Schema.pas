@@ -216,7 +216,19 @@ type
     function WriteDataMember(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; overload;
 
     /// <summary>
-    ///   This method sets additional schema properties (based on JsonSchema attribute)
+    ///   True if the member's JsonSchema attribute carries the "required" tag
+    /// </summary>
+    /// <remarks>
+    ///   "required" is a keyword of the *parent* schema (an array of member
+    ///   names), so it is read straight from the attribute by WriteMembers and
+    ///   never written into the member's own schema
+    /// </remarks>
+    function IsMemberRequired(ANeonObject: TNeonRttiObject): Boolean;
+
+    /// <summary>
+    ///   This method sets additional schema properties (based on JsonSchema
+    ///   attribute). Does nothing if AJSON is nil, which happens for the type
+    ///   kinds whose writers produce no schema at all (interfaces, variants, ...)
     /// </summary>
     procedure SetSchemaProperties(AJSON: TJSONObject; ANeonObject: TNeonRttiObject);
   public
@@ -405,6 +417,20 @@ begin
   Result := Assigned(AMap);
 end;
 
+function TNeonSchemaGenerator.IsMemberRequired(ANeonObject: TNeonRttiObject): Boolean;
+var
+  LSchema: JsonSchemaAttribute;
+begin
+  Result := False;
+
+  LSchema := TRttiUtils.FindAttribute<JsonSchemaAttribute>(ANeonObject.Attributes);
+  if not Assigned(LSchema) then
+    Exit;
+
+  LSchema.ParseTags;
+  Result := LSchema.Tags.Exists('required');
+end;
+
 function TNeonSchemaGenerator.IsNullable(AType: TRttiType; out ANullable: INeonTypeInfoNullable): Boolean;
 begin
   ANullable := TNeonTypeInfoNullable.GuessType(AType);
@@ -424,6 +450,11 @@ var
   LJSONType: string;
   LExamples: TJSONArray;
 begin
+  // Writers for some type kinds (interfaces, variants, unsupported TJSONValue
+  // descendants, ...) produce no schema at all: there is nothing to annotate
+  if not Assigned(AJSON) then
+    Exit;
+
   LSchema := TRttiUtils.FindAttribute<JsonSchemaAttribute>(ANeonObject.Attributes);
   if not Assigned(LSchema) then
     Exit;
@@ -455,9 +486,10 @@ begin
     AJSON.AddPair('examples', LExamples);
   end;
 
-  // Consumed by TNeonSchemaGenerator.WriteMembers (moved into the parent's "required" array)
-  if LTags.Exists('required') then
-    AJSON.AddPair('required', TJSONBool.Create(True));
+  // Note: the "required" tag is deliberately not written here. It belongs to the
+  // parent schema, and WriteMembers reads it from the attribute (IsMemberRequired).
+  // Emitting it as a member-level boolean would collide with the "required" array
+  // an object/record member gets from its own members
 
   if LTags.Exists('readOnly') then
     AJSON.AddPair('readOnly', TJSONBool.Create(True));
@@ -799,23 +831,6 @@ var
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
   LNeonName: string;
-
-  procedure SetRequiredArray(AObj: TJSONObject; var AReqArray: TJSONArray);
-  var
-    LPair: TJSONPair;
-  begin
-    LPair := AObj.RemovePair('required');
-    try
-      if Assigned(LPair) and LPair.JsonValue.AsType<Boolean> then
-      begin
-        if not Assigned(AReqArray) then
-          AReqArray := TJSONArray.Create;
-        AReqArray.Add(LNeonName);
-      end;
-    finally
-      LPair.Free;
-    end;
-  end;
 begin
   Result := nil;
   LMembers := GetNeonMembers(AType);
@@ -825,20 +840,33 @@ begin
   begin
     if LNeonMember.Serializable then
     begin
+      LJSONObj := nil;
       try
-        LJSONObj := WriteDataMember(LNeonMember.RttiType, LNeonMember);
-        if Assigned(LJSONObj) then
-        begin
-          LNeonName := GetNameFromMember(LNeonMember);
-          SetRequiredArray(LJSONObj, Result);
-          AResult.AddPair(LNeonName, LJSONObj);
+        try
+          LJSONObj := WriteDataMember(LNeonMember.RttiType, LNeonMember);
+          if Assigned(LJSONObj) then
+          begin
+            LNeonName := GetNameFromMember(LNeonMember);
+
+            if IsMemberRequired(LNeonMember) then
+            begin
+              if not Assigned(Result) then
+                Result := TJSONArray.Create;
+              Result.Add(LNeonName);
+            end;
+
+            AResult.AddPair(LNeonName, LJSONObj);
+            LJSONObj := nil; // ownership passed to AResult
+          end;
+        except
+          on E: ENeonException do
+            raise; // e.g. a genuine recursive-type cycle - a real error, not a per-property fluke
+          on E: Exception do
+            LogError(Format(SNeonErrorConvertPropF2,
+              [LNeonMember.Name, AType.Name]));
         end;
-      except
-        on E: ENeonException do
-          raise; // e.g. a genuine recursive-type cycle - a real error, not a per-property fluke
-        on E: Exception do
-          LogError(Format(SNeonErrorConvertPropF2,
-            [LNeonMember.Name, AType.Name]));
+      finally
+        LJSONObj.Free; // only reached when the member was not added
       end;
     end;
   end;
@@ -939,20 +967,23 @@ begin
 end;
 
 function TNeonSchemaGenerator.WriteException(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+var
+  LProps: TJSONObject;
+  LInner: TJSONObject;
 begin
   //Result := WriteObject(AType, ANeonObject);
 
   Result := TJSONObject.Create;
 
-  var props := TJSONObject.Create
+  LProps := TJSONObject.Create
       .AddPair('message', 'string')
       .AddPair('error', 'string');
 
-  var inner := TJSONObject.Create
+  LInner := TJSONObject.Create
       .AddPair('type', 'object')
-      .AddPair('properties', props);
+      .AddPair('properties', LProps);
 
-  Result.AddPair('innerException', inner);
+  Result.AddPair('innerException', LInner);
 end;
 
 function TNeonSchemaGenerator.WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;

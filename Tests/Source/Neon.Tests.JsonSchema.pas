@@ -124,6 +124,55 @@ type
     procedure TestMemberWithoutAttributeHasNoExtraKeys;
   end;
 
+  TSchemaAddress = class
+  private
+    FCity: string;
+    FZip: string;
+  public
+    [JsonSchema('required')]
+    property City: string read FCity write FCity;
+
+    property Zip: string read FZip write FZip;
+  end;
+
+  TSchemaOrder = class
+  private
+    FCode: string;
+    FAddress: TSchemaAddress;
+  public
+    property Code: string read FCode write FCode;
+
+    // Required *and* an object with a required member of its own: the member
+    // flag must not collide with the nested "required" array
+    [JsonSchema('required')]
+    property Address: TSchemaAddress read FAddress write FAddress;
+  end;
+
+  // TJSONValue descendant that is none of the handled JSON classes, so the
+  // writer produces no schema at all - the attribute must simply be ignored
+  [JsonSchema('description=A custom JSON node')]
+  TSchemaCustomJSONNode = class(TJSONValue)
+  end;
+
+  [TestFixture]
+  [Category('jsonschema')]
+  TTestJsonSchemaEdgeCases = class(TObject)
+  private
+    FSchema: TJSONObject;
+  public
+    [TearDown]
+    procedure TearDown;
+
+    [Test]
+    procedure TestRequiredObjectMemberKeepsItsOwnRequiredArray;
+
+    [Test]
+    procedure TestRequiredObjectMemberIsListedInParentRequired;
+
+    [Test]
+    procedure TestAttributeOnTypeWithoutSchemaIsIgnored;
+  end;
+
   [TestFixture]
   [Category('jsonschema')]
   TTestJsonSchemaConstraints = class(TObject)
@@ -290,6 +339,48 @@ begin
   Assert.IsNull(LEmail.GetValue('readOnly'));
 end;
 
+{ TTestJsonSchemaEdgeCases }
+
+procedure TTestJsonSchemaEdgeCases.TearDown;
+begin
+  FreeAndNil(FSchema);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestRequiredObjectMemberKeepsItsOwnRequiredArray;
+var
+  LAddress: TJSONObject;
+  LRequired: TJSONArray;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaOrder);
+
+  LAddress := (FSchema.GetValue('properties') as TJSONObject).GetValue('Address') as TJSONObject;
+  Assert.IsNotNull(LAddress, 'the required object member must not be dropped');
+
+  LRequired := LAddress.GetValue('required') as TJSONArray;
+  Assert.IsNotNull(LRequired, 'the nested "required" must survive as an array');
+  Assert.AreEqual(1, LRequired.Count);
+  Assert.AreEqual('City', LRequired.Items[0].Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestRequiredObjectMemberIsListedInParentRequired;
+var
+  LRequired: TJSONArray;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaOrder);
+
+  LRequired := FSchema.GetValue('required') as TJSONArray;
+  Assert.IsNotNull(LRequired);
+  Assert.AreEqual(1, LRequired.Count);
+  Assert.AreEqual('Address', LRequired.Items[0].Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestAttributeOnTypeWithoutSchemaIsIgnored;
+begin
+  // Must return nil rather than raising: there is no schema object to annotate
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaCustomJSONNode);
+  Assert.IsNull(FSchema);
+end;
+
 { TTestJsonSchemaConstraints }
 
 function TTestJsonSchemaConstraints.Properties: TJSONObject;
@@ -401,6 +492,7 @@ end;
 initialization
   TDUnitX.RegisterTestFixture(TTestJsonSchemaAttribute);
   TDUnitX.RegisterTestFixture(TTestJsonSchemaGenerator);
+  TDUnitX.RegisterTestFixture(TTestJsonSchemaEdgeCases);
   TDUnitX.RegisterTestFixture(TTestJsonSchemaConstraints);
 
 end.
