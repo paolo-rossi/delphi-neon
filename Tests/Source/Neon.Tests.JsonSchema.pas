@@ -12,7 +12,7 @@ unit Neon.Tests.JsonSchema;
 interface
 
 uses
-  System.SysUtils, System.TypInfo, System.JSON, System.Generics.Collections,
+  System.SysUtils, System.Classes, System.TypInfo, System.JSON, System.Generics.Collections,
   Data.DB,
   DUnitX.TestFramework,
   Neon.Core.Types,
@@ -172,6 +172,23 @@ type
     property Colors: TSchemaColors read FColors write FColors;
   end;
 
+  // Structurally streamable: LoadFromStream + SaveToStream is all the engine
+  // looks for, and both sides Base64-encode the result
+  TSchemaBlob = class
+  public
+    procedure LoadFromStream(AStream: TStream);
+    procedure SaveToStream(AStream: TStream);
+  end;
+
+  TSchemaAttachment = class
+  private
+    FData: TMemoryStream;
+    FBlob: TSchemaBlob;
+  public
+    property Data: TMemoryStream read FData write FData;
+    property Blob: TSchemaBlob read FBlob write FBlob;
+  end;
+
   TSchemaCoords = class
   private
     FLat: Double;
@@ -237,6 +254,12 @@ type
 
     [Test]
     procedure TestUnwrappedMemberCarriesItsRequiredNames;
+
+    [Test]
+    procedure TestStreamUsesContentEncoding;
+
+    [Test]
+    procedure TestStreamableUsesContentEncoding;
   end;
 
   [TestFixture]
@@ -405,6 +428,17 @@ begin
   Assert.IsNull(LEmail.GetValue('readOnly'));
 end;
 
+{ TSchemaBlob }
+
+procedure TSchemaBlob.LoadFromStream(AStream: TStream);
+begin
+  // Only its presence matters: the engine detects streamables by their methods
+end;
+
+procedure TSchemaBlob.SaveToStream(AStream: TStream);
+begin
+end;
+
 { TTestJsonSchemaEdgeCases }
 
 procedure TTestJsonSchemaEdgeCases.TearDown;
@@ -500,6 +534,34 @@ begin
   LItems := FSchema.GetValue('items') as TJSONObject;
   Assert.IsNotNull(LItems);
   Assert.AreEqual('object', LItems.GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestStreamUsesContentEncoding;
+var
+  LData: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaAttachment);
+  LData := (FSchema.GetValue('properties') as TJSONObject).GetValue('Data') as TJSONObject;
+
+  Assert.IsNotNull(LData);
+  Assert.AreEqual('string', LData.GetValue('type').Value);
+  Assert.IsNotNull(LData.GetValue('contentEncoding'), 'contentEncoding is missing');
+  Assert.AreEqual('base64', LData.GetValue('contentEncoding').Value);
+  Assert.IsNull(LData.GetValue('format'), 'the OpenAPI "byte" format must be gone');
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestStreamableUsesContentEncoding;
+var
+  LBlob: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaAttachment);
+  LBlob := (FSchema.GetValue('properties') as TJSONObject).GetValue('Blob') as TJSONObject;
+
+  Assert.IsNotNull(LBlob);
+  Assert.AreEqual('string', LBlob.GetValue('type').Value);
+  Assert.IsNotNull(LBlob.GetValue('contentEncoding'), 'contentEncoding is missing');
+  Assert.AreEqual('base64', LBlob.GetValue('contentEncoding').Value);
+  Assert.IsNull(LBlob.GetValue('format'), 'the OpenAPI "byte" format must be gone');
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestUnwrappedMemberIsFlattenedIntoParent;

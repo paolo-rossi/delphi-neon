@@ -1116,16 +1116,20 @@ end;
 
 function TNeonSchemaGenerator.WriteStream(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
+  // The stream is written as a Base64 string (TStreamSerializer). "byte" was
+  // OpenAPI 3.0's way of saying that; 2020-12 has a keyword of its own, which
+  // unlike a "format" annotation actually carries meaning to a validator
   Result := TJSONObject.Create
     .AddPair('type', 'string')
-    .AddPair('format', 'byte');
+    .AddPair('contentEncoding', 'base64');
 end;
 
 function TNeonSchemaGenerator.WriteStreamable(AType: TRttiType; ANeonObject: TNeonRttiObject; AStream: INeonTypeInfoStream): TJSONObject;
 begin
+  // Saved to a stream and Base64-encoded, exactly as for a TStream member
   Result := TJSONObject.Create
     .AddPair('type', 'string')
-    .AddPair('format', 'byte');
+    .AddPair('contentEncoding', 'base64');
 end;
 
 function TNeonSchemaGenerator.WriteString(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
