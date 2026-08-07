@@ -1000,8 +1000,13 @@ begin
           begin
             // [NeonUnwrapped] members contribute their own members to the parent
             // instead of a property of their own, so there is no name to give
-            // them here and no name to put in the parent's "required" either
-            LUnwrapped := LNeonMember.NeonUnwrapped and UnwrapMember(LJSONObj, AResult, Result);
+            // them here and no name to put in the parent's "required" either.
+            // UnwrapMember writes into AResult/Result, so it is called from a
+            // statement rather than from inside a boolean expression, where
+            // whether it ran at all would depend on the evaluation mode
+            LUnwrapped := False;
+            if LNeonMember.NeonUnwrapped then
+              LUnwrapped := UnwrapMember(LJSONObj, AResult, Result);
 
             if not LUnwrapped then
             begin

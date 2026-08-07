@@ -1,3 +1,10 @@
+// Short-circuit boolean evaluation. This is the Delphi default, but it is pinned
+// here because the library depends on it for correctness, not just for speed:
+// guards of the form "Assigned(X) and X.Something" appear throughout, and under
+// {$BOOLEVAL ON} they would dereference nil. Every unit includes this file, so a
+// consuming project compiled with complete evaluation cannot break them
+{$B-}
+
 {$IF CompilerVersion >= 27} // Delphi XE6
   {$DEFINE HAS_SYSTEM_JSON}       // New System.JSON unit
 {$ENDIF}
