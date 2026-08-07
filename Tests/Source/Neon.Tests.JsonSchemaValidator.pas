@@ -159,6 +159,17 @@ type
       '{"$defs":{"tup":{"prefixItems":[{"$anchor":"pos","type":"integer","minimum":1}]}},"properties":{"n":{"$ref":"#pos"}}}|{"n":5}|True', '|')]
     [TestCase('$ref: $anchor inside a prefixItems entry invalid',
       '{"$defs":{"tup":{"prefixItems":[{"$anchor":"pos","type":"integer","minimum":1}]}},"properties":{"n":{"$ref":"#pos"}}}|{"n":-5}|False', '|')]
+    // A $ref cycle that never descends into the instance must terminate instead
+    // of recursing forever. It constrains nothing, so it cannot make an instance
+    // invalid - but sibling keywords on the way round still apply
+    [TestCase('$ref: self-referencing root terminates',
+      '{"$ref":"#"}|{"foo":1}|True', '|')]
+    [TestCase('$ref: mutually referencing $defs terminate',
+      '{"$defs":{"a":{"$ref":"#/$defs/b"},"b":{"$ref":"#/$defs/a"}},"$ref":"#/$defs/a"}|42|True', '|')]
+    [TestCase('$ref: cycle still applies its own keywords - match',
+      '{"$defs":{"a":{"type":"integer","$ref":"#/$defs/a"}},"$ref":"#/$defs/a"}|42|True', '|')]
+    [TestCase('$ref: cycle still applies its own keywords - mismatch',
+      '{"$defs":{"a":{"type":"integer","$ref":"#/$defs/a"}},"$ref":"#/$defs/a"}|"foo"|False', '|')]
     procedure TestRef(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]

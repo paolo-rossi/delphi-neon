@@ -296,13 +296,34 @@ type
   /// </remarks>
   TJSONSchemaValidator = class
   private
+  type
+    /// <summary>
+    ///   One (schema, instance) pair currently being evaluated through a $ref
+    /// </summary>
+    TRefFrame = record
+      Schema: TJSONValue;
+      Instance: TJSONValue;
+    end;
+  private
     FRoot: TJSONValue;
     FAnchors: TDictionary<string, TJSONValue>;
     FStopOnFirstError: Boolean;
 
+    /// <summary>
+    ///   The $ref frames on the current evaluation path, used to break
+    ///   non-productive reference cycles (see IsRefFrameActive)
+    /// </summary>
+    FRefStack: TList<TRefFrame>;
+
     procedure CollectAnchors(ASchema: TJSONValue);
     function NavigatePointer(const APointer: string): TJSONValue;
     function ResolveRef(const ARef: string): TJSONValue;
+
+    /// <summary>
+    ///   True if this exact schema is already being evaluated against this
+    ///   exact instance further up the call stack
+    /// </summary>
+    function IsRefFrameActive(ASchema, AInstance: TJSONValue): Boolean;
 
     procedure AddError(AErrors: TList<TJSONValidationError>; const APath, AKeyword, AMessage: string);
     function ShouldStop(AErrors: TList<TJSONValidationError>; ABaseline: Integer): Boolean;
@@ -1070,13 +1091,28 @@ constructor TJSONSchemaValidator.Create(ARootSchema: TJSONValue);
 begin
   FRoot := ARootSchema;
   FAnchors := TDictionary<string, TJSONValue>.Create;
+  FRefStack := TList<TRefFrame>.Create;
   CollectAnchors(FRoot);
 end;
 
 destructor TJSONSchemaValidator.Destroy;
 begin
+  FRefStack.Free;
   FAnchors.Free;
   inherited;
+end;
+
+function TJSONSchemaValidator.IsRefFrameActive(ASchema, AInstance: TJSONValue): Boolean;
+var
+  LIndex: Integer;
+begin
+  // The stack is only as deep as the chain of $refs currently being followed,
+  // so a linear scan is cheaper than hashing a composite key
+  for LIndex := 0 to FRefStack.Count - 1 do
+    if (FRefStack[LIndex].Schema = ASchema) and (FRefStack[LIndex].Instance = AInstance) then
+      Exit(True);
+
+  Result := False;
 end;
 
 procedure TJSONSchemaValidator.CollectAnchors(ASchema: TJSONValue);
@@ -1726,7 +1762,8 @@ var
   LErrorCountBefore: Integer;
   LSchemaObj: TJSONObject;
   LRef, LEnum, LConst: TJSONValue;
-  LEnumItem: TJSONValue;
+  LEnumItem, LTarget: TJSONValue;
+  LFrame: TRefFrame;
   LMatched: Boolean;
 begin
   LErrorCountBefore := AErrors.Count;
@@ -1751,9 +1788,29 @@ begin
   LRef := LSchemaObj.GetValue('$ref');
   if Assigned(LRef) and (LRef is TJSONString) then
   begin
-    ValidateNode(AInstance, ResolveRef(LRef.Value), APath, AErrors);
-    if FStopOnFirstError and (AErrors.Count > LErrorCountBefore) then
-      Exit(False);
+    LTarget := ResolveRef(LRef.Value);
+
+    // A $ref leading back to a (schema, instance) pair already on the current
+    // path cannot constrain anything further - the outer evaluation is applying
+    // that very schema to that very instance - so following it again would only
+    // recurse forever. Skipping it makes a non-productive cycle (e.g. a schema
+    // that is just {"$ref": "#"}, or two $defs referencing each other) terminate,
+    // while ordinary recursive schemas are unaffected: there every step descends
+    // into a smaller instance, so the pair is never the same twice
+    if not IsRefFrameActive(LTarget, AInstance) then
+    begin
+      LFrame.Schema := LTarget;
+      LFrame.Instance := AInstance;
+      FRefStack.Add(LFrame);
+      try
+        ValidateNode(AInstance, LTarget, APath, AErrors);
+      finally
+        FRefStack.Delete(FRefStack.Count - 1);
+      end;
+
+      if FStopOnFirstError and (AErrors.Count > LErrorCountBefore) then
+        Exit(False);
+    end;
   end;
 
   // type / types
