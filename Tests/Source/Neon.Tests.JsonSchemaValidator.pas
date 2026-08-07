@@ -98,6 +98,22 @@ type
     // property that triggered it
     [TestCase('dependentSchemas: applies to the whole object',
       '{"dependentSchemas":{"card":{"properties":{"cvv":{"type":"string"}}}}}|{"card":"x","cvv":5}|False', '|')]
+    // Draft-07 "dependencies": both forms, chosen per entry
+    [TestCase('dependencies: array form satisfied',
+      '{"dependencies":{"card":["cvv"]}}|{"card":"x","cvv":"y"}|True', '|')]
+    [TestCase('dependencies: array form violated',
+      '{"dependencies":{"card":["cvv"]}}|{"card":"x"}|False', '|')]
+    [TestCase('dependencies: schema form satisfied',
+      '{"dependencies":{"card":{"required":["cvv"]}}}|{"card":"x","cvv":"y"}|True', '|')]
+    [TestCase('dependencies: schema form violated',
+      '{"dependencies":{"card":{"required":["cvv"]}}}|{"card":"x"}|False', '|')]
+    [TestCase('dependencies: both forms in one map',
+      '{"dependencies":{"card":["cvv"],"ship":{"required":["addr"]}}}|{"card":"x","cvv":"y","ship":true}|False', '|')]
+    [TestCase('dependencies: trigger absent imposes nothing',
+      '{"dependencies":{"card":["cvv"]}}|{"other":1}|True', '|')]
+    // A false schema means "this property may not be present at all"
+    [TestCase('dependencies: false schema rejects the trigger',
+      '{"dependencies":{"card":false}}|{"card":"x"}|False', '|')]
     procedure TestObject(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]

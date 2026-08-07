@@ -298,7 +298,8 @@ type
   /// <remarks>
   ///   v1 scope: $ref/$defs and $anchor are resolved locally (same document)
   ///   only; a $ref to another document is unsupported. allOf/anyOf/oneOf/not,
-  ///   if/then/else and dependentRequired/dependentSchemas are implemented;
+  ///   if/then/else and dependentRequired/dependentSchemas are implemented (as
+  ///   is Draft-07's "dependencies", which merges the last two);
   ///   unevaluatedProperties/unevaluatedItems are not yet (they need the
   ///   annotation-tracking machinery, planned separately). format is
   ///   annotation-only (never validated) in v1.
@@ -348,6 +349,17 @@ type
     procedure ValidateNumeric(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
     procedure ValidateString(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
     procedure ValidateArray(AInstance: TJSONArray; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
+    /// <summary>
+    ///   Applies one dependency map: for every property of it that the instance
+    ///   actually has, an array value makes the listed property names mandatory
+    ///   and a schema value is applied to the whole object. Draft-07's
+    ///   "dependencies" allows both forms in the same map, which is why the form
+    ///   is decided per entry rather than per keyword. Returns False when
+    ///   validation must stop early
+    /// </summary>
+    function ValidateDependencyMap(AInstance: TJSONObject; ADependencies: TJSONValue;
+      const AKeyword, APath: string; AErrors: TList<TJSONValidationError>; ABaseline: Integer): Boolean;
+
     procedure ValidateObject(AInstance: TJSONObject; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
     function ValidateLogic(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>): Boolean;
   public
@@ -1643,16 +1655,62 @@ begin
   end;
 end;
 
+function TJSONSchemaValidator.ValidateDependencyMap(AInstance: TJSONObject;
+  ADependencies: TJSONValue; const AKeyword, APath: string;
+  AErrors: TList<TJSONValidationError>; ABaseline: Integer): Boolean;
+var
+  LPair: TJSONPair;
+  LNames: TJSONArray;
+  LDependency: string;
+  LIndex: Integer;
+begin
+  Result := True;
+
+  if not (Assigned(ADependencies) and (ADependencies is TJSONObject)) then
+    Exit;
+
+  for LPair in (ADependencies as TJSONObject) do
+  begin
+    // A property absent from the instance triggers nothing
+    if not Assigned(AInstance.GetValue(LPair.JsonString.Value)) then
+      Continue;
+
+    if LPair.JsonValue is TJSONArray then
+    begin
+      // Array form: the listed properties become mandatory as well
+      LNames := LPair.JsonValue as TJSONArray;
+      for LIndex := 0 to LNames.Count - 1 do
+      begin
+        LDependency := LNames.Items[LIndex].Value;
+        if not Assigned(AInstance.GetValue(LDependency)) then
+        begin
+          AddError(AErrors, APath, AKeyword,
+            Format('property "%s" requires "%s", which is missing',
+              [LPair.JsonString.Value, LDependency]));
+          if ShouldStop(AErrors, ABaseline) then
+            Exit(False);
+        end;
+      end;
+    end
+    else
+    begin
+      // Schema form: applied to the whole object, not to the value of the
+      // property that triggered it, so instance and path are passed through
+      ValidateNode(AInstance, LPair.JsonValue, APath, AErrors);
+      if ShouldStop(AErrors, ABaseline) then
+        Exit(False);
+    end;
+  end;
+end;
+
 procedure TJSONSchemaValidator.ValidateObject(AInstance: TJSONObject; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
 var
   LProperties, LPatternProperties: TJSONValue;
   LAdditionalProperties, LPropertyNames, LRequired: TJSONValue;
-  LDependentRequired, LDependentSchemas: TJSONValue;
   LEvaluated: TDictionary<string, Boolean>;
   LPair, LInstPair: TJSONPair;
   LPropSchema: TJSONValue;
   LValue: TJSONValue;
-  LDependency: string;
   LMinMax, LBaseline: Integer;
   I: Integer;
 begin
@@ -1739,46 +1797,21 @@ begin
             Exit;
         end;
 
-    // dependentRequired: {"a": ["b", "c"]} means "if the instance has a, it
-    // must have b and c too". A property that is absent imposes nothing
-    LDependentRequired := ASchema.GetValue('dependentRequired');
-    if Assigned(LDependentRequired) and (LDependentRequired is TJSONObject) then
-      for LPair in (LDependentRequired as TJSONObject) do
-      begin
-        if not (LPair.JsonValue is TJSONArray) then
-          Continue;
+    // The 2020-12 pair, plus Draft-07's "dependencies", which is exactly these
+    // two keywords merged into one: an array value behaves as dependentRequired
+    // and a schema value as dependentSchemas, which is what ValidateDependencyMap
+    // dispatches on
+    if not ValidateDependencyMap(AInstance, ASchema.GetValue('dependentRequired'),
+        'dependentRequired', APath, AErrors, LBaseline) then
+      Exit;
 
-        if not Assigned(AInstance.GetValue(LPair.JsonString.Value)) then
-          Continue;
+    if not ValidateDependencyMap(AInstance, ASchema.GetValue('dependentSchemas'),
+        'dependentSchemas', APath, AErrors, LBaseline) then
+      Exit;
 
-        for I := 0 to (LPair.JsonValue as TJSONArray).Count - 1 do
-        begin
-          LDependency := (LPair.JsonValue as TJSONArray).Items[I].Value;
-          if not Assigned(AInstance.GetValue(LDependency)) then
-          begin
-            AddError(AErrors, APath, 'dependentRequired',
-              Format('property "%s" requires "%s", which is missing',
-                [LPair.JsonString.Value, LDependency]));
-            if ShouldStop(AErrors, LBaseline) then
-              Exit;
-          end;
-        end;
-      end;
-
-    // dependentSchemas: the presence of a property brings another schema into
-    // play. That schema is applied to the whole object, not to the property's
-    // own value, so the instance and the path both stay as they are
-    LDependentSchemas := ASchema.GetValue('dependentSchemas');
-    if Assigned(LDependentSchemas) and (LDependentSchemas is TJSONObject) then
-      for LPair in (LDependentSchemas as TJSONObject) do
-      begin
-        if not Assigned(AInstance.GetValue(LPair.JsonString.Value)) then
-          Continue;
-
-        ValidateNode(AInstance, LPair.JsonValue, APath, AErrors);
-        if ShouldStop(AErrors, LBaseline) then
-          Exit;
-      end;
+    if not ValidateDependencyMap(AInstance, ASchema.GetValue('dependencies'),
+        'dependencies', APath, AErrors, LBaseline) then
+      Exit;
   finally
     LEvaluated.Free;
   end;
