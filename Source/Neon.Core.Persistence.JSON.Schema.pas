@@ -72,6 +72,15 @@ type
     function TagValueToJSON(ATags: TAttributeTags; const AName, AJSONType: string): TJSONValue;
 
     /// <summary>
+    ///   Flattens a [NeonUnwrapped] member's schema into the parent: its
+    ///   properties are copied into AProperties and its required member names
+    ///   into ARequired. Returns False (leaving both untouched) if the member's
+    ///   schema has no properties to flatten, in which case the caller must
+    ///   nest it as an ordinary member
+    /// </summary>
+    function UnwrapMember(AMemberSchema, AProperties: TJSONObject; var ARequired: TJSONArray): Boolean;
+
+    /// <summary>
     ///   Writer for members of objects and records
     /// </summary>
     function WriteMembers(AType: TRttiType; AResult: TJSONObject): TJSONArray;
@@ -870,12 +879,43 @@ begin
   Result := TJSONObject.Create;
 end;
 
+function TNeonSchemaGenerator.UnwrapMember(AMemberSchema, AProperties: TJSONObject; var ARequired: TJSONArray): Boolean;
+var
+  LProperties, LRequired: TJSONValue;
+  LPair: TJSONPair;
+  LIndex: Integer;
+begin
+  // Only a schema describing a fixed set of properties can be flattened, which
+  // matches TNeonSerializerJSON.WriteMembers unwrapping only what it wrote as a
+  // TJSONObject. Anything else (a string, an array, or a map's open-ended
+  // "additionalProperties") is left for the caller to nest as usual
+  LProperties := AMemberSchema.GetValue('properties');
+  if not (Assigned(LProperties) and (LProperties is TJSONObject)) then
+    Exit(False);
+
+  for LPair in (LProperties as TJSONObject) do
+    AProperties.AddPair(LPair.Clone as TJSONPair);
+
+  // The nested members keep their "required" status, now against the parent
+  LRequired := AMemberSchema.GetValue('required');
+  if Assigned(LRequired) and (LRequired is TJSONArray) then
+    for LIndex := 0 to (LRequired as TJSONArray).Count - 1 do
+    begin
+      if not Assigned(ARequired) then
+        ARequired := TJSONArray.Create;
+      ARequired.Add((LRequired as TJSONArray).Items[LIndex].Value);
+    end;
+
+  Result := True;
+end;
+
 function TNeonSchemaGenerator.WriteMembers(AType: TRttiType; AResult: TJSONObject): TJSONArray;
 var
   LJSONObj: TJSONObject;
   LMembers: TNeonRttiMembers;
   LNeonMember: TNeonRttiMember;
   LNeonName: string;
+  LUnwrapped: Boolean;
 begin
   Result := nil;
   LMembers := GetNeonMembers(AType);
@@ -891,17 +931,25 @@ begin
           LJSONObj := WriteDataMember(LNeonMember.RttiType, LNeonMember);
           if Assigned(LJSONObj) then
           begin
-            LNeonName := GetNameFromMember(LNeonMember);
+            // [NeonUnwrapped] members contribute their own members to the parent
+            // instead of a property of their own, so there is no name to give
+            // them here and no name to put in the parent's "required" either
+            LUnwrapped := LNeonMember.NeonUnwrapped and UnwrapMember(LJSONObj, AResult, Result);
 
-            if IsMemberRequired(LNeonMember) then
+            if not LUnwrapped then
             begin
-              if not Assigned(Result) then
-                Result := TJSONArray.Create;
-              Result.Add(LNeonName);
-            end;
+              LNeonName := GetNameFromMember(LNeonMember);
 
-            AResult.AddPair(LNeonName, LJSONObj);
-            LJSONObj := nil; // ownership passed to AResult
+              if IsMemberRequired(LNeonMember) then
+              begin
+                if not Assigned(Result) then
+                  Result := TJSONArray.Create;
+                Result.Add(LNeonName);
+              end;
+
+              AResult.AddPair(LNeonName, LJSONObj);
+              LJSONObj := nil; // ownership passed to AResult
+            end;
           end;
         except
           on E: ENeonException do

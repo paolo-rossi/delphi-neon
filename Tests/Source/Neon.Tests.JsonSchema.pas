@@ -16,6 +16,7 @@ uses
   Data.DB,
   DUnitX.TestFramework,
   Neon.Core.Types,
+  Neon.Core.Attributes,
   Neon.Core.Nullables,
   Neon.Core.Utils,
   Neon.Core.Persistence,
@@ -171,6 +172,29 @@ type
     property Colors: TSchemaColors read FColors write FColors;
   end;
 
+  TSchemaCoords = class
+  private
+    FLat: Double;
+    FLng: Double;
+  public
+    [JsonSchema('required')]
+    property Lat: Double read FLat write FLat;
+
+    property Lng: Double read FLng write FLng;
+  end;
+
+  TSchemaPlace = class
+  private
+    FName: string;
+    FCoords: TSchemaCoords;
+  public
+    property Name: string read FName write FName;
+
+    // Serialized flat: Lat/Lng sit next to Name, with no "Coords" property
+    [NeonUnwrapped]
+    property Coords: TSchemaCoords read FCoords write FCoords;
+  end;
+
   // A TJSONValue descendant must be described like the class it derives from,
   // not dropped for failing an exact class match. TJSONString is one of the two
   // non-sealed ones, and it doubles as a check that the TJSONNumber/TJSONString
@@ -207,6 +231,12 @@ type
 
     [Test]
     procedure TestJSONValueDescendantIsDescribed;
+
+    [Test]
+    procedure TestUnwrappedMemberIsFlattenedIntoParent;
+
+    [Test]
+    procedure TestUnwrappedMemberCarriesItsRequiredNames;
   end;
 
   [TestFixture]
@@ -470,6 +500,34 @@ begin
   LItems := FSchema.GetValue('items') as TJSONObject;
   Assert.IsNotNull(LItems);
   Assert.AreEqual('object', LItems.GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestUnwrappedMemberIsFlattenedIntoParent;
+var
+  LProperties: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPlace);
+  LProperties := FSchema.GetValue('properties') as TJSONObject;
+
+  Assert.IsNull(LProperties.GetValue('Coords'), 'the unwrapped member must not appear as a property');
+
+  Assert.IsNotNull(LProperties.GetValue('Name'));
+  Assert.IsNotNull(LProperties.GetValue('Lat'), 'the unwrapped member''s own members are hoisted');
+  Assert.IsNotNull(LProperties.GetValue('Lng'));
+  Assert.AreEqual('number', (LProperties.GetValue('Lat') as TJSONObject).GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestUnwrappedMemberCarriesItsRequiredNames;
+var
+  LRequired: TJSONArray;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPlace);
+
+  // Lat is required inside TSchemaCoords, so once flattened it is required here
+  LRequired := FSchema.GetValue('required') as TJSONArray;
+  Assert.IsNotNull(LRequired);
+  Assert.AreEqual(1, LRequired.Count);
+  Assert.AreEqual('Lat', LRequired.Items[0].Value);
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestJSONValueDescendantIsDescribed;
