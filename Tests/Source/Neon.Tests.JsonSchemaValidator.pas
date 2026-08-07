@@ -149,6 +149,16 @@ type
       '{"definitions":{"pos":{"$id":"#pos","type":"integer","minimum":0}},"properties":{"n":{"$ref":"#pos"}}}|{"n":5}|True', '|')]
     [TestCase('$ref: Draft-07 "$id" fragment anchor invalid',
       '{"definitions":{"pos":{"$id":"#pos","type":"integer","minimum":0}},"properties":{"n":{"$ref":"#pos"}}}|{"n":-5}|False', '|')]
+    // Subschemas (and therefore anchors) also live inside arrays: anyOf/oneOf/
+    // allOf branches, prefixItems entries, ...
+    [TestCase('$ref: $anchor inside an anyOf branch valid',
+      '{"$defs":{"any":{"anyOf":[{"$anchor":"pos","type":"integer","minimum":1},{"type":"string"}]}},"properties":{"n":{"$ref":"#pos"}}}|{"n":5}|True', '|')]
+    [TestCase('$ref: $anchor inside an anyOf branch invalid',
+      '{"$defs":{"any":{"anyOf":[{"$anchor":"pos","type":"integer","minimum":1},{"type":"string"}]}},"properties":{"n":{"$ref":"#pos"}}}|{"n":-5}|False', '|')]
+    [TestCase('$ref: $anchor inside a prefixItems entry valid',
+      '{"$defs":{"tup":{"prefixItems":[{"$anchor":"pos","type":"integer","minimum":1}]}},"properties":{"n":{"$ref":"#pos"}}}|{"n":5}|True', '|')]
+    [TestCase('$ref: $anchor inside a prefixItems entry invalid',
+      '{"$defs":{"tup":{"prefixItems":[{"$anchor":"pos","type":"integer","minimum":1}]}},"properties":{"n":{"$ref":"#pos"}}}|{"n":-5}|False', '|')]
     procedure TestRef(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]

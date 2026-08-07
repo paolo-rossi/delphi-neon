@@ -1082,9 +1082,19 @@ end;
 procedure TJSONSchemaValidator.CollectAnchors(ASchema: TJSONValue);
 var
   LObj: TJSONObject;
-  LAnchor, LId: TJSONValue;
+  LAnchor, LId, LItem: TJSONValue;
   LPair: TJSONPair;
 begin
+  // Subschemas live inside arrays as well as objects (allOf/anyOf/oneOf,
+  // prefixItems, the Draft-07 tuple form of "items"), so array elements have
+  // to be walked too or their anchors are unreachable
+  if ASchema is TJSONArray then
+  begin
+    for LItem in (ASchema as TJSONArray) do
+      CollectAnchors(LItem);
+    Exit;
+  end;
+
   if not (ASchema is TJSONObject) then
     Exit;
 
