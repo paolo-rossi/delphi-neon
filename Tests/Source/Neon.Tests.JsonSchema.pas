@@ -12,10 +12,13 @@ unit Neon.Tests.JsonSchema;
 interface
 
 uses
-  System.SysUtils, System.JSON, System.Generics.Collections,
+  System.SysUtils, System.TypInfo, System.JSON, System.Generics.Collections,
+  Data.DB,
   DUnitX.TestFramework,
   Neon.Core.Types,
   Neon.Core.Nullables,
+  Neon.Core.Utils,
+  Neon.Core.Persistence,
   Neon.Core.Persistence.JSON.Schema;
 
 type
@@ -148,10 +151,31 @@ type
     property Address: TSchemaAddress read FAddress write FAddress;
   end;
 
-  // TJSONValue descendant that is none of the handled JSON classes, so the
-  // writer produces no schema at all - the attribute must simply be ignored
-  [JsonSchema('description=A custom JSON node')]
-  TSchemaCustomJSONNode = class(TJSONValue)
+  // Interfaces have no writer, so no schema is produced at all and the
+  // attribute must simply be ignored rather than dereferenced
+  // IInvokable, so that the interface carries type info (and its attribute)
+  [JsonSchema('description=Some service')]
+  ISchemaService = interface(IInvokable)
+    ['{0B0D6E5A-2C2E-4E9E-9C1C-6A0B2D9E1F31}']
+  end;
+
+  TSchemaColor = (Red, Green, Blue);
+  TSchemaColors = set of TSchemaColor;
+
+  TSchemaPalette = class
+  private
+    FMain: TSchemaColor;
+    FColors: TSchemaColors;
+  public
+    property Main: TSchemaColor read FMain write FMain;
+    property Colors: TSchemaColors read FColors write FColors;
+  end;
+
+  // A TJSONValue descendant must be described like the class it derives from,
+  // not dropped for failing an exact class match. TJSONString is one of the two
+  // non-sealed ones, and it doubles as a check that the TJSONNumber/TJSONString
+  // inheritance order is respected
+  TSchemaJSONText = class(TJSONString)
   end;
 
   [TestFixture]
@@ -171,6 +195,18 @@ type
 
     [Test]
     procedure TestAttributeOnTypeWithoutSchemaIsIgnored;
+
+    [Test]
+    procedure TestSetIsArrayOfEnumNames;
+
+    [Test]
+    procedure TestEnumAsIntProducesIntegerSchema;
+
+    [Test]
+    procedure TestDataSetIsArrayOfRows;
+
+    [Test]
+    procedure TestJSONValueDescendantIsDescribed;
   end;
 
   [TestFixture]
@@ -377,8 +413,71 @@ end;
 procedure TTestJsonSchemaEdgeCases.TestAttributeOnTypeWithoutSchemaIsIgnored;
 begin
   // Must return nil rather than raising: there is no schema object to annotate
-  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaCustomJSONNode);
+  FSchema := TNeonSchemaGenerator.TypeToJSONSchema(
+    TRttiUtils.Context.GetType(TypeInfo(ISchemaService)));
   Assert.IsNull(FSchema);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestSetIsArrayOfEnumNames;
+var
+  LColors, LItems: TJSONObject;
+  LEnum: TJSONArray;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPalette);
+
+  LColors := (FSchema.GetValue('properties') as TJSONObject).GetValue('Colors') as TJSONObject;
+  Assert.IsNotNull(LColors);
+  // The serializer writes a set as an array of its members, not as a string
+  Assert.AreEqual('array', LColors.GetValue('type').Value);
+
+  LItems := LColors.GetValue('items') as TJSONObject;
+  Assert.IsNotNull(LItems);
+  Assert.AreEqual('string', LItems.GetValue('type').Value);
+
+  LEnum := LItems.GetValue('enum') as TJSONArray;
+  Assert.IsNotNull(LEnum);
+  Assert.AreEqual(3, LEnum.Count);
+  Assert.AreEqual('Red', LEnum.Items[0].Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestEnumAsIntProducesIntegerSchema;
+var
+  LMain: TJSONObject;
+  LEnum: TJSONArray;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPalette,
+    TNeonConfiguration.Default.SetEnumAsInt(True));
+
+  LMain := (FSchema.GetValue('properties') as TJSONObject).GetValue('Main') as TJSONObject;
+  Assert.IsNotNull(LMain);
+  Assert.AreEqual('integer', LMain.GetValue('type').Value);
+
+  LEnum := LMain.GetValue('enum') as TJSONArray;
+  Assert.IsNotNull(LEnum);
+  Assert.AreEqual(3, LEnum.Count);
+  Assert.AreEqual(2, (LEnum.Items[2] as TJSONNumber).AsInt);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestDataSetIsArrayOfRows;
+var
+  LItems: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TDataSet);
+
+  // A dataset serializes to an array of row objects, not to a single object
+  Assert.AreEqual('array', FSchema.GetValue('type').Value);
+
+  LItems := FSchema.GetValue('items') as TJSONObject;
+  Assert.IsNotNull(LItems);
+  Assert.AreEqual('object', LItems.GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestJSONValueDescendantIsDescribed;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaJSONText);
+
+  Assert.IsNotNull(FSchema, 'a TJSONString descendant must not be dropped');
+  Assert.AreEqual('string', FSchema.GetValue('type').Value);
 end;
 
 { TTestJsonSchemaConstraints }

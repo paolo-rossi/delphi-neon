@@ -471,8 +471,8 @@ var
   LJSONType: string;
   LExamples: TJSONArray;
 begin
-  // Writers for some type kinds (interfaces, variants, unsupported TJSONValue
-  // descendants, ...) produce no schema at all: there is nothing to annotate
+  // The writers for interfaces and variants produce no schema at all, so an
+  // attribute on such a type has nothing to annotate
   if not Assigned(AJSON) then
     Exit;
 
@@ -732,15 +732,14 @@ begin
 end;
 
 function TNeonSchemaGenerator.WriteDataSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
-var
-  LJSONProps: TJSONObject;
 begin
-  //Result := TDataSetUtils.RecordToJSONSchema(AValue.AsObject as TDataSet, FConfig);
-
-  LJSONProps := TJSONObject.Create;
+  // TDataSetSerializer writes a dataset as an array of row objects. The shape of
+  // a row comes from the field definitions, which only exist on a live instance
+  // (see TDataSetUtils.RecordToJSONSchema) - unavailable to a type-only schema
+  // generator - so the row itself is left unconstrained
   Result := TJSONObject.Create
-    .AddPair('type', 'object')
-    .AddPair('properties', LJSONProps);
+    .AddPair('type', 'array')
+    .AddPair('items', TJSONObject.Create.AddPair('type', 'object'));
 end;
 
 function TNeonSchemaGenerator.WriteDate(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
@@ -781,14 +780,28 @@ var
   LEnumArray: TJSONArray;
 begin
   LTypeData := GetTypeData(AType.Handle);
-
   LEnumArray := TJSONArray.Create;
-  for LIndex := LTypeData.MinValue to LTypeData.MaxValue do
-    LEnumArray.Add(TTypeInfoUtils.EnumToString(AType.Handle, LIndex));
 
-  Result := TJSONObject.Create
-    .AddPair('type', 'string')
-    .AddPair('enum', LEnumArray);
+  // Must mirror TNeonSerializerJSON.WriteEnum: the ordinal is written when the
+  // configuration asks for it, the enum name otherwise
+  if FConfig.EnumAsInt then
+  begin
+    for LIndex := LTypeData.MinValue to LTypeData.MaxValue do
+      LEnumArray.AddElement(TJSONNumber.Create(LIndex));
+
+    Result := TJSONObject.Create
+      .AddPair('type', 'integer')
+      .AddPair('enum', LEnumArray);
+  end
+  else
+  begin
+    for LIndex := LTypeData.MinValue to LTypeData.MaxValue do
+      LEnumArray.Add(TTypeInfoUtils.EnumToString(AType.Handle, LIndex));
+
+    Result := TJSONObject.Create
+      .AddPair('type', 'string')
+      .AddPair('enum', LEnumArray);
+  end;
 end;
 
 function TNeonSchemaGenerator.WriteFloat(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
@@ -818,32 +831,43 @@ begin
 end;
 
 function TNeonSchemaGenerator.WriteJSONValue(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+var
+  LClass: TClass;
 begin
-  Result := nil;
+  LClass := AType.AsInstance.MetaclassType;
 
-  if AType.Handle = TJSONString.ClassInfo then
-    Exit(TJSONObject.Create
-      .AddPair('type', 'string'));
-
-  if AType.Handle = TJSONNumber.ClassInfo then
+  // Tested by inheritance, not by class identity, so that a descendant (or a
+  // member merely declared as TJSONValue) is described instead of dropped.
+  // TJSONNumber descends from TJSONString in the RTL, hence the order here
+  if LClass.InheritsFrom(TJSONNumber) then
     Exit(TJSONObject.Create
       .AddPair('type', 'number')
       .AddPair('format', 'float'));
 
-  if AType.Handle = TJSONBool.ClassInfo then
+  if LClass.InheritsFrom(TJSONString) then
+    Exit(TJSONObject.Create
+      .AddPair('type', 'string'));
+
+  if LClass.InheritsFrom(TJSONBool) then
     Exit(TJSONObject.Create
       .AddPair('type', 'boolean'));
 
-  if AType.Handle = TJSONObject.ClassInfo then
+  if LClass.InheritsFrom(TJSONNull) then
+    Exit(TJSONObject.Create
+      .AddPair('type', 'null'));
+
+  if LClass.InheritsFrom(TJSONObject) then
     Exit(TJSONObject.Create
       .AddPair('type', 'object')
       .AddPair('additionalProperties', TJSONObject.Create));
 
-  if AType.Handle = TJSONArray.ClassInfo then
+  if LClass.InheritsFrom(TJSONArray) then
     Exit(TJSONObject.Create
       .AddPair('type', 'array')
       .AddPair('items', TJSONObject.Create));
 
+  // TJSONValue itself: any JSON value at all, which an empty schema states
+  Result := TJSONObject.Create;
 end;
 
 function TNeonSchemaGenerator.WriteMembers(AType: TRttiType; AResult: TJSONObject): TJSONArray;
@@ -1008,9 +1032,26 @@ begin
 end;
 
 function TNeonSchemaGenerator.WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+var
+  LElementType: PPTypeInfo;
+  LItems: TJSONObject;
 begin
+  // TNeonSerializerJSON.WriteSet writes one array element per member of the
+  // set, each produced by the writer for the set's base type (so an enum
+  // element follows the enum rules, name or ordinal)
+  LItems := nil;
+
+  LElementType := GetTypeData(AType.Handle)^.CompType;
+  if (LElementType <> nil) and (LElementType^ <> nil) then
+    LItems := WriteDataMember(TRttiUtils.Context.GetType(LElementType^));
+
+  // No base type RTTI: the serializer falls back to writing the raw ordinals
+  if not Assigned(LItems) then
+    LItems := TJSONObject.Create.AddPair('type', 'integer');
+
   Result := TJSONObject.Create
-    .AddPair('type', 'string');
+    .AddPair('type', 'array')
+    .AddPair('items', LItems);
 end;
 
 function TNeonSchemaGenerator.WriteStream(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
