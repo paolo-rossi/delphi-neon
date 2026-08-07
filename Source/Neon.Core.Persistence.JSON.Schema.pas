@@ -430,6 +430,29 @@ uses
   System.RegularExpressions,
   System.Variants;
 
+const
+  /// <summary>
+  ///   Keywords whose value is a subschema, or - for "items"/"additionalItems"
+  ///   in the Draft-07 tuple form, and for the four logic keywords - an array of
+  ///   subschemas. CollectAnchors handles both, since it walks arrays too
+  /// </summary>
+  SCHEMA_POSITIONS: array[0..15] of string = (
+    'additionalProperties', 'propertyNames', 'items', 'additionalItems',
+    'contains', 'not', 'if', 'then', 'else', 'unevaluatedItems',
+    'unevaluatedProperties', 'contentSchema',
+    'allOf', 'anyOf', 'oneOf', 'prefixItems'
+  );
+
+  /// <summary>
+  ///   Keywords whose value is an object mapping a name to a subschema. Under
+  ///   Draft-07's "dependencies" a value may instead be an array of property
+  ///   names, which simply holds no subschema to find
+  /// </summary>
+  SCHEMA_MAP_POSITIONS: array[0..5] of string = (
+    'properties', 'patternProperties', '$defs', 'definitions',
+    'dependentSchemas', 'dependencies'
+  );
+
 { TNeonSchemaGenerator }
 
 class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; AVersion: TNeonJSchemaVersion): TJSONObject;
@@ -1419,8 +1442,9 @@ end;
 procedure TJSONSchemaValidator.CollectAnchors(ASchema: TJSONValue);
 var
   LObj: TJSONObject;
-  LAnchor, LId, LItem: TJSONValue;
+  LAnchor, LId, LItem, LValue: TJSONValue;
   LPair: TJSONPair;
+  LKeyword: string;
 begin
   // Subschemas live inside arrays as well as objects (allOf/anyOf/oneOf,
   // prefixItems, the Draft-07 tuple form of "items"), so array elements have
@@ -1446,12 +1470,20 @@ begin
   if Assigned(LId) and (LId is TJSONString) and LId.Value.StartsWith('#') and (LId.Value.Length > 1) then
     FAnchors.AddOrSetValue(LId.Value.Substring(1), LObj);
 
-  for LPair in LObj do
+  // Descend only where a subschema can actually live. Walking every member would
+  // walk instance data as well - the object under a "const", "default" or
+  // "examples" is a value, and an "$anchor" key inside one names nothing.
+  // Unknown keywords are skipped for the same reason: 2020-12 says their
+  // contents are annotations, not schemas
+  for LKeyword in SCHEMA_POSITIONS do
+    CollectAnchors(LObj.GetValue(LKeyword));
+
+  for LKeyword in SCHEMA_MAP_POSITIONS do
   begin
-    if LPair.JsonValue is TJSONObject then
-      CollectAnchors(LPair.JsonValue as TJSONObject)
-    else if LPair.JsonValue is TJSONArray then
-      CollectAnchors(LPair.JsonValue as TJSONArray);
+    LValue := LObj.GetValue(LKeyword);
+    if LValue is TJSONObject then
+      for LPair in (LValue as TJSONObject) do
+        CollectAnchors(LPair.JsonValue);
   end;
 end;
 

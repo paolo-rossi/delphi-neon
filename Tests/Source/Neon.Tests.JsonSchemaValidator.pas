@@ -13,6 +13,7 @@ interface
 
 uses
   System.SysUtils, System.JSON, DUnitX.TestFramework,
+  Neon.Core.Types,
   Neon.Core.Persistence.JSON.Schema;
 
 type
@@ -233,6 +234,9 @@ type
     procedure TestBooleanSchema(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]
+    procedure TestAnchorInsideInstanceDataIsNotCollected;
+
+    [Test]
     procedure TestCollectsMultipleErrors;
 
     [Test]
@@ -334,6 +338,20 @@ end;
 procedure TTestJsonSchemaValidator.TestBooleanSchema(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 begin
   Assert.AreEqual(AExpectedValid, CheckValid(ASchemaJSON, AInstanceJSON));
+end;
+
+procedure TTestJsonSchemaValidator.TestAnchorInsideInstanceDataIsNotCollected;
+begin
+  // The "$anchor" here sits inside a "const" value, which is data rather than a
+  // schema, so it names nothing and "#bogus" must not resolve to it
+  Assert.WillRaise(
+    procedure
+    begin
+      CheckValid(
+        '{"properties":{"a":{"const":{"$anchor":"bogus","x":1}},"b":{"$ref":"#bogus"}}}',
+        '{"b":123}');
+    end,
+    ENeonException);
 end;
 
 procedure TTestJsonSchemaValidator.TestCollectsMultipleErrors;
