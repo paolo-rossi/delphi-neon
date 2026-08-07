@@ -298,8 +298,8 @@ type
   /// <remarks>
   ///   v1 scope: $ref/$defs and $anchor are resolved locally (same document)
   ///   only; a $ref to another document is unsupported. allOf/anyOf/oneOf/not,
-  ///   if/then/else and dependentRequired are implemented; dependentSchemas and
-  ///   unevaluatedProperties/unevaluatedItems are not yet (the latter need the
+  ///   if/then/else and dependentRequired/dependentSchemas are implemented;
+  ///   unevaluatedProperties/unevaluatedItems are not yet (they need the
   ///   annotation-tracking machinery, planned separately). format is
   ///   annotation-only (never validated) in v1.
   /// </remarks>
@@ -1647,7 +1647,7 @@ procedure TJSONSchemaValidator.ValidateObject(AInstance: TJSONObject; ASchema: T
 var
   LProperties, LPatternProperties: TJSONValue;
   LAdditionalProperties, LPropertyNames, LRequired: TJSONValue;
-  LDependentRequired: TJSONValue;
+  LDependentRequired, LDependentSchemas: TJSONValue;
   LEvaluated: TDictionary<string, Boolean>;
   LPair, LInstPair: TJSONPair;
   LPropSchema: TJSONValue;
@@ -1763,6 +1763,21 @@ begin
               Exit;
           end;
         end;
+      end;
+
+    // dependentSchemas: the presence of a property brings another schema into
+    // play. That schema is applied to the whole object, not to the property's
+    // own value, so the instance and the path both stay as they are
+    LDependentSchemas := ASchema.GetValue('dependentSchemas');
+    if Assigned(LDependentSchemas) and (LDependentSchemas is TJSONObject) then
+      for LPair in (LDependentSchemas as TJSONObject) do
+      begin
+        if not Assigned(AInstance.GetValue(LPair.JsonString.Value)) then
+          Continue;
+
+        ValidateNode(AInstance, LPair.JsonValue, APath, AErrors);
+        if ShouldStop(AErrors, LBaseline) then
+          Exit;
       end;
   finally
     LEvaluated.Free;

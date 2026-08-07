@@ -88,6 +88,16 @@ type
       '{"dependentRequired":{"card":["cvv"]}}|{"other":1}|True', '|')]
     [TestCase('dependentRequired: only one of several dependencies present',
       '{"dependentRequired":{"card":["cvv","holder"]}}|{"card":"x","cvv":"y"}|False', '|')]
+    [TestCase('dependentSchemas: dependent schema satisfied',
+      '{"dependentSchemas":{"card":{"required":["cvv"]}}}|{"card":"x","cvv":"y"}|True', '|')]
+    [TestCase('dependentSchemas: dependent schema violated',
+      '{"dependentSchemas":{"card":{"required":["cvv"]}}}|{"card":"x"}|False', '|')]
+    [TestCase('dependentSchemas: trigger absent imposes nothing',
+      '{"dependentSchemas":{"card":{"required":["cvv"]}}}|{"other":1}|True', '|')]
+    // The dependent schema applies to the whole object, not to the value of the
+    // property that triggered it
+    [TestCase('dependentSchemas: applies to the whole object',
+      '{"dependentSchemas":{"card":{"properties":{"cvv":{"type":"string"}}}}}|{"card":"x","cvv":5}|False', '|')]
     procedure TestObject(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]
