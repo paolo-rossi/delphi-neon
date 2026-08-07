@@ -80,6 +80,14 @@ type
       '{"patternProperties":{"^S_":{"type":"string"}}}|{"S_1":"foo"}|True', '|')]
     [TestCase('patternProperties: matching key fails inner schema',
       '{"patternProperties":{"^S_":{"type":"string"}}}|{"S_1":1}|False', '|')]
+    [TestCase('dependentRequired: dependency present',
+      '{"dependentRequired":{"card":["cvv"]}}|{"card":"x","cvv":"y"}|True', '|')]
+    [TestCase('dependentRequired: dependency missing',
+      '{"dependentRequired":{"card":["cvv"]}}|{"card":"x"}|False', '|')]
+    [TestCase('dependentRequired: trigger absent imposes nothing',
+      '{"dependentRequired":{"card":["cvv"]}}|{"other":1}|True', '|')]
+    [TestCase('dependentRequired: only one of several dependencies present',
+      '{"dependentRequired":{"card":["cvv","holder"]}}|{"card":"x","cvv":"y"}|False', '|')]
     procedure TestObject(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]
@@ -125,6 +133,25 @@ type
     [TestCase('not: schema fails as expected -> valid', '{"not":{"type":"integer"}}|"foo"|True', '|')]
     [TestCase('not: schema matches -> invalid', '{"not":{"type":"integer"}}|5|False', '|')]
     procedure TestLogic(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
+
+    [Test]
+    [TestCase('if matches -> then applied and satisfied',
+      '{"if":{"type":"integer"},"then":{"minimum":10}}|42|True', '|')]
+    [TestCase('if matches -> then applied and violated',
+      '{"if":{"type":"integer"},"then":{"minimum":10}}|5|False', '|')]
+    [TestCase('if fails -> else applied and satisfied',
+      '{"if":{"type":"integer"},"else":{"type":"string"}}|"foo"|True', '|')]
+    [TestCase('if fails -> else applied and violated',
+      '{"if":{"type":"integer"},"else":{"type":"string"}}|true|False', '|')]
+    // A failing "if" is a condition, not a violation: it must not leak errors
+    [TestCase('if fails with no else -> valid',
+      '{"if":{"type":"integer"},"then":{"minimum":10}}|"foo"|True', '|')]
+    [TestCase('if matches with no then -> valid',
+      '{"if":{"type":"integer"}}|42|True', '|')]
+    // then/else are inert on their own - only "if" activates them
+    [TestCase('then/else without if are ignored',
+      '{"then":{"type":"string"},"else":{"type":"string"}}|42|True', '|')]
+    procedure TestConditional(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]
     [TestCase('$ref: root pointer recursive match',
@@ -269,6 +296,11 @@ begin
 end;
 
 procedure TTestJsonSchemaValidator.TestRef(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
+begin
+  Assert.AreEqual(AExpectedValid, CheckValid(ASchemaJSON, AInstanceJSON));
+end;
+
+procedure TTestJsonSchemaValidator.TestConditional(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 begin
   Assert.AreEqual(AExpectedValid, CheckValid(ASchemaJSON, AInstanceJSON));
 end;

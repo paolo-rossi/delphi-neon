@@ -288,9 +288,9 @@ type
   /// </summary>
   /// <remarks>
   ///   v1 scope: $ref/$defs and $anchor are resolved locally (same document)
-  ///   only; a $ref to another document is unsupported. allOf/anyOf/oneOf/not
-  ///   are implemented; if/then/else, dependentRequired/dependentSchemas and
-  ///   unevaluatedProperties/unevaluatedItems are not yet (they need the
+  ///   only; a $ref to another document is unsupported. allOf/anyOf/oneOf/not,
+  ///   if/then/else and dependentRequired are implemented; dependentSchemas and
+  ///   unevaluatedProperties/unevaluatedItems are not yet (the latter need the
   ///   annotation-tracking machinery, planned separately). format is
   ///   annotation-only (never validated) in v1.
   /// </remarks>
@@ -1558,10 +1558,12 @@ procedure TJSONSchemaValidator.ValidateObject(AInstance: TJSONObject; ASchema: T
 var
   LProperties, LPatternProperties: TJSONValue;
   LAdditionalProperties, LPropertyNames, LRequired: TJSONValue;
+  LDependentRequired: TJSONValue;
   LEvaluated: TDictionary<string, Boolean>;
   LPair, LInstPair: TJSONPair;
   LPropSchema: TJSONValue;
   LValue: TJSONValue;
+  LDependency: string;
   LMinMax, LBaseline: Integer;
   I: Integer;
 begin
@@ -1647,6 +1649,32 @@ begin
           if ShouldStop(AErrors, LBaseline) then
             Exit;
         end;
+
+    // dependentRequired: {"a": ["b", "c"]} means "if the instance has a, it
+    // must have b and c too". A property that is absent imposes nothing
+    LDependentRequired := ASchema.GetValue('dependentRequired');
+    if Assigned(LDependentRequired) and (LDependentRequired is TJSONObject) then
+      for LPair in (LDependentRequired as TJSONObject) do
+      begin
+        if not (LPair.JsonValue is TJSONArray) then
+          Continue;
+
+        if not Assigned(AInstance.GetValue(LPair.JsonString.Value)) then
+          Continue;
+
+        for I := 0 to (LPair.JsonValue as TJSONArray).Count - 1 do
+        begin
+          LDependency := (LPair.JsonValue as TJSONArray).Items[I].Value;
+          if not Assigned(AInstance.GetValue(LDependency)) then
+          begin
+            AddError(AErrors, APath, 'dependentRequired',
+              Format('property "%s" requires "%s", which is missing',
+                [LPair.JsonString.Value, LDependency]));
+            if ShouldStop(AErrors, LBaseline) then
+              Exit;
+          end;
+        end;
+      end;
   finally
     LEvaluated.Free;
   end;
@@ -1655,10 +1683,12 @@ end;
 function TJSONSchemaValidator.ValidateLogic(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>): Boolean;
 var
   LAllOf, LAnyOf, LOneOf, LNot: TJSONValue;
+  LIf, LBranchSchema: TJSONValue;
   LBranch: TJSONValue;
   LTemp: TList<TJSONValidationError>;
   LMatchedIndexes: TList<Integer>;
   LMatchCount, I: Integer;
+  LCondition: Boolean;
 
   function IndexesToString(AIndexes: TList<Integer>): string;
   var
@@ -1754,6 +1784,29 @@ begin
     finally
       LTemp.Free;
     end;
+  end;
+
+  // if/then/else. The "if" subschema is a condition only: it never contributes
+  // errors of its own (they go to a throwaway list), it just selects which of
+  // "then"/"else" is applied. Without an "if" both are inert
+  LIf := ASchema.GetValue('if');
+  if Assigned(LIf) then
+  begin
+    LTemp := TList<TJSONValidationError>.Create;
+    try
+      LCondition := ValidateNode(AInstance, LIf, APath, LTemp);
+    finally
+      LTemp.Free;
+    end;
+
+    if LCondition then
+      LBranchSchema := ASchema.GetValue('then')
+    else
+      LBranchSchema := ASchema.GetValue('else');
+
+    if Assigned(LBranchSchema) then
+      if not ValidateNode(AInstance, LBranchSchema, APath, AErrors) then
+        Result := False;
   end;
 end;
 
