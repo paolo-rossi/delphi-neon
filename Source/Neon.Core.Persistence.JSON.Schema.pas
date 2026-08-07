@@ -896,7 +896,14 @@ end;
 
 function TNeonSchemaGenerator.WriteInterface(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
-  Result := nil;
+  // TNeonSerializerJSON.WriteInterface casts the interface to its implementing
+  // object and writes that object's members. Which members those are cannot be
+  // known from the declared type: interface RTTI carries methods only - no
+  // properties, no fields - and the concrete class may add more besides (its
+  // TInterfacedObject.RefCount, for one). An unconstrained object is therefore
+  // as precise as this can honestly be, and it never rejects what is written
+  Result := TJSONObject.Create
+    .AddPair('type', 'object');
 end;
 
 function TNeonSchemaGenerator.WriteJSONValue(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;

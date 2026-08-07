@@ -158,12 +158,40 @@ type
     property Address: TSchemaAddress read FAddress write FAddress;
   end;
 
-  // Interfaces have no writer, so no schema is produced at all and the
-  // attribute must simply be ignored rather than dereferenced
-  // IInvokable, so that the interface carries type info (and its attribute)
-  [JsonSchema('description=Some service')]
   ISchemaService = interface(IInvokable)
     ['{0B0D6E5A-2C2E-4E9E-9C1C-6A0B2D9E1F31}']
+  end;
+
+  TSchemaService = class(TInterfacedObject, ISchemaService)
+  private
+    FEndpoint: string;
+  public
+    property Endpoint: string read FEndpoint write FEndpoint;
+  end;
+
+  TSchemaClient = class
+  private
+    FName: string;
+    FService: ISchemaService;
+  public
+    property Name: string read FName write FName;
+
+    // Serialized as the implementing object, so the schema must describe an
+    // object rather than omitting the member
+    property Service: ISchemaService read FService write FService;
+  end;
+
+  TSchemaWithEvent = class
+  private
+    FName: string;
+    FOnChange: TNotifyEvent;
+  public
+    property Name: string read FName write FName;
+
+    // A method pointer has no writer at all: the member is skipped, and the
+    // attribute on it must not be applied to the nil schema
+    [JsonSchema('description=ignored')]
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 
   TSchemaColor = (Red, Green, Blue);
@@ -264,7 +292,13 @@ type
     procedure TestRequiredObjectMemberIsListedInParentRequired;
 
     [Test]
-    procedure TestAttributeOnTypeWithoutSchemaIsIgnored;
+    procedure TestAttributeOnMemberWithoutSchemaIsIgnored;
+
+    [Test]
+    procedure TestInterfaceMemberIsDescribed;
+
+    [Test]
+    procedure TestSerializedInterfaceValidatesAgainstTheSchema;
 
     [Test]
     procedure TestSetIsArrayOfEnumNames;
@@ -530,12 +564,52 @@ begin
   Assert.AreEqual('Address', LRequired.Items[0].Value);
 end;
 
-procedure TTestJsonSchemaEdgeCases.TestAttributeOnTypeWithoutSchemaIsIgnored;
+procedure TTestJsonSchemaEdgeCases.TestAttributeOnMemberWithoutSchemaIsIgnored;
+var
+  LProperties: TJSONObject;
 begin
-  // Must return nil rather than raising: there is no schema object to annotate
-  FSchema := TNeonSchemaGenerator.TypeToJSONSchema(
-    TRttiUtils.Context.GetType(TypeInfo(ISchemaService)));
-  Assert.IsNull(FSchema);
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaWithEvent);
+  LProperties := FSchema.GetValue('properties') as TJSONObject;
+
+  Assert.IsNull(LProperties.GetValue('OnChange'), 'a member with no writer is skipped');
+  Assert.IsNotNull(LProperties.GetValue('Name'), 'and its siblings are unaffected');
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestInterfaceMemberIsDescribed;
+var
+  LService: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaClient);
+
+  LService := (FSchema.GetValue('properties') as TJSONObject).GetValue('Service') as TJSONObject;
+  Assert.IsNotNull(LService, 'an interface member is serialized, so it must be in the schema');
+  Assert.AreEqual('object', LService.GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestSerializedInterfaceValidatesAgainstTheSchema;
+var
+  LClient: TSchemaClient;
+  LJSON: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaClient);
+
+  LClient := TSchemaClient.Create;
+  try
+    LClient.Name := 'probe';
+    LClient.Service := TSchemaService.Create;
+
+    LJSON := TNeon.ObjectToJSON(LClient);
+    try
+      // The implementing object carries members the interface never declared,
+      // which an unconstrained object schema still accepts
+      Assert.IsTrue(TNeon.ValidateJSON(LJSON, FSchema).IsValid,
+        'the schema rejects what the serializer wrote: ' + LJSON.ToJSON);
+    finally
+      LJSON.Free;
+    end;
+  finally
+    LClient.Free;
+  end;
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestSetIsArrayOfEnumNames;
