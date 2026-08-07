@@ -100,6 +100,37 @@ type
     property Children: TObjectList<TSchemaTreeNode> read FChildren write FChildren;
   end;
 
+  TSchemaBook = class;
+
+  // Mutual recursion: neither type refers to itself, but the pair forms a cycle
+  TSchemaAuthor = class
+  private
+    FName: string;
+    FBooks: TObjectList<TSchemaBook>;
+  public
+    property Name: string read FName write FName;
+    property Books: TObjectList<TSchemaBook> read FBooks write FBooks;
+  end;
+
+  TSchemaBook = class
+  private
+    FTitle: string;
+    FAuthor: TSchemaAuthor;
+  public
+    property Title: string read FTitle write FTitle;
+    property Author: TSchemaAuthor read FAuthor write FAuthor;
+  end;
+
+  // Reaches the recursive pair from a member rather than from the root
+  TSchemaLibrary = class
+  private
+    FOwner: string;
+    FTop: TSchemaAuthor;
+  public
+    property Owner: string read FOwner write FOwner;
+    property Top: TSchemaAuthor read FTop write FTop;
+  end;
+
   [TestFixture]
   [Category('jsonschema')]
   TTestJsonSchemaGenerator = class(TObject)
@@ -233,16 +264,31 @@ type
     property Blob: TSchemaBlob read FBlob write FBlob;
   end;
 
+  // A const on the base type, which WriteNullable sees, as opposed to one on the
+  // member, which is applied to the union afterwards
+  [JsonSchema('const=fixed')]
+  TSchemaTag = record
+    Value: string;
+  end;
+
   TSchemaVariantHolder = class
   private
     FName: string;
     FData: Variant;
+    FMixed: TArray<Variant>;
+    FTag: Nullable<TSchemaTag>;
   public
     property Name: string read FName write FName;
 
     // Serialized as whatever the variant happens to hold, so the schema has to
     // admit every JSON type the serializer can produce for it
     property Data: Variant read FData write FData;
+
+    // Element schemas that came back nil used to be dropped silently by AddPair,
+    // leaving an array with no "items" at all
+    property Mixed: TArray<Variant> read FMixed write FMixed;
+
+    property Tag: Nullable<TSchemaTag> read FTag write FTag;
   end;
 
   TSchemaCoords = class
@@ -334,6 +380,12 @@ type
     procedure TestVariantMemberIsDescribed;
 
     [Test]
+    procedure TestArrayOfVariantKeepsItsItems;
+
+    [Test]
+    procedure TestConstOnTheNullableBaseTypeAcceptsNull;
+
+    [Test]
     procedure TestSerializedVariantsValidateAgainstTheSchema;
 
     [Test]
@@ -390,7 +442,25 @@ type
     procedure TestV202012KeepsDeprecated;
 
     [Test]
-    procedure TestRecursionGuardRaises;
+    procedure TestRecursiveTypeGoesIntoDefs;
+
+    [Test]
+    procedure TestRecursiveTypeReferencesItself;
+
+    [Test]
+    procedure TestRecursiveInstanceValidatesAgainstItsSchema;
+
+    [Test]
+    procedure TestDraft07UsesDefinitionsInsteadOfDefs;
+
+    [Test]
+    procedure TestNonRecursiveTypeHasNoDefs;
+
+    [Test]
+    procedure TestMutuallyRecursiveTypesValidate;
+
+    [Test]
+    procedure TestRecursionReachedFromAMemberHoistsDefsToTheRoot;
   end;
 
 implementation
@@ -713,6 +783,46 @@ begin
   Assert.AreEqual('string number boolean null ', LNames);
 end;
 
+procedure TTestJsonSchemaEdgeCases.TestArrayOfVariantKeepsItsItems;
+var
+  LMixed, LItems: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaVariantHolder);
+
+  LMixed := (FSchema.GetValue('properties') as TJSONObject).GetValue('Mixed') as TJSONObject;
+  Assert.AreEqual('array', LMixed.GetValue('type').Value);
+
+  LItems := LMixed.GetValue('items') as TJSONObject;
+  Assert.IsNotNull(LItems, 'an element schema must not go missing');
+  Assert.IsNotNull(LItems.GetValue('type'));
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestConstOnTheNullableBaseTypeAcceptsNull;
+var
+  LTag: TJSONObject;
+  LEnum: TJSONArray;
+  LInstance: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaVariantHolder);
+
+  // The const came from the base type, not the member, so WriteNullable is what
+  // has to turn it into an enum that admits null
+  LTag := (FSchema.GetValue('properties') as TJSONObject).GetValue('Tag') as TJSONObject;
+  Assert.IsNull(LTag.GetValue('const'), 'a bare const would contradict the null in the union');
+
+  LEnum := LTag.GetValue('enum') as TJSONArray;
+  Assert.IsNotNull(LEnum);
+  Assert.AreEqual(2, LEnum.Count);
+  Assert.AreEqual('fixed', LEnum.Items[0].Value);
+
+  LInstance := TJSONObject.ParseJSONValue('{"Tag":null}');
+  try
+    Assert.IsTrue(TNeon.ValidateJSON(LInstance, FSchema).IsValid);
+  finally
+    LInstance.Free;
+  end;
+end;
+
 procedure TTestJsonSchemaEdgeCases.TestSerializedVariantsValidateAgainstTheSchema;
 var
   LHolder: TSchemaVariantHolder;
@@ -948,12 +1058,116 @@ begin
   Assert.IsTrue((FSchema.GetValue('deprecated') as TJSONBool).AsBoolean);
 end;
 
-procedure TTestJsonSchemaConstraints.TestRecursionGuardRaises;
+procedure TTestJsonSchemaConstraints.TestRecursiveTypeGoesIntoDefs;
+var
+  LDefs, LNode: TJSONObject;
 begin
-  Assert.WillRaise(
-    procedure begin TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTreeNode) end,
-    ENeonException
-  );
+  // A self-referencing type can only be described through a reference, so the
+  // schema for it is hoisted into $defs and the root points at it
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTreeNode);
+
+  Assert.AreEqual('#/$defs/TSchemaTreeNode', FSchema.GetValue('$ref').Value);
+
+  LDefs := FSchema.GetValue('$defs') as TJSONObject;
+  Assert.IsNotNull(LDefs);
+
+  LNode := LDefs.GetValue('TSchemaTreeNode') as TJSONObject;
+  Assert.IsNotNull(LNode);
+  Assert.AreEqual('object', LNode.GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestRecursiveTypeReferencesItself;
+var
+  LNode, LChildren: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTreeNode);
+
+  LNode := (FSchema.GetValue('$defs') as TJSONObject).GetValue('TSchemaTreeNode') as TJSONObject;
+  LChildren := (LNode.GetValue('properties') as TJSONObject).GetValue('Children') as TJSONObject;
+
+  Assert.AreEqual('array', LChildren.GetValue('type').Value);
+  Assert.AreEqual('#/$defs/TSchemaTreeNode',
+    (LChildren.GetValue('items') as TJSONObject).GetValue('$ref').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestRecursiveInstanceValidatesAgainstItsSchema;
+var
+  LInstance: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTreeNode);
+
+  // Nested three deep: the $ref has to resolve and keep resolving
+  LInstance := TJSONObject.ParseJSONValue(
+    '{"Children":[{"Children":[{"Children":[]}]}]}');
+  try
+    Assert.IsTrue(TNeon.ValidateJSON(LInstance, FSchema).IsValid);
+  finally
+    LInstance.Free;
+  end;
+end;
+
+procedure TTestJsonSchemaConstraints.TestDraft07UsesDefinitionsInsteadOfDefs;
+begin
+  // Draft-07 spells the container "definitions"; $defs arrived in 2019-09
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTreeNode,
+    TNeonJSchemaVersion.Draft07);
+
+  Assert.IsNotNull(FSchema.GetValue('definitions'));
+  Assert.IsNull(FSchema.GetValue('$defs'));
+  Assert.AreEqual('#/definitions/TSchemaTreeNode', FSchema.GetValue('$ref').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestMutuallyRecursiveTypesValidate;
+var
+  LInstance: TJSONValue;
+begin
+  // TSchemaAuthor -> TSchemaBook -> TSchemaAuthor. Only the type the cycle closes
+  // back onto needs hoisting; the other stays inline inside it
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaAuthor);
+
+  Assert.AreEqual('#/$defs/TSchemaAuthor', FSchema.GetValue('$ref').Value);
+  Assert.IsNotNull((FSchema.GetValue('$defs') as TJSONObject).GetValue('TSchemaAuthor'));
+  Assert.IsNull((FSchema.GetValue('$defs') as TJSONObject).GetValue('TSchemaBook'));
+
+  LInstance := TJSONObject.ParseJSONValue(
+    '{"Name":"a","Books":[{"Title":"t","Author":{"Name":"b","Books":[]}}]}');
+  try
+    Assert.IsTrue(TNeon.ValidateJSON(LInstance, FSchema).IsValid);
+  finally
+    LInstance.Free;
+  end;
+end;
+
+procedure TTestJsonSchemaConstraints.TestRecursionReachedFromAMemberHoistsDefsToTheRoot;
+var
+  LInstance: TJSONValue;
+begin
+  // The reference is made two levels down, but the definitions belong at the root
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaLibrary);
+
+  Assert.AreEqual('object', FSchema.GetValue('type').Value);
+  Assert.IsNotNull((FSchema.GetValue('$defs') as TJSONObject).GetValue('TSchemaAuthor'));
+  Assert.AreEqual('#/$defs/TSchemaAuthor',
+    ((FSchema.GetValue('properties') as TJSONObject).GetValue('Top') as TJSONObject).GetValue('$ref').Value);
+
+  LInstance := TJSONObject.ParseJSONValue(
+    '{"Owner":"o","Top":{"Name":"a","Books":[{"Title":"t","Author":{"Name":"b","Books":[]}}]}}');
+  try
+    Assert.IsTrue(TNeon.ValidateJSON(LInstance, FSchema).IsValid);
+  finally
+    LInstance.Free;
+  end;
+end;
+
+procedure TTestJsonSchemaConstraints.TestNonRecursiveTypeHasNoDefs;
+begin
+  // Only a type that actually needs referencing is hoisted; everything else is
+  // still written inline exactly as before
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson);
+
+  Assert.IsNull(FSchema.GetValue('$defs'));
+  Assert.IsNull(FSchema.GetValue('$ref'));
+  Assert.AreEqual('object', FSchema.GetValue('type').Value);
 end;
 
 initialization

@@ -48,11 +48,25 @@ type
   private
     /// <summary>
     ///   Types currently being expanded on the current recursion path (added
-    ///   before recursing into a class/record's members, removed after) so a
-    ///   self-referencing Delphi type raises a clear error instead of a stack
-    ///   overflow
+    ///   before recursing into a class/record's members, removed after), so that
+    ///   a self-referencing Delphi type is turned into a reference rather than
+    ///   recursed into forever
     /// </summary>
     FVisitedTypes: TDictionary<PTypeInfo, Boolean>;
+
+    /// <summary>
+    ///   The definitions container for the document being generated, holding one
+    ///   entry per type that had to be referenced. Attached to the root by
+    ///   TypeToJSONSchema, which takes ownership; if the document ends up with no
+    ///   references at all it stays empty and is never attached
+    /// </summary>
+    FDefs: TJSONObject;
+
+    /// <summary>
+    ///   Definition name assigned to a type, present from the moment something
+    ///   first needs to reference it
+    /// </summary>
+    FDefNames: TDictionary<PTypeInfo, string>;
 
     /// <summary>
     ///   The draft the document is being generated for, so that the writers can
@@ -60,6 +74,22 @@ type
     ///   declared", and is treated as the newest one
     /// </summary>
     FVersion: TNeonJSchemaVersion;
+
+    /// <summary>
+    ///   "$defs" from 2019-09 on, "definitions" for Draft-07
+    /// </summary>
+    function DefsKeyword: string;
+
+    /// <summary>
+    ///   The definition name for a type, assigned on first use and made unique
+    ///   against names already taken by other types
+    /// </summary>
+    function DefNameFor(AType: TRttiType): string;
+
+    /// <summary>
+    ///   A schema that is nothing but a reference to one of the definitions
+    /// </summary>
+    function ReferenceTo(const ADefName: string): TJSONObject;
 
     /// <summary>
     ///   The "$schema" meta-schema URI for the given draft
@@ -418,12 +448,64 @@ begin
   FOperation := TNeonOperation.Serialize;
   FVersion := TNeonJSchemaVersion.None;
   FVisitedTypes := TDictionary<PTypeInfo, Boolean>.Create;
+  FDefNames := TDictionary<PTypeInfo, string>.Create;
+  FDefs := TJSONObject.Create;
 end;
 
 destructor TNeonSchemaGenerator.Destroy;
 begin
+  FDefs.Free; // nil once TypeToJSONSchema has attached it to the document
+  FDefNames.Free;
   FVisitedTypes.Free;
   inherited;
+end;
+
+function TNeonSchemaGenerator.DefsKeyword: string;
+begin
+  if FVersion = TNeonJSchemaVersion.Draft07 then
+    Result := 'definitions'
+  else
+    Result := '$defs';
+end;
+
+function TNeonSchemaGenerator.DefNameFor(AType: TRttiType): string;
+var
+  LName: string;
+  LIndex: Integer;
+  LTaken: Boolean;
+  LOther: TPair<PTypeInfo, string>;
+begin
+  if FDefNames.TryGetValue(AType.Handle, Result) then
+    Exit;
+
+  // Two units can declare types of the same name, and they would otherwise
+  // collide in a single flat definitions object
+  LName := AType.Name;
+  LIndex := 1;
+  repeat
+    LTaken := False;
+    for LOther in FDefNames do
+      if LOther.Value = LName then
+      begin
+        LTaken := True;
+        Break;
+      end;
+
+    if LTaken then
+    begin
+      Inc(LIndex);
+      LName := AType.Name + LIndex.ToString;
+    end;
+  until not LTaken;
+
+  FDefNames.Add(AType.Handle, LName);
+  Result := LName;
+end;
+
+function TNeonSchemaGenerator.ReferenceTo(const ADefName: string): TJSONObject;
+begin
+  Result := TJSONObject.Create
+    .AddPair('$ref', '#/' + DefsKeyword + '/' + ADefName);
 end;
 
 function TNeonSchemaGenerator.GetPrimaryJSONType(AJSON: TJSONObject): string;
@@ -646,8 +728,18 @@ begin
 
     Result := LGenerator.WriteDataMember(AType);
     if Assigned(Result) then
+    begin
+      // Definitions are collected as generation proceeds and belong at the root
+      // of the document, whatever depth the reference to them was made at
+      if LGenerator.FDefs.Count > 0 then
+      begin
+        Result.AddPair(LGenerator.DefsKeyword, LGenerator.FDefs);
+        LGenerator.FDefs := nil; // ownership passed to the document
+      end;
+
       if (AVersion <> TNeonJSchemaVersion.None) then
         Result.AddPair('$schema', SchemaURIFor(AVersion));
+    end;
   finally
     LGenerator.Free;
   end;
@@ -1104,9 +1196,14 @@ function TNeonSchemaGenerator.WriteObjectOrRecord(AType: TRttiType; ANeonObject:
 var
   LProperties: TJSONObject;
   LRequired: TJSONArray;
+  LSchema: TJSONObject;
+  LDefName: string;
 begin
+  // Already being written further up the path, so this is a self-referencing
+  // type: emit a reference to it instead of expanding it a second time. That is
+  // what $defs exists for, and it is the only way to describe such a type at all
   if FVisitedTypes.ContainsKey(AType.Handle) then
-    raise ENeonException.CreateFmt(SNeonErrorSchemaCycleF1, [AType.Name]);
+    Exit(ReferenceTo(DefNameFor(AType)));
 
   FVisitedTypes.Add(AType.Handle, True);
   try
@@ -1114,15 +1211,29 @@ begin
 
     LRequired := WriteMembers(AType, LProperties);
 
-    Result := TJSONObject.Create
+    LSchema := TJSONObject.Create
       .AddPair('type', 'object')
       .AddPair('properties', LProperties);
 
     if Assigned(LRequired) then
-      Result.AddPair('required', LRequired);
+      LSchema.AddPair('required', LRequired);
   finally
     FVisitedTypes.Remove(AType.Handle);
   end;
+
+  // Nothing referenced this type while it was being written, so it can stay
+  // where it is and the document needs no definitions on its account
+  if not FDefNames.TryGetValue(AType.Handle, LDefName) then
+    Exit(LSchema);
+
+  // Something did: the schema itself belongs in the definitions, and this
+  // position becomes a reference like the others
+  if Assigned(FDefs.GetValue(LDefName)) then
+    LSchema.Free // an identical definition was already stored by an earlier use
+  else
+    FDefs.AddPair(LDefName, LSchema);
+
+  Result := ReferenceTo(LDefName);
 end;
 
 function TNeonSchemaGenerator.WriteEnumerable(AType: TRttiType; ANeonObject: TNeonRttiObject; AList: INeonTypeInfoList): TJSONObject;

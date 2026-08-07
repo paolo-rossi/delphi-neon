@@ -77,6 +77,25 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 #### Custom Serializers
 - Inherit from `TCustomSerializer` and register the new serializer class in the configuration
 
+#### Unwrapped members
+- `[NeonUnwrapped]` flattens a class/record member: its own members are written directly into the parent object instead of being nested under the member's name
+
+> [!WARNING]
+> Neon does **not** check for name collisions when flattening. If the parent and the unwrapped member both declare a member with the same JSON name, that name is written twice — in the serialized JSON and in the generated JSON Schema alike:
+>
+> ```json
+> {"Name":"outer","Name":"inner","Code":7}
+> ```
+>
+> Duplicate names are not forbidden outright by the JSON spec, but it says they SHOULD be unique and leaves the handling of repeats undefined. The practical consequence is that the second value is written out but can never be read back — `TJSONObject.GetValue` returns the first match, so deserializing the JSON above sets **both** properties to `"outer"` and the inner value is lost:
+>
+> ```
+> outer.Name       : outer
+> outer.Inner.Name : outer
+> ```
+>
+> Give the two members distinct JSON names, using `[NeonProperty]` if the Delphi names have to stay as they are.
+
 ### JSON Schema
 
 Neon can generate and validate [JSON Schema](https://json-schema.org/) documents for your Delphi types:
