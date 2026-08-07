@@ -20,6 +20,7 @@ uses
   Neon.Core.Nullables,
   Neon.Core.Utils,
   Neon.Core.Persistence,
+  Neon.Core.Persistence.JSON,
   Neon.Core.Persistence.JSON.Schema;
 
 type
@@ -81,8 +82,13 @@ type
   TSchemaMetaPerson = class
   private
     FName: string;
+    FKind: string;
   public
     property Name: string read FName write FName;
+
+    // "const" dates from Draft-06, so it survives into a Draft-07 document
+    [JsonSchema('const=person')]
+    property Kind: string read FKind write FKind;
   end;
 
   TSchemaTreeNode = class
@@ -167,9 +173,19 @@ type
   private
     FMain: TSchemaColor;
     FColors: TSchemaColors;
+    FTint: Nullable<TSchemaColor>;
+    FCode: Nullable<string>;
   public
     property Main: TSchemaColor read FMain write FMain;
     property Colors: TSchemaColors read FColors write FColors;
+
+    // Nullable over an enum: the "enum" has to admit null as well, or it
+    // contradicts the ["string","null"] union
+    property Tint: Nullable<TSchemaColor> read FTint write FTint;
+
+    // Nullable with a const: same contradiction, applied after WriteNullable
+    [JsonSchema('const=abc')]
+    property Code: Nullable<string> read FCode write FCode;
   end;
 
   // Structurally streamable: LoadFromStream + SaveToStream is all the engine
@@ -187,6 +203,18 @@ type
   public
     property Data: TMemoryStream read FData write FData;
     property Blob: TSchemaBlob read FBlob write FBlob;
+  end;
+
+  TSchemaVariantHolder = class
+  private
+    FName: string;
+    FData: Variant;
+  public
+    property Name: string read FName write FName;
+
+    // Serialized as whatever the variant happens to hold, so the schema has to
+    // admit every JSON type the serializer can produce for it
+    property Data: Variant read FData write FData;
   end;
 
   TSchemaCoords = class
@@ -224,6 +252,7 @@ type
   TTestJsonSchemaEdgeCases = class(TObject)
   private
     FSchema: TJSONObject;
+    function PaletteAccepts(const AInstanceJSON: string): Boolean;
   public
     [TearDown]
     procedure TearDown;
@@ -254,6 +283,24 @@ type
 
     [Test]
     procedure TestUnwrappedMemberCarriesItsRequiredNames;
+
+    [Test]
+    [TestCase('null is allowed', '{"Tint":null}|True', '|')]
+    [TestCase('a member of the enum is allowed', '{"Tint":"Green"}|True', '|')]
+    [TestCase('anything else is not', '{"Tint":"Mauve"}|False', '|')]
+    procedure TestNullableEnumAcceptsNull(const AInstanceJSON: string; AExpectedValid: Boolean);
+
+    [Test]
+    [TestCase('null is allowed', '{"Code":null}|True', '|')]
+    [TestCase('the const value is allowed', '{"Code":"abc"}|True', '|')]
+    [TestCase('anything else is not', '{"Code":"xyz"}|False', '|')]
+    procedure TestNullableConstAcceptsNull(const AInstanceJSON: string; AExpectedValid: Boolean);
+
+    [Test]
+    procedure TestVariantMemberIsDescribed;
+
+    [Test]
+    procedure TestSerializedVariantsValidateAgainstTheSchema;
 
     [Test]
     procedure TestStreamUsesContentEncoding;
@@ -298,6 +345,15 @@ type
 
     [Test]
     procedure TestObjectConstraintsAndMetadata;
+
+    [Test]
+    procedure TestDraft07OmitsDeprecated;
+
+    [Test]
+    procedure TestDraft07KeepsConst;
+
+    [Test]
+    procedure TestV202012KeepsDeprecated;
 
     [Test]
     procedure TestRecursionGuardRaises;
@@ -536,6 +592,88 @@ begin
   Assert.AreEqual('object', LItems.GetValue('type').Value);
 end;
 
+function TTestJsonSchemaEdgeCases.PaletteAccepts(const AInstanceJSON: string): Boolean;
+var
+  LInstance: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPalette);
+
+  LInstance := TJSONObject.ParseJSONValue(AInstanceJSON);
+  try
+    // Validated with Neon's own validator: the point is that the generated
+    // schema must accept what the serializer can actually produce
+    Result := TNeon.ValidateJSON(LInstance, FSchema).IsValid;
+  finally
+    LInstance.Free;
+  end;
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestNullableEnumAcceptsNull(const AInstanceJSON: string; AExpectedValid: Boolean);
+begin
+  Assert.AreEqual(AExpectedValid, PaletteAccepts(AInstanceJSON));
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestNullableConstAcceptsNull(const AInstanceJSON: string; AExpectedValid: Boolean);
+begin
+  Assert.AreEqual(AExpectedValid, PaletteAccepts(AInstanceJSON));
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestVariantMemberIsDescribed;
+var
+  LData: TJSONObject;
+  LTypes: TJSONArray;
+  LNames: string;
+  LItem: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaVariantHolder);
+
+  LData := (FSchema.GetValue('properties') as TJSONObject).GetValue('Data') as TJSONObject;
+  Assert.IsNotNull(LData, 'a Variant member is serialized, so it must be in the schema');
+
+  LTypes := LData.GetValue('type') as TJSONArray;
+  Assert.IsNotNull(LTypes);
+
+  for LItem in LTypes do
+    LNames := LNames + LItem.Value + ' ';
+
+  Assert.AreEqual('string number boolean null ', LNames);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestSerializedVariantsValidateAgainstTheSchema;
+var
+  LHolder: TSchemaVariantHolder;
+
+  procedure CheckAccepts(const AValue: Variant; const AWhat: string);
+  var
+    LJSON: TJSONValue;
+  begin
+    LHolder.Data := AValue;
+    LJSON := TNeon.ObjectToJSON(LHolder);
+    try
+      Assert.IsTrue(TNeon.ValidateJSON(LJSON, FSchema).IsValid,
+        Format('a Variant holding %s serializes to %s, which the schema rejects',
+          [AWhat, LJSON.ToJSON]));
+    finally
+      LJSON.Free;
+    end;
+  end;
+
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaVariantHolder);
+
+  LHolder := TSchemaVariantHolder.Create;
+  try
+    LHolder.Name := 'probe';
+
+    CheckAccepts(42, 'an integer');
+    CheckAccepts(3.5, 'a float');
+    CheckAccepts('text', 'a string');
+    CheckAccepts(True, 'a boolean');
+  finally
+    LHolder.Free;
+  end;
+end;
+
 procedure TTestJsonSchemaEdgeCases.TestStreamUsesContentEncoding;
 var
   LData: TJSONObject;
@@ -698,6 +836,42 @@ begin
   Assert.AreEqual('A person', FSchema.GetValue('title').Value);
   Assert.IsTrue((FSchema.GetValue('deprecated') as TJSONBool).AsBoolean);
   Assert.AreEqual('hello', FSchema.GetValue('default').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestDraft07OmitsDeprecated;
+begin
+  // "deprecated" arrived in 2019-09 and has no meaning in a Draft-07 document
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaMetaPerson,
+    TNeonJSchemaVersion.Draft07);
+
+  Assert.IsNull(FSchema.GetValue('deprecated'));
+
+  // the rest of the metadata is Draft-07 vocabulary and must survive
+  Assert.AreEqual('A person', FSchema.GetValue('title').Value);
+  Assert.AreEqual('hello', FSchema.GetValue('default').Value);
+  Assert.AreEqual(1, (FSchema.GetValue('minProperties') as TJSONNumber).AsInt);
+end;
+
+procedure TTestJsonSchemaConstraints.TestDraft07KeepsConst;
+var
+  LKind: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaMetaPerson,
+    TNeonJSchemaVersion.Draft07);
+
+  // "const" is Draft-06 vocabulary, so Draft-07 has it
+  LKind := Properties.GetValue('Kind') as TJSONObject;
+  Assert.IsNotNull(LKind);
+  Assert.AreEqual('person', LKind.GetValue('const').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestV202012KeepsDeprecated;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaMetaPerson,
+    TNeonJSchemaVersion.v202012);
+
+  Assert.IsNotNull(FSchema.GetValue('deprecated'));
+  Assert.IsTrue((FSchema.GetValue('deprecated') as TJSONBool).AsBoolean);
 end;
 
 procedure TTestJsonSchemaConstraints.TestRecursionGuardRaises;

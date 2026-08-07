@@ -55,6 +55,13 @@ type
     FVisitedTypes: TDictionary<PTypeInfo, Boolean>;
 
     /// <summary>
+    ///   The draft the document is being generated for, so that the writers can
+    ///   leave out keywords that draft does not have. None means "no dialect
+    ///   declared", and is treated as the newest one
+    /// </summary>
+    FVersion: TNeonJSchemaVersion;
+
+    /// <summary>
     ///   The "$schema" meta-schema URI for the given draft
     /// </summary>
     class function SchemaURIFor(AVersion: TNeonJSchemaVersion): string; static;
@@ -64,6 +71,13 @@ type
     ///   'boolean'), looking through a Nullable-style ["X","null"] type array
     /// </summary>
     function GetPrimaryJSONType(AJSON: TJSONObject): string;
+
+    /// <summary>
+    ///   True if the schema's "type" is a union admitting "null" - a Nullable&lt;T&gt;
+    ///   or a Variant. Keywords that enumerate allowed values have to admit null
+    ///   too, or they contradict that union
+    /// </summary>
+    function IsNullableSchema(AJSON: TJSONObject): Boolean;
 
     /// <summary>
     ///   Converts a JsonSchema tag value to a JSON value of the appropriate
@@ -402,6 +416,7 @@ constructor TNeonSchemaGenerator.Create(const AConfig: INeonConfiguration);
 begin
   inherited Create(AConfig);
   FOperation := TNeonOperation.Serialize;
+  FVersion := TNeonJSchemaVersion.None;
   FVisitedTypes := TDictionary<PTypeInfo, Boolean>.Create;
 end;
 
@@ -429,6 +444,22 @@ begin
   end
   else
     Result := LTypeValue.Value;
+end;
+
+function TNeonSchemaGenerator.IsNullableSchema(AJSON: TJSONObject): Boolean;
+var
+  LType: TJSONValue;
+  LItem: TJSONValue;
+begin
+  Result := False;
+
+  LType := AJSON.GetValue('type');
+  if not (Assigned(LType) and (LType is TJSONArray)) then
+    Exit;
+
+  for LItem in (LType as TJSONArray) do
+    if LItem.Value = 'null' then
+      Exit(True);
 end;
 
 function TNeonSchemaGenerator.TagValueToJSON(ATags: TAttributeTags; const AName, AJSONType: string): TJSONValue;
@@ -490,10 +521,10 @@ var
   LSchema: JsonSchemaAttribute;
   LTags: TAttributeTags;
   LJSONType: string;
-  LExamples: TJSONArray;
+  LExamples, LConstEnum: TJSONArray;
 begin
-  // The writers for interfaces and variants produce no schema at all, so an
-  // attribute on such a type has nothing to annotate
+  // The writer for an interface produces no schema at all, so an attribute on
+  // such a type has nothing to annotate
   if not Assigned(AJSON) then
     Exit;
 
@@ -512,14 +543,27 @@ begin
   if LTags.Exists('description') then
     AJSON.AddPair('description', LTags.GetValueAs<string>('description'));
 
-  if LTags.Exists('deprecated') then
+  // "deprecated" only exists from 2019-09 onwards, so it is left out of a
+  // Draft-07 document. ("const", by contrast, dates from Draft-06 and is emitted
+  // for every draft this generator can target.)
+  if LTags.Exists('deprecated') and (FVersion <> TNeonJSchemaVersion.Draft07) then
     AJSON.AddPair('deprecated', TJSONBool.Create(True));
 
   if LTags.Exists('default') then
     AJSON.AddPair('default', TagValueToJSON(LTags, 'default', LJSONType));
 
   if LTags.Exists('const') then
-    AJSON.AddPair('const', TagValueToJSON(LTags, 'const', LJSONType));
+    if IsNullableSchema(AJSON) then
+    begin
+      // The member is a Nullable<T>, whose "type" union admits null: a "const"
+      // would contradict that, so the equivalent two-value "enum" is used instead
+      LConstEnum := TJSONArray.Create;
+      LConstEnum.AddElement(TagValueToJSON(LTags, 'const', LJSONType));
+      LConstEnum.AddElement(TJSONNull.Create);
+      AJSON.AddPair('enum', LConstEnum);
+    end
+    else
+      AJSON.AddPair('const', TagValueToJSON(LTags, 'const', LJSONType));
 
   if LTags.Exists('examples') then
   begin
@@ -596,6 +640,10 @@ var
 begin
   LGenerator := TNeonSchemaGenerator.Create(AConfig);
   try
+    // Known before generating, not just when stamping "$schema" at the end, so
+    // the writers can keep to the keywords the chosen draft actually defines
+    LGenerator.FVersion := AVersion;
+
     Result := LGenerator.WriteDataMember(AType);
     if Assigned(Result) then
       if (AVersion <> TNeonJSchemaVersion.None) then
@@ -979,8 +1027,9 @@ end;
 
 function TNeonSchemaGenerator.WriteNullable(AType: TRttiType; ANeonObject: TNeonRttiObject; ANullable: INeonTypeInfoNullable): TJSONObject;
 var
-  LTypePair: TJSONPair;
-  LTypeArray: TJSONArray;
+  LTypePair, LConstPair: TJSONPair;
+  LTypeArray, LEnumArray: TJSONArray;
+  LEnum: TJSONValue;
   LItem: TJSONValue;
 begin
   Result := nil;
@@ -993,9 +1042,7 @@ begin
 
   // Reflect that the value may be absent: fold the base type's "type" into a
   // ["<base type(s)>", "null"] union (matches how jsonschema-go's inference
-  // wraps a Go pointer type). Note: if the base schema also has "enum", the
-  // enum array itself would still need "null" added for full correctness -
-  // a known limitation, not addressed here.
+  // wraps a Go pointer type)
   LTypePair := Result.RemovePair('type');
   if not Assigned(LTypePair) then
     Exit;
@@ -1014,6 +1061,30 @@ begin
     Result.AddPair('type', LTypeArray);
   finally
     LTypePair.Free;
+  end;
+
+  // Widening "type" is not enough on its own: a base schema that also enumerates
+  // or pins its allowed values would go on rejecting null, contradicting the
+  // union just built. Both keywords have to admit null as well. (They are
+  // mutually exclusive in practice - a schema carrying both is already
+  // self-contradictory - so this is an either/or)
+  LEnum := Result.GetValue('enum');
+  if Assigned(LEnum) and (LEnum is TJSONArray) then
+    (LEnum as TJSONArray).AddElement(TJSONNull.Create)
+  else
+  begin
+    // "const" holds exactly one value and cannot be widened, but the two-value
+    // "enum" says precisely the same thing and has room for null
+    LConstPair := Result.RemovePair('const');
+    if Assigned(LConstPair) then
+    try
+      LEnumArray := TJSONArray.Create;
+      LEnumArray.AddElement(LConstPair.JsonValue.Clone as TJSONValue);
+      LEnumArray.AddElement(TJSONNull.Create);
+      Result.AddPair('enum', LEnumArray);
+    finally
+      LConstPair.Free;
+    end;
   end;
 end;
 
@@ -1142,23 +1213,25 @@ begin
 end;
 
 function TNeonSchemaGenerator.WriteVariant(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+var
+  LTypes: TJSONArray;
 begin
-{
-  case ANeonObject.NeonInclude.Value of
-    Include.NotNull:
-    begin
-      if VarIsNull(AValue.AsVariant) then
-        Exit(nil);
-    end;
-    Include.NotEmpty:
-    begin
-      if VarIsEmpty(AValue.AsVariant) then
-        Exit(nil);
-    end;
-  end;
-}
-  Result :=nil;
-  //TJSONString.Create(AValue.AsVariant);
+  // A Variant's JSON type is only settled at run time, so the schema is the union
+  // of everything TNeonSerializerJSON.WriteVariant can write: a number for the
+  // integer/float/currency variants, a boolean, null, and a string for dates, for
+  // varString and for every variant type it does not recognise. It never writes
+  // an object or an array - a variant array fails to convert and is logged instead
+  //
+  // "string" leads deliberately: GetPrimaryJSONType reports the first non-null
+  // entry, and a string is the one interpretation of a "default"/"const" tag that
+  // cannot fail to convert
+  LTypes := TJSONArray.Create;
+  LTypes.Add('string');
+  LTypes.Add('number');
+  LTypes.Add('boolean');
+  LTypes.Add('null');
+
+  Result := TJSONObject.Create.AddPair('type', LTypes);
 end;
 
 { JsonSchemaAttribute }
