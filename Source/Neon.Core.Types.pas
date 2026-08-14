@@ -81,6 +81,13 @@ resourcestring
   SNeonErrorSchemaRefNotFoundF1 = 'Could not resolve $ref [%s]';
   SNeonErrorSchemaRefUnsupportedF1 = 'Unsupported $ref [%s]: only local (same-document) refs are supported';
 
+  SNeonErrorGenNoDocument = 'Entity generator: no JSON document, call Parse first';
+  SNeonErrorGenNoSample = 'Entity generator: the JSON sample is empty';
+  SNeonWarnGenConflictF2 = 'Position [%s] holds incompatible JSON types: generated as [%s]';
+  SNeonWarnGenNoTypeF2 = 'Position [%s] is always null: generated as [%s]';
+  SNeonWarnGenEmptyArrayF2 = 'Array [%s] is always empty: items generated as [%s]';
+  SNeonWarnGenRootNotEntity = 'The root of the document is not an object (or an array of objects): no entity generated for it';
+
 implementation
 
 { TNeonIgnoreIfContext }

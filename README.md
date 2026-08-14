@@ -35,10 +35,11 @@ This new demo tries to compare the standard TJSON serialization engine with the 
 ![Neon Benchmarks Demo](https://user-images.githubusercontent.com/4686497/216270908-0a702077-02fe-4295-bce5-8da78ee46599.png)
 
 ### Console Demos
-Two console applications (grouped in `Demos/Source/ConsoleDemos.groupproj`) for measuring **Neon** without a UI in the way:
+Three console applications (grouped in `Demos/Source/ConsoleDemos.groupproj`), two for measuring **Neon** without a UI in the way and one for generating entities from a JSON document:
 
 - **BenchmarksConsole** compares **Neon** against `REST.Json` and `System.JSON.Serializers` (`TJsonSerializer`) on the same datasets, with a separate source object per library. It prints a summary table, writes the report to disk and saves one pretty-printed JSON sample per library so the output can be diffed for correctness, not just timed
 - **ProfilingConsole** breaks **Neon**'s own work down by internal stage (RTTI resolve, member preparation, object/enumerable/map/record writing, the dynamic-type probes...) using the `TNeonLogger` profiler. It runs three scenarios — one flat object per call, many flat objects per call and many composite objects per call — to show what the per-type caches do and do not amortize
+- **Classify** turns a JSON document into the Delphi entities that hold it, from the command line (see the [Entity Generator](#entity-generator) below, and the demo's own [README](Demos/Source/Classify/README.md))
 
 ### A Neon Introduction by Holger Flick (Video)
 [![Modern Delphi web development #7](https://img.youtube.com/vi/djzfeS9k4KU/0.jpg)](https://www.youtube.com/watch?v=djzfeS9k4KU)
@@ -102,6 +103,57 @@ Neon can generate and validate [JSON Schema](https://json-schema.org/) documents
 - `TNeonSchemaGenerator` generates a JSON Schema document from a Delphi type (classes, records, arrays, enums...) and its Neon attributes, supporting both **Draft 2020-12** and **Draft-07**
 - `TJSONSchemaValidator` validates a `TJSONValue` against any JSON Schema document (`$ref`/`$anchor` resolution, `allOf`/`anyOf`/`oneOf`/`not`, numeric/string/array/object constraints, etc...), working directly against `TJSONObject` with no need for the original Delphi type
 - The `JsonSchemaAttribute` lets you annotate types for more complete schema generation (e.g. `title`, `description`, `format`, `examples`)
+
+### Entity Generator
+
+`TNeonEntityGenerator` (in `Neon.Core.Generator`) goes the other way around: it takes a JSON document as a sample and writes the Delphi entities that hold it, attributes included.
+
+```delphi
+WriteLn(TNeonEntityGenerator.JSONToUnit(LResponse, 'Api.Entities'));
+```
+
+```delphi
+type
+  TAddress = class
+  private
+    FCity: string;
+  public
+    [NeonProperty('city')]
+    property City: string read FCity write FCity;
+  end;
+
+  TRoot = class
+  private
+    FFirstName: string;
+    FCreatedAt: TDateTime;
+    FAddress: TAddress;
+    FOrders: TObjectList<TOrder>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    [NeonProperty('first_name')]
+    property FirstName: string read FFirstName write FFirstName;
+    ...
+```
+
+- Classes (private fields and properties) or records, `TObjectList<T>`/`TList<T>`/`TArray<T>` for the arrays of objects
+- `[NeonProperty]` wherever the Delphi identifier is not the JSON member name, so that the entities round-trip the document they were generated from
+- The JSON member names are turned into Delphi identifiers whatever convention they follow (`user_name`, `zip-code`, `USER_ID`), reserved words included
+- ISO8601 strings become `TDateTime`, large integers become `Int64`, and members that are null (or missing from some samples) can become `Nullable<T>`
+- Objects with the same structure share one entity, and a constructor/destructor pair is generated for the entities owning others
+- `AddSample` reads more than one document, so an entity can be generated from a whole set of responses instead of a single one
+- Whatever the document could not say (a member that is always null, an array that is always empty, samples with incompatible types) is reported in `Warnings`
+
+`Demos/Source/Classify` is a command line generator built on it — run it with `--help` for the switches, or with no arguments at all for a set of examples:
+
+```
+Classify customer.json                                  # print the classes
+Classify -k record --no-header customer.json            # records instead
+Classify -o Api.Customer.pas -p TApi -r Customer -n customer.json
+```
+
+Its [README](Demos/Source/Classify/README.md) walks through each of them with the source they generate.
 
 ### Attribute Tags
 

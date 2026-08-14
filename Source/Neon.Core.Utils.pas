@@ -1696,13 +1696,13 @@ begin
 
     LSB := TStringBuilder.Create;
     try
-      LSB.AppendLine(Format('  %-24s %10s %14s %12s %8s',
+      LSB.AppendLine(Format('  %-26s %10s %14s %12s %9s',
         ['Section', 'Calls', 'Total (ms)', 'Avg (us)', '% ']));
-      LSB.Append('  ').AppendLine(StringOfChar('-', 68));
+      LSB.Append('  ').AppendLine(StringOfChar('-', 74));
       for LStat in LStats do
       begin
         LTotalMs := (LStat.Value.Key / LFreq) * 1000;
-        LSB.AppendLine(Format('  %-24s %10d %14.3f %12.3f %7.1f%%',
+        LSB.AppendLine(Format('  %-26s %10d %14.3f %12.3f %7.1f%%',
           [LStat.Key, LStat.Value.Value, LTotalMs, (LTotalMs * 1000) / LStat.Value.Value,
            IfThen(LGrandTotalMs > 0, LTotalMs / LGrandTotalMs * 100, 0)]));
       end;

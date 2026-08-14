@@ -24,8 +24,7 @@ uses
 
 const
   /// <summary>
-  ///   Scenario A: one small flat object, run through this many separate
-  ///   TNeon calls.
+  ///   Scenario A: one small flat object, run through this many separate TNeon calls
   /// </summary>
   FLAT_CALLS = 5000;
 
@@ -128,7 +127,7 @@ begin
     RunScenario(
       Format('A. Single flat object, %d separate TNeon calls', [FLAT_CALLS]),
       'Worst case for the per-type caches: each call rebuilds the member' + sLineBreak +
-      'registry from scratch, so Core:PrepareMembers runs once per call.',
+      'registry from scratch, so Core:PrepareMembers runs once per call.' + sLineBreak,
       FLAT_CALLS,
       procedure
       var
@@ -167,7 +166,7 @@ begin
       Format('B. %d flat objects per call, %d calls', [COLLECTION_SIZE, COLLECTION_RUNS]),
       'Best case for the per-type caches: the member list, the resolved JSON' + sLineBreak +
       'names and the type-level serializable decision are computed once and' + sLineBreak +
-      'reused for every object handled within the call.',
+      'reused for every object handled within the call.' + sLineBreak,
       COLLECTION_RUNS,
       procedure
       var
@@ -206,8 +205,8 @@ begin
     RunScenario(
       Format('C. %d composite objects per call, %d calls', [CUSTOMER_SIZE, CUSTOMER_RUNS]),
       'Nested object + object array + string array + enum + dictionary.' + sLineBreak +
-      'Watch Serialize:RttiResolve and the Dynamic:Guess* rows here: both are' + sLineBreak +
-      'paid per element and are NOT cached per type.',
+      'Watch Serialize:RttiResolve and the Dynamic:Guess* rows here:' + sLineBreak +
+      'both are paid per element and are NOT cached per type.' + sLineBreak,
       CUSTOMER_RUNS,
       procedure
       var

@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{F551D465-BD70-4243-AB07-C95C4B91DDFD}</ProjectGuid>
     </PropertyGroup>
@@ -7,6 +7,9 @@
             <Dependencies/>
         </Projects>
         <Projects Include="BenchmarksConsole\BenchmarksConsole.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Classify\Classify.dproj">
             <Dependencies/>
         </Projects>
     </ItemGroup>
@@ -35,14 +38,23 @@
     <Target Name="BenchmarksConsole:Make">
         <MSBuild Projects="BenchmarksConsole\BenchmarksConsole.dproj" Targets="Make"/>
     </Target>
+    <Target Name="Classify">
+        <MSBuild Projects="Classify\Classify.dproj"/>
+    </Target>
+    <Target Name="Classify:Clean">
+        <MSBuild Projects="Classify\Classify.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Classify:Make">
+        <MSBuild Projects="Classify\Classify.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="ProfilingConsole;BenchmarksConsole"/>
+        <CallTarget Targets="ProfilingConsole;BenchmarksConsole;Classify"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="ProfilingConsole:Clean;BenchmarksConsole:Clean"/>
+        <CallTarget Targets="ProfilingConsole:Clean;BenchmarksConsole:Clean;Classify:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="ProfilingConsole:Make;BenchmarksConsole:Make"/>
+        <CallTarget Targets="ProfilingConsole:Make;BenchmarksConsole:Make;Classify:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

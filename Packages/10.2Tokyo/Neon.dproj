@@ -95,6 +95,7 @@
         <DCCReference Include="dbrtl.dcp"/>
         <DCCReference Include="..\..\Source\Neon.Core.Attributes.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.DynamicTypes.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Generator.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Nullables.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Persistence.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Persistence.JSON.pas"/>
