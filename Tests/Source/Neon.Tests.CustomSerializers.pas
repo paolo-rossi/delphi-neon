@@ -87,6 +87,9 @@ type
     [Test]
     procedure TestAssignDoesNotShareInstances;
 
+    [Test]
+    procedure TestRegisterInvalidatesCache;
+
   end;
 
 implementation
@@ -294,6 +297,23 @@ begin
     LTarget.Free;
     LSource.Free;
   end;
+end;
+
+procedure TTestCustomSerializers.TestRegisterInvalidatesCache;
+begin
+  FConfig.GetSerializers.Clear;
+
+  // Resolve a derived dataset type with only the base serializer registered:
+  // this populates the instance cache with TDataSetSerializer
+  FConfig.GetSerializers.RegisterSerializer(TDataSetSerializer);
+  Assert.AreEqual(TDataSetSerializer,
+    FConfig.GetSerializers.GetSerializer(TFDMemTable).ClassType);
+
+  // Registering a more-specific serializer afterwards must invalidate the
+  // cached resolution, otherwise the stale instance keeps being returned
+  FConfig.GetSerializers.RegisterSerializer(TFDDataSetSerializerTest);
+  Assert.AreEqual(TFDDataSetSerializerTest,
+    FConfig.GetSerializers.GetSerializer(TFDMemTable).ClassType);
 end;
 
 initialization

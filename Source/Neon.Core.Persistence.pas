@@ -1714,6 +1714,10 @@ end;
 function TNeonSerializerRegistry.RegisterSerializer(ASerializerClass: TCustomSerializerClass): TNeonSerializerRegistry;
 begin
   FRegistryClass.Add(TSerializerInfo.FromSerializer(ASerializerClass));
+  // The new class can change which serializer matches a type (e.g. a more
+  // derived class with a higher distance), so drop cached resolutions;
+  // they are recreated lazily on the next lookup
+  ClearCache;
   Result := Self;
 end;
 
