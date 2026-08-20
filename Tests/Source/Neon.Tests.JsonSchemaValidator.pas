@@ -29,6 +29,9 @@ type
     [TestCase('Null matches union type', '{"type":["string","null"]}|null|True', '|')]
     [TestCase('1.0 matches integer', '{"type":"integer"}|1.0|True', '|')]
     [TestCase('1.5 does not match integer', '{"type":"integer"}|1.5|False', '|')]
+    [TestCase('1e2 is an integer', '{"type":"integer"}|1e2|True', '|')]
+    [TestCase('1e-400 is not an integer', '{"type":"integer"}|1e-400|False', '|')]
+    [TestCase('1e-400 is a number', '{"type":"number"}|1e-400|True', '|')]
     procedure TestType(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]
@@ -36,6 +39,10 @@ type
     [TestCase('Enum: non-matching value', '{"enum":[1,2,3]}|4|False', '|')]
     [TestCase('Const: matching value', '{"const":"foo"}|"foo"|True', '|')]
     [TestCase('Const: non-matching value', '{"const":"foo"}|"bar"|False', '|')]
+    // Integers beyond Double precision must still be told apart (AsDouble would
+    // collapse 9007199254740993 and 9007199254740992 onto the same value)
+    [TestCase('Enum: large integers stay distinct', '{"enum":[9007199254740993]}|9007199254740992|False', '|')]
+    [TestCase('Enum: matching large integer', '{"enum":[9007199254740993]}|9007199254740993|True', '|')]
     procedure TestEnumConst(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]
@@ -48,6 +55,15 @@ type
     [TestCase('pattern: matches', '{"pattern":"^[A-Z]+$"}|"ABC"|True', '|')]
     [TestCase('pattern: does not match', '{"pattern":"^[A-Z]+$"}|"abc"|False', '|')]
     [TestCase('pattern: ignores non-strings', '{"pattern":"^[A-Z]+$"}|1|True', '|')]
+    // JSON Schema patterns are ECMA-262: \w and \d are ASCII-only there,
+    // while the RTL's .NET regexes make them Unicode-aware. The pattern is
+    // normalized before matching (see ECMA262Pattern), so "café" and the
+    // superscript two must be rejected
+    [TestCase('pattern: backslash-w matches ASCII word', '{"pattern":"^\\w+$"}|"abc_123"|True', '|')]
+    [TestCase('pattern: backslash-w rejects Unicode letters', '{"pattern":"^\\w+$"}|"caf\u00e9"|False', '|')]
+    [TestCase('pattern: backslash-d matches ASCII digits', '{"pattern":"^\\d+$"}|"123"|True', '|')]
+    [TestCase('pattern: backslash-d rejects Unicode digits', '{"pattern":"^\\d+$"}|"\u00b2"|False', '|')]
+    [TestCase('pattern: backslash-W matches non-ASCII letters', '{"pattern":"^\\W+$"}|"\u00e9"|True', '|')]
     procedure TestString(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]
@@ -62,6 +78,14 @@ type
     [TestCase('exclusiveMaximum: on boundary fails', '{"exclusiveMaximum":5}|5|False', '|')]
     [TestCase('multipleOf: valid', '{"multipleOf":2}|10|True', '|')]
     [TestCase('multipleOf: invalid', '{"multipleOf":2}|7|False', '|')]
+    // The tolerance must absorb binary-representation wobble (0.3 / 0.1 is not
+    // exactly 3) yet reject genuine near-misses (6.000000001 is not a multiple
+    // of 3; the gap is ~1.5e6 ulps)
+    [TestCase('multipleOf: 0.3 is a multiple of 0.1', '{"multipleOf":0.1}|0.3|True', '|')]
+    [TestCase('multipleOf: near-miss is rejected', '{"multipleOf":3}|6.000000001|False', '|')]
+    // Out-of-range literals must not raise out of the validator
+    [TestCase('maximum: out-of-range literal', '{"maximum":1e300}|1e400|False', '|')]
+    [TestCase('minimum: out-of-range literal', '{"minimum":1e300}|1e400|True', '|')]
     procedure TestNumeric(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]
@@ -128,6 +152,8 @@ type
     [TestCase('maxItems: too many', '{"maxItems":2}|[1,2,3]|False', '|')]
     [TestCase('uniqueItems: unique ok', '{"uniqueItems":true}|[1,2,3]|True', '|')]
     [TestCase('uniqueItems: duplicate fails', '{"uniqueItems":true}|[1,2,2]|False', '|')]
+    [TestCase('uniqueItems: large integers are distinct',
+      '{"uniqueItems":true}|[9007199254740993,9007199254740992]|True', '|')]
     [TestCase('contains: at least one matches', '{"contains":{"type":"integer"}}|["a",1,"b"]|True', '|')]
     [TestCase('contains: none match', '{"contains":{"type":"integer"}}|["a","b"]|False', '|')]
     [TestCase('minContains: satisfied', '{"contains":{"type":"integer"},"minContains":2}|[1,2,"a"]|True', '|')]

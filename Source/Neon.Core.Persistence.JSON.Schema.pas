@@ -356,7 +356,9 @@ type
   ///   unevaluatedProperties/unevaluatedItems and $dynamicRef/$dynamicAnchor are
   ///   not implemented, and rather than silently accepting instances the schema
   ///   rejects, the constructor refuses any schema that uses them
-  ///   (ENeonException). format is annotation-only (never validated) in v1.
+  ///   (ENeonException). format is annotation-only (never validated) in v1;
+  ///   pattern is evaluated with the RTL's .NET regexes after normalizing the
+  ///   ECMA-262 \w/\d divergence (see ECMA262Pattern).
   /// </remarks>
   TJSONSchemaValidator = class
   private
@@ -397,6 +399,9 @@ type
     function InstanceMatchesAnyType(AInstance: TJSONValue; ASchema: TJSONObject): Boolean;
     function JSONValuesEqual(AValue1, AValue2: TJSONValue): Boolean;
     function AsNumber(AInstance: TJSONValue; out AValue: Double): Boolean;
+    function NumberAsDouble(ANumber: TJSONNumber): Double;
+    function IsIntegerLiteral(ANumber: TJSONNumber): Boolean;
+    function JSONNumbersEqual(AValue1, AValue2: TJSONNumber): Boolean;
     function CodepointLength(const AValue: string): Integer;
 
     function ValidateNode(AInstance: TJSONValue; ASchema: TJSONValue; const APath: string; AErrors: TList<TJSONValidationError>): Boolean;
@@ -437,6 +442,7 @@ type
 implementation
 
 uses
+  System.Math,
   System.RegularExpressions,
   System.Variants;
 
@@ -1679,7 +1685,10 @@ begin
     Result := 'array'
   else if AInstance is TJSONNumber then
   begin
-    if Frac((AInstance as TJSONNumber).AsDouble) = 0 then
+    // "integer" means the mathematical value is integral (1.0 and 1e2 are,
+    // 1e-400 is not); decided from the literal because AsDouble under/overflows
+    // (1e-400 becomes 0, an integer)
+    if IsIntegerLiteral(AInstance as TJSONNumber) then
       Result := 'integer'
     else
       Result := 'number';
@@ -1694,7 +1703,7 @@ begin
     // an integer-valued number still satisfies "number"
     Result := (AInstance is TJSONNumber)
   else if AType = 'integer' then
-    Result := (AInstance is TJSONNumber) and (Frac((AInstance as TJSONNumber).AsDouble) = 0)
+    Result := (AInstance is TJSONNumber) and IsIntegerLiteral(AInstance as TJSONNumber)
   else
     Result := JSONTypeName(AInstance) = AType;
 end;
@@ -1735,7 +1744,7 @@ begin
       Exit(False);
 
   if AValue1 is TJSONNumber then
-    Exit((AValue1 as TJSONNumber).AsDouble = (AValue2 as TJSONNumber).AsDouble);
+    Exit(JSONNumbersEqual(AValue1 as TJSONNumber, AValue2 as TJSONNumber));
 
   if AValue1 is TJSONString then
     Exit(AValue1.Value = AValue2.Value);
@@ -1777,7 +1786,7 @@ function TJSONSchemaValidator.AsNumber(AInstance: TJSONValue; out AValue: Double
 begin
   Result := AInstance is TJSONNumber;
   if Result then
-    AValue := (AInstance as TJSONNumber).AsDouble;
+    AValue := NumberAsDouble(AInstance as TJSONNumber);
 end;
 
 function TJSONSchemaValidator.CodepointLength(const AValue: string): Integer;
@@ -1797,9 +1806,114 @@ begin
   end;
 end;
 
+function TJSONSchemaValidator.NumberAsDouble(ANumber: TJSONNumber): Double;
+begin
+  // TJSONNumber.AsDouble parses with the RTL's JSON format settings (always
+  // "."), so it is locale-independent; the only thing it cannot do is survive
+  // an out-of-range literal ("1e400" raises EOverflow, a hand-built malformed
+  // one EConvertError). Those read as +/-Infinity instead, keeping every
+  // comparison downstream well-defined
+  try
+    Result := ANumber.AsDouble;
+  except
+    on E: EMathError do
+      if (Length(ANumber.Value) > 0) and (ANumber.Value[1] = '-') then
+        Result := NegInfinity
+      else
+        Result := Infinity;
+    on E: EConvertError do
+      if (Length(ANumber.Value) > 0) and (ANumber.Value[1] = '-') then
+        Result := NegInfinity
+      else
+        Result := Infinity;
+  end;
+end;
+
+function TJSONSchemaValidator.IsIntegerLiteral(ANumber: TJSONNumber): Boolean;
+var
+  LValue: string;
+  LExpPos, LPos: Integer;
+  LExp: Integer;
+  LIntPart, LFracPart, LDigits: string;
+  LAllZero: Boolean;
+begin
+  LValue := ANumber.Value;
+
+  // "integer" is a mathematical property ("1.0" and "1e2" are integral, "1.5"
+  // and "1e-400" are not), so it is decided from the decimal literal rather
+  // than from AsDouble, whose under/overflow would misclassify extremes
+  LExpPos := Pos('e', LValue);
+  if LExpPos = 0 then
+    LExpPos := Pos('E', LValue);
+
+  if LExpPos > 0 then
+  begin
+    if not TryStrToInt(Copy(LValue, LExpPos + 1), LExp) then
+      Exit(False); // malformed exponent: the literal is not a valid number
+    LValue := Copy(LValue, 1, LExpPos - 1);
+  end
+  else
+    LExp := 0;
+
+  LPos := Pos('.', LValue);
+  if LPos > 0 then
+  begin
+    LIntPart := Copy(LValue, 1, LPos - 1);
+    LFracPart := Copy(LValue, LPos + 1);
+  end
+  else
+  begin
+    LIntPart := LValue;
+    LFracPart := '';
+  end;
+
+  // "1.0" is an integer: trailing zeros of the fraction are not significant
+  while (Length(LFracPart) > 0) and (LFracPart[Length(LFracPart)] = '0') do
+    Delete(LFracPart, Length(LFracPart), 1);
+
+  // 0 is an integer however it is written ("0", "-0", "0.0", "0e-400")
+  if (Length(LIntPart) > 0) and (LIntPart[1] = '-') then
+    Delete(LIntPart, 1, 1);
+  LDigits := LIntPart + LFracPart;
+  LAllZero := True;
+  for LPos := 1 to Length(LDigits) do
+    if LDigits[LPos] <> '0' then
+    begin
+      LAllZero := False;
+      Break;
+    end;
+  if LAllZero then
+    Exit(True);
+
+  // Integral iff the significant fraction digits fit before the exponent:
+  // value = digits x 10^(exp - fracLen), integral when exp >= fracLen
+  Result := Length(LFracPart) <= LExp;
+end;
+
+function TJSONSchemaValidator.JSONNumbersEqual(AValue1, AValue2: TJSONNumber): Boolean;
+var
+  LInt1, LInt2: Int64;
+  LUInt1, LUInt2: UInt64;
+begin
+  // Exact comparison when both literals are plain 64-bit integers, so values
+  // beyond Double precision (9007199254740993 vs 9007199254740992) stay
+  // distinct - AsDouble would collapse them onto the same Double
+  if TryStrToInt64(AValue1.Value, LInt1) and TryStrToInt64(AValue2.Value, LInt2) then
+    Exit(LInt1 = LInt2);
+
+  // The RTL's UInt64 workaround (TNeonSerializerJSON.WriteInt64) emits big
+  // unsigned values as strings that overflow Int64
+  if TryStrToUInt64(AValue1.Value, LUInt1) and TryStrToUInt64(AValue2.Value, LUInt2) then
+    Exit(LUInt1 = LUInt2);
+
+  // Fractional or exponent forms: Double comparison, which is all the
+  // representation has to offer (out-of-range literals compare as +/-Infinity)
+  Result := NumberAsDouble(AValue1) = NumberAsDouble(AValue2);
+end;
+
 procedure TJSONSchemaValidator.ValidateNumeric(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
 var
-  LNumber, LBound, LQuotient: Double;
+  LNumber, LBound, LQuotient, LFractional: Double;
   LValue: TJSONValue;
 begin
   if not AsNumber(AInstance, LNumber) then
@@ -1809,7 +1923,18 @@ begin
   if Assigned(LValue) and AsNumber(LValue, LBound) and (LBound <> 0) then
   begin
     LQuotient := LNumber / LBound;
-    if Abs(LQuotient - Round(LQuotient)) > 1E-9 then
+    // The spec demands exact mathematical division, but the operands are
+    // binary Doubles whose decimal counterparts (0.1, 0.01, ...) are not
+    // exact, so a legitimate multiple like 0.3 / 0.1 lands on 2.99999...
+    // The tolerance is therefore a few ulps of the quotient itself - enough
+    // to absorb that representational wobble, small enough to reject real
+    // near-misses (6.000000001 is not a multiple of 3; the gap is ~1.5e6
+    // ulps). Round() is avoided because it overflows for quotients beyond
+    // Int64; the distance to the nearest integer is computed via Int()
+    LFractional := Abs(LQuotient - Int(LQuotient));
+    if LFractional > 0.5 then
+      LFractional := 1 - LFractional;
+    if LFractional > (Abs(LQuotient) * 2E-15) then
       AddError(AErrors, APath, 'multipleOf', Format('%g is not a multiple of %g', [LNumber, LBound]));
   end;
 
@@ -1829,6 +1954,15 @@ begin
   if Assigned(LValue) and AsNumber(LValue, LBound) and (LNumber >= LBound) then
     AddError(AErrors, APath, 'exclusiveMaximum', Format('%g is not less than the exclusive maximum of %g', [LNumber, LBound]));
 end;
+
+// JSON Schema 2020-12 requires patterns to be ECMA-262 regexes. Delphi's
+// TRegEx implements .NET syntax, whose w and d are Unicode-aware while
+// ECMA-262's are ASCII-only ([A-Za-z0-9_], [0-9]); the pattern is rewritten
+// accordingly (without the brackets when inside a character class) before
+// matching. s and  keep .NET semantics - their differences from ECMA-262
+// are negligible for real-world schemas, and a full ECMA-262 engine is out of
+// scope. Definition follows ValidateString
+function ECMA262Pattern(const APattern: string): string; forward;
 
 procedure TJSONSchemaValidator.ValidateString(AInstance: TJSONValue; ASchema: TJSONObject; const APath: string; AErrors: TList<TJSONValidationError>);
 var
@@ -1865,8 +1999,88 @@ begin
   LValue := ASchema.GetValue('pattern');
   if Assigned(LValue) and (LValue is TJSONString) then
   begin
-    if not TRegEx.IsMatch(LStr, LValue.Value) then
+    // JSON Schema patterns are ECMA-262 regexes; TRegEx is .NET-style. The
+    // divergence that matters in practice is w/d (and their negations),
+    // Unicode-aware in .NET but ASCII-only in ECMA-262, so they are rewritten
+    // before matching (see ECMA262Pattern)
+    if not TRegEx.IsMatch(LStr, ECMA262Pattern(LValue.Value)) then
       AddError(AErrors, APath, 'pattern', Format('"%s" does not match pattern "%s"', [LStr, LValue.Value]));
+  end;
+end;
+
+// JSON Schema 2020-12 requires patterns to be ECMA-262 regexes. Delphi's
+// TRegEx implements .NET syntax, whose \w and \d are Unicode-aware while
+// ECMA-262's are ASCII-only ([A-Za-z0-9_], [0-9]); the pattern is rewritten
+// accordingly (without the brackets when inside a character class). \s and
+// \b keep .NET semantics: their differences from ECMA-262 are negligible for
+// real-world schemas, and a full ECMA-262 engine is out of scope. A lone or
+// escaped backslash ("\\") is passed through untouched.
+function ECMA262Pattern(const APattern: string): string;
+var
+  LIndex: Integer;
+  LInClass: Boolean;
+begin
+  Result := '';
+  LInClass := False;
+  LIndex := 1;
+  while LIndex <= APattern.Length do
+  begin
+    if APattern[LIndex] = '\' then
+    begin
+      if LIndex < APattern.Length then
+      begin
+        if APattern[LIndex + 1] = '\' then
+        begin
+          // escaped backslash: both characters literal, the next one is not an
+          // escape
+          Result := Result + '\\';
+          Inc(LIndex, 2);
+          Continue;
+        end;
+
+        case APattern[LIndex + 1] of
+          'w':
+            if LInClass then
+              Result := Result + 'A-Za-z0-9_'
+            else
+              Result := Result + '[A-Za-z0-9_]';
+          'W':
+            if LInClass then
+              Result := Result + '^A-Za-z0-9_'
+            else
+              Result := Result + '[^A-Za-z0-9_]';
+          'd':
+            if LInClass then
+              Result := Result + '0-9'
+            else
+              Result := Result + '[0-9]';
+          'D':
+            if LInClass then
+              Result := Result + '^0-9'
+            else
+              Result := Result + '[^0-9]';
+        else
+          Result := Result + '\' + APattern[LIndex + 1];
+        end;
+        Inc(LIndex, 2);
+        Continue;
+      end
+      else
+      begin
+        // trailing lone backslash: keep verbatim
+        Result := Result + '\';
+        Inc(LIndex);
+        Continue;
+      end;
+    end;
+
+    if APattern[LIndex] = '[' then
+      LInClass := True
+    else if APattern[LIndex] = ']' then
+      LInClass := False;
+
+    Result := Result + APattern[LIndex];
+    Inc(LIndex);
   end;
 end;
 
