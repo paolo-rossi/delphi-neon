@@ -1022,7 +1022,12 @@ begin
         end;
       end;
     except
+      // Free the partial result, then let the error propagate: without the
+      // re-raise, RaiseExceptions only works for top-level members because
+      // every nested object/record/map swallows the exception
       FreeAndNil(Result);
+      if FConfig.RaiseExceptions then
+        raise;
     end;
   finally
     TNeonLogger.ProfileEnd('Serialize:Object', LStamp);
@@ -1154,6 +1159,10 @@ begin
     begin
       FErrors.Add(E.Message);
       FreeAndNil(Result);
+      // Same reasoning as WriteObject/WriteRecord: free the partial result,
+      // then let the error propagate when RaiseExceptions is set
+      if FConfig.RaiseExceptions then
+        raise;
     end;
   end;
   finally
@@ -1181,7 +1190,10 @@ begin
       end;
     end;
   except
+    // Free the partial result, then let the error propagate
     FreeAndNil(Result);
+    if FConfig.RaiseExceptions then
+      raise;
   end;
   finally
     TNeonLogger.ProfileEnd('Serialize:Record', LStamp);

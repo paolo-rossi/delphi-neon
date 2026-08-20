@@ -17,6 +17,7 @@ uses
   FireDAC.Comp.DataSet, FireDAC.Comp.Client,
 
   Neon.Core.Persistence,
+  Neon.Core.Types,
   Neon.Tests.Entities,
   Neon.Tests.Utils,
   Neon.Data.Tests;
@@ -28,6 +29,19 @@ type
     FStream: TStream;
   public
     property Stream: TStream read FStream write FStream;
+  end;
+
+  TBoom = class
+  public
+    function GetExplode: string;
+    property Explode: string read GetExplode;
+  end;
+
+  TBoomHolder = class
+  private
+    FBoom: TBoom;
+  public
+    property Boom: TBoom read FBoom write FBoom;
   end;
 
   [TestFixture]
@@ -63,6 +77,12 @@ type
 
     [Test]
     procedure TestNilStreamMemberDeserializeSkips;
+
+    [Test]
+    procedure TestNestedErrorPropagatesWhenRaising;
+
+    [Test]
+    procedure TestNestedErrorSwallowedByDefault;
 
   end;
 
@@ -191,6 +211,57 @@ begin
     // deserializer must skip it (and log) instead of dereferencing nil (A2)
     TTestUtils.DeserializeObject('{"Stream":"aGVsbG8="}', LHolder, LConfig);
     Assert.IsNull(LHolder.Stream);
+  finally
+    LHolder.Free;
+  end;
+end;
+
+{ TBoom }
+
+function TBoom.GetExplode: string;
+begin
+  raise ENeonException.Create('boom');
+end;
+
+procedure TTestCustomSerializers.TestNestedErrorPropagatesWhenRaising;
+var
+  LHolder: TBoomHolder;
+  LConfig: INeonConfiguration;
+begin
+  LConfig := TNeonConfiguration.Create.SetRaiseExceptions(True);
+  LHolder := TBoomHolder.Create;
+  try
+    LHolder.Boom := TBoom.Create;
+    try
+      // With RaiseExceptions, an error in a member of a nested object must
+      // propagate out of the container writer instead of being swallowed
+      // at the WriteObject boundary (review finding A3)
+      Assert.WillRaise(
+        procedure begin TTestUtils.SerializeObject(LHolder, LConfig) end,
+        ENeonException);
+    finally
+      LHolder.Boom.Free;
+    end;
+  finally
+    LHolder.Free;
+  end;
+end;
+
+procedure TTestCustomSerializers.TestNestedErrorSwallowedByDefault;
+var
+  LHolder: TBoomHolder;
+begin
+  LHolder := TBoomHolder.Create;
+  try
+    LHolder.Boom := TBoom.Create;
+    try
+      // With the default RaiseExceptions=False the failing member is
+      // dropped and the nested object degrades to {} (no exception)
+      Assert.AreEqual('{"Boom":{}}',
+        TTestUtils.SerializeObject(LHolder, TNeonConfiguration.Default));
+    finally
+      LHolder.Boom.Free;
+    end;
   finally
     LHolder.Free;
   end;
