@@ -70,6 +70,7 @@ type
   public
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+    function SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; override;
   end;
 
   /// <summary>
@@ -87,6 +88,7 @@ type
   public
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+    function SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; override;
   end;
 
   /// <summary>
@@ -101,6 +103,7 @@ type
     class procedure ChangeConfig(AConfig: INeonConfiguration); override;
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+    function SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; override;
   end;
 
 
@@ -354,6 +357,13 @@ begin
   end;
 end;
 
+function TTValueSerializer.SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+begin
+  // A TValue member is written as whatever its inner value serializes to,
+  // which is unknowable from the declared type: the empty schema admits it all
+  Result := TJSONObject.Create;
+end;
+
 { TBytesSerializer }
 
 class function TBytesSerializer.CanHandle(AType: PTypeInfo): Boolean;
@@ -414,6 +424,26 @@ begin
 
   //if IsFormatValue(LFormat, 'base64') then
   Exit(TJSONString.Create(TBase64.Encode(LVal)));
+end;
+
+function TBytesSerializer.SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+var
+  LFormat: NeonFormatAttribute;
+begin
+  // Mirror Serialize: with [NeonFormat('native')] the byte array is written
+  // as-is, otherwise as a Base64 string (like a stream)
+  LFormat := ANeonObject.GetAttribute<NeonFormatAttribute>;
+  if IsFormatValue(LFormat, 'native') then
+    Result := TJSONObject.Create
+      .AddPair('type', 'array')
+      .AddPair('items', TJSONObject.Create
+        .AddPair('type', 'integer')
+        .AddPair('minimum', TJSONNumber.Create(0))
+        .AddPair('maximum', TJSONNumber.Create(255)))
+  else
+    Result := TJSONObject.Create
+      .AddPair('type', 'string')
+      .AddPair('contentEncoding', 'base64');
 end;
 
 function TBytesSerializer.ValueAsBase64(const AValue: TJSONValue): TValue;
@@ -505,6 +535,15 @@ begin
       Exit(nil);
     Result := TJSONArray.Create;
   end;
+end;
+
+function TCollectionSerializer.SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+begin
+  // The serializer writes one object per item; the item class is dynamic
+  // (TCollection.ItemClass), so the row itself is left unconstrained
+  Result := TJSONObject.Create
+    .AddPair('type', 'array')
+    .AddPair('items', TJSONObject.Create.AddPair('type', 'object'));
 end;
 
 end.

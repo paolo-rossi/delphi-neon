@@ -469,6 +469,39 @@ type
     property Id: TGUID read FId write FId;
   end;
 
+  // Members whose shape only the bundled serializers know: TBytes (Base64
+  // string), TCollection (array of items) and TValue (whatever it holds)
+  TSchemaBytesHolder = class
+  private
+    FData: TBytes;
+  public
+    property Data: TBytes read FData write FData;
+  end;
+
+  TSchemaCollItem = class(TCollectionItem)
+  end;
+
+  TSchemaColl = class(TCollection)
+  public
+    constructor Create;
+  end;
+
+  TSchemaCollectionHolder = class
+  private
+    FItems: TSchemaColl;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Items: TSchemaColl read FItems write FItems;
+  end;
+
+  TSchemaTValueHolder = class
+  private
+    FValue: TValue;
+  public
+    property Value: TValue read FValue write FValue;
+  end;
+
   // A static array has a fixed length, which the schema states exactly via
   // minItems/maxItems
   TSchemaGridData = array[0..2] of Integer;
@@ -583,6 +616,15 @@ type
 
     [Test]
     procedure TestGUIDMemberUsesSerializerSchema;
+
+    [Test]
+    procedure TestBytesMemberUsesSerializerSchema;
+
+    [Test]
+    procedure TestCollectionMemberUsesSerializerSchema;
+
+    [Test]
+    procedure TestValueMemberUsesSerializerSchema;
 
     [Test]
     [TestCase('null is allowed', '{"Tint":null}|True', '|')]
@@ -842,6 +884,27 @@ end;
 destructor TSchemaUnwrappedBag.Destroy;
 begin
   FAttrs.Free;
+  inherited;
+end;
+
+{ TSchemaColl }
+
+constructor TSchemaColl.Create;
+begin
+  inherited Create(TSchemaCollItem);
+end;
+
+{ TSchemaCollectionHolder }
+
+constructor TSchemaCollectionHolder.Create;
+begin
+  inherited;
+  FItems := TSchemaColl.Create;
+end;
+
+destructor TSchemaCollectionHolder.Destroy;
+begin
+  FItems.Free;
   inherited;
 end;
 
@@ -1472,6 +1535,45 @@ begin
   Assert.AreEqual('string', LId.GetValue('type').Value,
     'a GUID serializes as a string, so its schema must not be an object of fields');
   Assert.AreEqual('uuid', LId.GetValue('format').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestBytesMemberUsesSerializerSchema;
+var
+  LData: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBytesHolder,
+    TNeonConfiguration.Default.RegisterSerializer(TBytesSerializer));
+
+  LData := (FSchema.GetValue('properties') as TJSONObject).GetValue('Data') as TJSONObject;
+  Assert.AreEqual('string', LData.GetValue('type').Value,
+    'TBytes serializes as a Base64 string, not as an array of integers');
+  Assert.AreEqual('base64', LData.GetValue('contentEncoding').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestCollectionMemberUsesSerializerSchema;
+var
+  LItems: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaCollectionHolder,
+    TNeonConfiguration.Default.RegisterSerializer(TCollectionSerializer));
+
+  LItems := (FSchema.GetValue('properties') as TJSONObject).GetValue('Items') as TJSONObject;
+  Assert.AreEqual('array', LItems.GetValue('type').Value,
+    'a TCollection serializes as an array of items, not as an object');
+  Assert.AreEqual('object',
+    (LItems.GetValue('items') as TJSONObject).GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestValueMemberUsesSerializerSchema;
+var
+  LValue: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTValueHolder,
+    TNeonConfiguration.Default.RegisterSerializer(TTValueSerializer));
+
+  LValue := (FSchema.GetValue('properties') as TJSONObject).GetValue('Value') as TJSONObject;
+  Assert.IsNull(LValue.GetValue('type'),
+    'a TValue can hold anything, so its schema must be unconstrained');
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestJSONValueDescendantIsDescribed;

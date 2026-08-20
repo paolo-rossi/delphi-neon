@@ -27,6 +27,7 @@ type
   public
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+    function SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; override;
   end;
 
 implementation
@@ -78,6 +79,14 @@ begin
     LStream.Free;
   end;
   Result := TJSONString.Create(LBase64);
+end;
+
+function TImageSerializer.SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+begin
+  // The picture is serialized as a Base64 string
+  Result := TJSONObject.Create
+    .AddPair('type', 'string')
+    .AddPair('contentEncoding', 'base64');
 end;
 
 function TImageSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
