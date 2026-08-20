@@ -234,6 +234,17 @@ type
     procedure TestBooleanSchema(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 
     [Test]
+    [TestCase('root unevaluatedProperties refused',
+      '{"unevaluatedProperties":false}|{"a":1}', '|')]
+    [TestCase('root unevaluatedItems refused',
+      '{"unevaluatedItems":false}|[1]', '|')]
+    [TestCase('unevaluatedProperties under a property refused',
+      '{"properties":{"a":{"unevaluatedProperties":false}}}|{"a":{}}', '|')]
+    [TestCase('unevaluatedItems in a then branch never taken is still refused',
+      '{"if":{"type":"string"},"then":{"unevaluatedItems":false}}|5', '|')]
+    procedure TestUnevaluatedKeywordsAreRefused(const ASchemaJSON, AInstanceJSON: string);
+
+    [Test]
     procedure TestAnchorInsideInstanceDataIsNotCollected;
 
     [Test]
@@ -338,6 +349,21 @@ end;
 procedure TTestJsonSchemaValidator.TestBooleanSchema(const ASchemaJSON, AInstanceJSON: string; AExpectedValid: Boolean);
 begin
   Assert.AreEqual(AExpectedValid, CheckValid(ASchemaJSON, AInstanceJSON));
+end;
+
+procedure TTestJsonSchemaValidator.TestUnevaluatedKeywordsAreRefused(const ASchemaJSON, AInstanceJSON: string);
+begin
+  // unevaluatedProperties/unevaluatedItems are 2020-12 assertion keywords this
+  // validator does not implement. It must refuse the schema - raising here beats
+  // silently accepting instances the schema rejects. The last case puts the
+  // keyword in a branch no instance would ever run, proving the check happens at
+  // construction time, not during validation
+  Assert.WillRaise(
+    procedure
+    begin
+      CheckValid(ASchemaJSON, AInstanceJSON);
+    end,
+    ENeonException);
 end;
 
 procedure TTestJsonSchemaValidator.TestAnchorInsideInstanceDataIsNotCollected;

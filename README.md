@@ -35,11 +35,12 @@ This new demo tries to compare the standard TJSON serialization engine with the 
 ![Neon Benchmarks Demo](https://user-images.githubusercontent.com/4686497/216270908-0a702077-02fe-4295-bce5-8da78ee46599.png)
 
 ### Console Demos
-Three console applications (grouped in `Demos/Source/ConsoleDemos.groupproj`), two for measuring **Neon** without a UI in the way and one for generating entities from a JSON document:
+Four console applications (grouped in `Demos/Source/ConsoleDemos.groupproj`), two for measuring **Neon** without a UI in the way and two for the code it generates from (and for) a JSON document:
 
 - **BenchmarksConsole** compares **Neon** against `REST.Json` and `System.JSON.Serializers` (`TJsonSerializer`) on the same datasets, with a separate source object per library. It prints a summary table, writes the report to disk and saves one pretty-printed JSON sample per library so the output can be diffed for correctness, not just timed
 - **ProfilingConsole** breaks **Neon**'s own work down by internal stage (RTTI resolve, member preparation, object/enumerable/map/record writing, the dynamic-type probes...) using the `TNeonLogger` profiler. It runs three scenarios — one flat object per call, many flat objects per call and many composite objects per call — to show what the per-type caches do and do not amortize
 - **Classify** turns a JSON document into the Delphi entities that hold it, from the command line (see the [Entity Generator](#entity-generator) below, and the demo's own [README](Demos/Source/Classify/README.md))
+- **SchemaConsole** generates a **JSON Schema Draft 2020-12** document from a Delphi type and then validates JSON against it: a serialized object, a document from elsewhere (every violation reported with a JSON Pointer and the keyword that rejected it), a self-referencing type resolved through `$defs`/`$ref`, and a schema written by hand using keywords no Delphi type can express (see the demo's own [README](Demos/Source/SchemaConsole/README.md))
 
 ### A Neon Introduction by Holger Flick (Video)
 [![Modern Delphi web development #7](https://img.youtube.com/vi/djzfeS9k4KU/0.jpg)](https://www.youtube.com/watch?v=djzfeS9k4KU)

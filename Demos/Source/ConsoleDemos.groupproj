@@ -12,6 +12,9 @@
         <Projects Include="Classify\Classify.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="SchemaConsole\SchemaConsole.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -47,14 +50,23 @@
     <Target Name="Classify:Make">
         <MSBuild Projects="Classify\Classify.dproj" Targets="Make"/>
     </Target>
+    <Target Name="SchemaConsole">
+        <MSBuild Projects="SchemaConsole\SchemaConsole.dproj"/>
+    </Target>
+    <Target Name="SchemaConsole:Clean">
+        <MSBuild Projects="SchemaConsole\SchemaConsole.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaConsole:Make">
+        <MSBuild Projects="SchemaConsole\SchemaConsole.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="ProfilingConsole;BenchmarksConsole;Classify"/>
+        <CallTarget Targets="ProfilingConsole;BenchmarksConsole;Classify;SchemaConsole"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="ProfilingConsole:Clean;BenchmarksConsole:Clean;Classify:Clean"/>
+        <CallTarget Targets="ProfilingConsole:Clean;BenchmarksConsole:Clean;Classify:Clean;SchemaConsole:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="ProfilingConsole:Make;BenchmarksConsole:Make;Classify:Make"/>
+        <CallTarget Targets="ProfilingConsole:Make;BenchmarksConsole:Make;Classify:Make;SchemaConsole:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

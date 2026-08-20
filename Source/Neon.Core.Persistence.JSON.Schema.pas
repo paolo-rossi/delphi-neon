@@ -344,8 +344,9 @@ type
   ///   only; a $ref to another document is unsupported. allOf/anyOf/oneOf/not,
   ///   if/then/else and dependentRequired/dependentSchemas are implemented (as
   ///   is Draft-07's "dependencies", which merges the last two);
-  ///   unevaluatedProperties/unevaluatedItems are not yet (they need the
-  ///   annotation-tracking machinery, planned separately). format is
+  ///   unevaluatedProperties/unevaluatedItems are not implemented, and rather
+  ///   than silently accepting instances the schema rejects, the constructor
+  ///   refuses any schema that uses them (ENeonException). format is
   ///   annotation-only (never validated) in v1.
   /// </remarks>
   TJSONSchemaValidator = class
@@ -1460,6 +1461,19 @@ begin
     Exit;
 
   LObj := ASchema as TJSONObject;
+
+  // unevaluatedProperties/unevaluatedItems are assertion keywords in 2020-12
+  // whose correct handling needs annotation tracking (knowing which properties
+  // and items allOf/anyOf/$ref/if-then-else ... have already evaluated).
+  // Silently ignoring them would accept instances the schema rejects, so a
+  // schema carrying either keyword is refused up front. The check lives here,
+  // in the construction-time walk, so that a keyword hidden in a branch that
+  // never runs for a given instance is still caught
+  if Assigned(LObj.GetValue('unevaluatedProperties')) then
+    raise ENeonException.CreateFmt(SNeonErrorSchemaKeywordUnsupportedF1, ['unevaluatedProperties']);
+
+  if Assigned(LObj.GetValue('unevaluatedItems')) then
+    raise ENeonException.CreateFmt(SNeonErrorSchemaKeywordUnsupportedF1, ['unevaluatedItems']);
 
   LAnchor := LObj.GetValue('$anchor');
   if Assigned(LAnchor) and (LAnchor is TJSONString) then
