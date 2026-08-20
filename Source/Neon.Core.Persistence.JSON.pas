@@ -683,6 +683,19 @@ begin
     LCustomSer := FConfig.Serializers.GetSerializer(AValue.TypeInfo);
     if Assigned(LCustomSer) then
     begin
+      // A nil object is governed by the member's IncludeIf semantics and must
+      // never reach a custom serializer, which would dereference it
+      // The tkClass branch below applies the same rules for values that have no custom serializer
+      if (AValue.Kind = tkClass) and (AValue.AsObject = nil) then
+      begin
+        case ANeonObject.NeonInclude.Value of
+          IncludeIf.Always, IncludeIf.CustomFunction:
+            Exit(TJSONNull.Create);
+        else
+          Exit(nil);
+        end;
+      end;
+
       Result := LCustomSer.Serialize(AValue, ANeonObject, Self);
       Exit(Result);
     end;
@@ -1426,6 +1439,17 @@ begin
     if Assigned(LCustom) then
     begin
       LValue := ManageInstance(AParam, AData);
+
+      // A nil target instance (no AutoCreate/factory and no parameterless
+      // constructor - e.g. an abstract TStream member) cannot be populated by
+      // the serializer without dereferencing nil: skip it and log, matching
+      // the engine's "no AutoCreate -> member stays nil"
+      if (LValue.Kind = tkClass) and (LValue.AsObject = nil) then
+      begin
+        LogError(Format(SNeonErrorDeserializeNilF1, [AParam.RttiType.Name]));
+        Exit(LValue);
+      end;
+
       Result := LCustom.Deserialize(AParam.JSONValue, LValue, AParam.NeonObject, Self);
       Exit(Result);
     end;

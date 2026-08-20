@@ -67,6 +67,7 @@ resourcestring
   SNeonErrorNullableNoValue = 'Nullable type has no value';
   SNeonErrorUnknownGenericType = 'TTypeConfigurator: Unknown type T';
   SNeonErrorDeserializeIncompatible = '.Deserialize: incompatible types';
+  SNeonErrorDeserializeNilF1 = 'Deserialization skipped: instance of [%s] is nil and could not be created';
   SNeonErrorJSONNotString = 'JSONValue must be a string';
   SNeonErrorJSONNotArray = 'The JSON must be an array';
   SNeonErrorJSONItemNotObject = 'The item must be an object';

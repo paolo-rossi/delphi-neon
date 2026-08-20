@@ -23,6 +23,13 @@ uses
 
 type
 
+  TStreamHolder = class
+  private
+    FStream: TStream;
+  public
+    property Stream: TStream read FStream write FStream;
+  end;
+
   [TestFixture]
   TTestCustomSerializers = class(TObject)
   private
@@ -50,6 +57,12 @@ type
 
     [Test]
     procedure TestSelectorAlgorithmOnClass;
+
+    [Test]
+    procedure TestNilStreamMemberSerializeSkips;
+
+    [Test]
+    procedure TestNilStreamMemberDeserializeSkips;
 
   end;
 
@@ -146,6 +159,41 @@ begin
   LSerializer := FConfig.GetSerializers.GetSerializer(TypeInfo(TGUID));
   Assert.IsNotNull(LSerializer);
   Assert.AreEqual(TGUIDSerializerTest, LSerializer.ClassType);
+end;
+
+procedure TTestCustomSerializers.TestNilStreamMemberSerializeSkips;
+var
+  LHolder: TStreamHolder;
+  LConfig: INeonConfiguration;
+begin
+  LConfig := TNeonConfiguration.Create.SetRaiseExceptions(True);
+  LConfig.GetSerializers.RegisterSerializer(TStreamSerializer);
+  LHolder := TStreamHolder.Create;
+  try
+    // A nil object member never reaches the custom serializer (review A2):
+    // under the default IncludeIf.NotNull it is omitted instead of raising
+    Assert.AreEqual('{}', TTestUtils.SerializeObject(LHolder, LConfig));
+  finally
+    LHolder.Free;
+  end;
+end;
+
+procedure TTestCustomSerializers.TestNilStreamMemberDeserializeSkips;
+var
+  LHolder: TStreamHolder;
+  LConfig: INeonConfiguration;
+begin
+  LConfig := TNeonConfiguration.Create.SetRaiseExceptions(True);
+  LConfig.GetSerializers.RegisterSerializer(TStreamSerializer);
+  LHolder := TStreamHolder.Create;
+  try
+    // An abstract TStream member cannot be created without AutoCreate; the
+    // deserializer must skip it (and log) instead of dereferencing nil (A2)
+    TTestUtils.DeserializeObject('{"Stream":"aGVsbG8="}', LHolder, LConfig);
+    Assert.IsNull(LHolder.Stream);
+  finally
+    LHolder.Free;
+  end;
 end;
 
 initialization
