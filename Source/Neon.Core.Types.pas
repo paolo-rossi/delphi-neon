@@ -47,7 +47,7 @@ resourcestring
     be localized (e.g. with a translated resource DLL) without recompiling. }
   SNeonErrorParse = 'Error parsing JSON string';
   SNeonErrorNumExpected = 'Invalid JSON value. Number expected';
-  SNeonErrorBoolExpected = 'Invalid JSON value. Number expected';
+  SNeonErrorBoolExpected = 'Invalid JSON value. Boolean expected';
   SNeonErrorArrExpected = 'Set deserialization: Expected JSON Array';
   SNeonErrorDictKeyInvalid = 'Dictionary [Key]: type not supported';
   SNeonErrorFieldProp = 'Member type must be Field or Property';
@@ -68,6 +68,7 @@ resourcestring
   SNeonErrorUnknownGenericType = 'TTypeConfigurator: Unknown type T';
   SNeonErrorDeserializeIncompatible = '.Deserialize: incompatible types';
   SNeonErrorDeserializeNilF1 = 'Deserialization skipped: instance of [%s] is nil and could not be created';
+  SNeonErrorStreamableNoValue = 'Streamable deserialization: the JSON object has no $value member';
   SNeonErrorJSONNotString = 'JSONValue must be a string';
   SNeonErrorJSONNotArray = 'The JSON must be an array';
   SNeonErrorJSONItemNotObject = 'The item must be an object';

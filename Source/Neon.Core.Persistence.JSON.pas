@@ -1378,24 +1378,42 @@ var
   LJSONArray: TJSONArray;
   LItemValue: TValue;
   LItemParam: TNeonDeserializerParam;
+  LOldItems: TArray<TObject>;
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.Empty);
-
-  // We don't need to free items (objects) because the array
-  // to deserialize to is always a new value
-  //TRttiUtils.FreeArrayItems(AData);
 
   Result := AData;
   LJSONArray := AParam.JSONValue as TJSONArray;
   LArrayLength := LJSONArray.Count;
 
   if AParam.RttiType.TypeKind = tkArray then
-    LItemParam.RttiType := (AParam.RttiType as TRttiArrayType).ElementType
+  begin
+    LItemParam.RttiType := (AParam.RttiType as TRttiArrayType).ElementType;
+
+    // A static array has a fixed size: refuse JSON that is longer instead
+    // of letting SetArrayElement raise a raw range exception
+    if LJSONArray.Count > Result.GetArrayLength then
+      raise ENeonException.CreateFmt(SNeonErrorRangeOutF2,
+        [LJSONArray.Count.ToString, AParam.RttiType.Name]);
+  end
   else //tkDynArray
   begin
     LItemParam.RttiType := (AParam.RttiType as TRttiDynamicArrayType).ElementType;
     DynArraySetLength(PPointer(Result.GetReferenceToRawData)^, Result.TypeInfo, 1, @LArrayLength);
+  end;
+
+  // For a static array of classes, snapshot the elements the member
+  // currently holds so they can be released after the new elements have
+  // been read: the deserializer owns the contents it replaces, and freeing
+  // before the read completed could leave the member with freed references
+  // if an element read raises
+  LOldItems := nil;
+  if (AParam.RttiType.TypeKind = tkArray) and (LItemParam.RttiType.TypeKind = tkClass) then
+  begin
+    SetLength(LOldItems, Result.GetArrayLength);
+    for LIndex := 0 to High(LOldItems) do
+      LOldItems[LIndex] := Result.GetArrayElement(LIndex).AsObject;
   end;
 
   LItemParam.NeonObject := TNeonRttiObject.Create(LItemParam.RttiType, FOperation);
@@ -1408,6 +1426,9 @@ begin
 
       if AParam.RttiType.TypeKind = tkArray then // Static Array
       begin
+        // Replace the stored element with a fresh one via the item factory
+        // (or the plain constructor), so the factory is consulted for every
+        // JSON item; the previous object is freed after the loop below
         if LItemParam.RttiType.TypeKind = tkClass then
           LItemValue := CreateItem(AParam.NeonObject, LItemParam.JSONValue, LItemParam.RttiType)
         else
@@ -1419,6 +1440,10 @@ begin
       LItemValue := ReadDataMember(LItemParam, LItemValue, True);
       Result.SetArrayElement(LIndex, LItemValue);
     end;
+
+    // Every element was read successfully: release the previous contents
+    for LIndex := 0 to High(LOldItems) do
+      LOldItems[LIndex].Free;
   finally
     LItemParam.NeonObject.Free;
   end;
@@ -1978,7 +2003,6 @@ var
   LEnumType: TRttiType;
   LTypeData: PTypeData;
   LSetData: array[0..31] of Byte;
-  LSize: Integer;
   LOrdinal: Integer;
 begin
   if AParam.JSONValue is TJSONNull then
@@ -1995,16 +2019,8 @@ begin
 
   LTypeData := GetTypeData(LEnumType.Handle);
 
-  // Mirror the compiler's storage: the smallest of 1/2/4/8/16/32 bytes that
-  // can hold the enum range (sets with more than 32 elements are supported)
-  LSize := ((LTypeData.MaxValue - LTypeData.MinValue + 1) + 7) div 8;
-  if LSize <= 1 then LSize := 1
-  else if LSize <= 2 then LSize := 2
-  else if LSize <= 4 then LSize := 4
-  else if LSize <= 8 then LSize := 8
-  else if LSize <= 16 then LSize := 16
-  else LSize := 32;
-
+  // The result buffer covers the maximum set size (256 elements = 32 bytes);
+  // ordinals are validated against the enum range before their bit is set
   FillChar(LSetData, SizeOf(LSetData), 0);
 
   for LJSONValue in LJSONArray do
@@ -2044,7 +2060,11 @@ begin
     LStream := TMemoryStream.Create;
     try
       if IsOriginalInstance(AData) then
-        LJSONValue := (AParam.JSONValue as TJSONObject).GetValue('$value')
+      begin
+        LJSONValue := (AParam.JSONValue as TJSONObject).GetValue('$value');
+        if not Assigned(LJSONValue) then
+          raise ENeonException.Create(SNeonErrorStreamableNoValue);
+      end
       else
         LJSONValue := AParam.JSONValue;
 
@@ -2142,7 +2162,11 @@ end;
 
 function TNeonDeserializerJSON.JSONToArray(AJSON: TJSONValue; AType: TRttiType): TValue;
 begin
-  Result := ReadDataMember(AJSON, AType, TValue.Empty);
+  // Seed the read with a zeroed value of the target type, as JSONToTValue
+  // does: a raw TValue.Empty has no TypeInfo, so ReadArray can neither
+  // allocate a dynamic array (DynArraySetLength needs the element type)
+  // nor index a static one
+  Result := ReadDataMember(AJSON, AType, TValue.Empty.Cast(AType.Handle));
 end;
 
 procedure TNeonDeserializerJSON.JSONToObject(AObject: TObject; AJSON: TJSONValue);
@@ -2233,6 +2257,8 @@ end;
 class function TNeon.JSONToObject(AType: TRttiType; AJSON: TJSONValue; AConfig: INeonConfiguration): TObject;
 begin
   Result := TRttiUtils.CreateInstance(AType);
+  if not Assigned(Result) then
+    raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [AType.Name]);
   JSONToObject(Result, AJSON, AConfig);
 end;
 
@@ -2485,6 +2511,8 @@ begin
   LJSON := TNeon.ParseJSON(AJSON, False, True);
   try
     Result := TRttiUtils.CreateInstance(AType);
+    if not Assigned(Result) then
+      raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [AType.Name]);
     JSONToObject(Result, LJSON, AConfig);
   finally
     LJSON.Free;

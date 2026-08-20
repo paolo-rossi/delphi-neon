@@ -1226,7 +1226,7 @@ class function TCaseAlgorithm.PascalToKebab(const AString: string): string;
 begin
   Result := LowerCase(
     TRegEx.Replace(AString,
-    '([A-Z][a-z\d]+)(?=([A-Z][A-Z\a-z\d]+))', '$1-', [])
+    '([A-Z][a-z\d]+)(?=([A-Z][A-Za-z\d]+))', '$1-', [])
   );
 end;
 
@@ -1234,7 +1234,7 @@ class function TCaseAlgorithm.PascalToSnake(const AString: string): string;
 begin
   Result := LowerCase(
     TRegEx.Replace(AString,
-    '([A-Z][a-z\d]+)(?=([A-Z][A-Z\a-z\d]+))', '$1_', [])
+    '([A-Z][a-z\d]+)(?=([A-Z][A-Za-z\d]+))', '$1_', [])
   );
 end;
 
@@ -1243,7 +1243,7 @@ class function TCaseAlgorithm.PascalToScreamingSnake(const AString: string):
 begin
   Result := UpperCase(
     TRegEx.Replace(AString,
-    '([A-Z][a-z\d]+)(?=([A-Z][A-Z\a-z\d]+))', '$1_', [])
+    '([A-Z][a-z\d]+)(?=([A-Z][A-Za-z\d]+))', '$1_', [])
   );
 end;
 
