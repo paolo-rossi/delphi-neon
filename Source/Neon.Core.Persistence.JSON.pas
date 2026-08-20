@@ -597,6 +597,7 @@ function TNeonSerializerJSON.WriteArray(const AValue: TValue; ANeonObject: TNeon
 var
   LIndex, LCount: Integer;
   LArray: TJSONArray;
+  LJSONValue: TJSONValue;
 begin
   LCount := AValue.GetArrayLength;
   if ANeonObject.NeonInclude.Value = IncludeIf.NotEmpty then
@@ -605,7 +606,15 @@ begin
 
   LArray := TJSONArray.Create;
   for LIndex := 0 to LCount - 1 do
-    LArray.AddElement(WriteDataMember(AValue.GetArrayElement(LIndex)));
+  begin
+    LJSONValue := WriteDataMember(AValue.GetArrayElement(LIndex));
+    // A nil element (e.g. a nil object under IncludeIf.NotNull) must become
+    // JSON null: adding a nil TJSONValue corrupts the array (and raises on
+    // newer RTLs), and skipping it would shift every following index
+    if not Assigned(LJSONValue) then
+      LJSONValue := TJSONNull.Create;
+    LArray.AddElement(LJSONValue);
+  end;
 
   Result := LArray;
 end;
@@ -1025,6 +1034,9 @@ begin
     while AList.MoveNext do
     begin
       LJSONValue := WriteDataMember(AList.Current);
+      // Nil elements become JSON null (same reasoning as WriteArray)
+      if not Assigned(LJSONValue) then
+        LJSONValue := TJSONNull.Create;
       (Result as TJSONArray).AddElement(LJSONValue);
     end;
   finally
@@ -1091,6 +1103,10 @@ begin
         LJSONName := WriteDataMember(LKeyValue);
         try
           LJSONValue := WriteDataMember(LValValue);
+          // A nil value (nil object, empty value under NotEmpty/NotDefault)
+          // becomes JSON null so the pair keeps a valid, printable value
+          if not Assigned(LJSONValue) then
+            LJSONValue := TJSONNull.Create;
 
           if LJSONName is TJSONString then
             LName := (LJSONName as TJSONString).Value

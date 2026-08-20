@@ -1,4 +1,4 @@
-﻿{******************************************************************************}
+{******************************************************************************}
 {                                                                              }
 {  Neon: JSON Serialization Library for Delphi                                 }
 {  Copyright (c) 2018 Paolo Rossi                                              }
@@ -56,6 +56,9 @@ type
     [TestCase('TestPersonNil', 'TestPersonNil')]
     procedure TestPersonNil(const AMethod: string);
 
+    [Test]
+    procedure TestNilArrayElementsSerializeAsNull;
+
   end;
 
 implementation
@@ -112,6 +115,17 @@ procedure TTestReferenceTypes.TestPersonNil(const AMethod: string);
 begin
   Assert.AreEqual('{}',
     TTestUtils.SerializeObject(nil, TNeonConfiguration.Default));
+end;
+
+procedure TTestReferenceTypes.TestNilArrayElementsSerializeAsNull;
+var
+  LArray: TArray<TObject>;
+begin
+  // A nil element must serialize as JSON null, not as a nil TJSONValue
+  // (which corrupts the array or raises on newer RTLs) - review finding A1
+  SetLength(LArray, 3);
+  Assert.AreEqual('[null,null,null]',
+    TTestUtils.SerializeValue(TValue.From<TArray<TObject>>(LArray)));
 end;
 
 procedure TTestReferenceTypes.TestPersonPretty(const AMethod: string);
