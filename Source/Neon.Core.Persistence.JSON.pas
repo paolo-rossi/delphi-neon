@@ -1204,30 +1204,57 @@ function TNeonSerializerJSON.WriteSet(const AValue: TValue; ANeonObject: TNeonRt
 var
   LArray: TJSONArray;
   LElementType: PPTypeInfo;
-  LIntegerValue: TIntegerSet;
+  LEnumTypeData: PTypeData;
+  LSetData: array[0..31] of Byte;
+  LSize: Integer;
   LIndex: Integer;
+  LOrdinal: Integer;
   LJSONValue: TJSONValue;
   LValue: TValue;
 begin
   LArray := TJSONArray.Create;
 
-  Integer(LIntegerValue) := Integer(AValue.GetReferenceToRawData^);
-
   LElementType := GetTypeData(AValue.TypeInfo)^.CompType;
   if LElementType <> nil then
   begin
-    for LIndex := 0 to SizeOf(Integer) * 8 - 1 do
-      if LIndex in LIntegerValue then
+    LEnumTypeData := GetTypeData(LElementType^);
+
+    // A set is stored as the smallest of 1/2/4/8/16/32 bytes that can hold
+    // the enum range; iterate every bit so sets with more than 32 elements
+    // (and non-zero-based enums) are not truncated
+    LSize := ((LEnumTypeData.MaxValue - LEnumTypeData.MinValue + 1) + 7) div 8;
+    if LSize <= 1 then LSize := 1
+    else if LSize <= 2 then LSize := 2
+    else if LSize <= 4 then LSize := 4
+    else if LSize <= 8 then LSize := 8
+    else if LSize <= 16 then LSize := 16
+    else LSize := 32;
+
+    FillChar(LSetData, SizeOf(LSetData), 0);
+    Move(AValue.GetReferenceToRawData^, LSetData, LSize);
+
+    for LIndex := 0 to LSize * 8 - 1 do
+      if (LSetData[LIndex div 8] and (1 shl (LIndex mod 8))) <> 0 then
       begin
-        TValue.Make(LIndex, LElementType^, LValue);
-        LJSONValue := WriteDataMember(LValue);
-        LArray.AddElement(LJSONValue);
+        LOrdinal := LEnumTypeData.MinValue + LIndex;
+        // Bits beyond the enum range are not valid elements
+        if (LOrdinal >= LEnumTypeData.MinValue) and (LOrdinal <= LEnumTypeData.MaxValue) then
+        begin
+          TValue.Make(LOrdinal, LElementType^, LValue);
+          LJSONValue := WriteDataMember(LValue);
+          LArray.AddElement(LJSONValue);
+        end;
       end;
   end
   else
   begin
-    for LIndex := 0 to SizeOf(Integer) * 8 - 1 do
-      if LIndex in LIntegerValue then
+    // No RTTI for the element type: fall back to raw 32-bit ordinals
+    FillChar(LSetData, SizeOf(LSetData), 0);
+    LSize := SizeOf(Integer);
+    Move(AValue.GetReferenceToRawData^, LSetData, LSize);
+
+    for LIndex := 0 to LSize * 8 - 1 do
+      if (LSetData[LIndex div 8] and (1 shl (LIndex mod 8))) <> 0 then
       begin
         LValue := LIndex;
         LJSONValue := WriteDataMember(LValue);
@@ -1949,19 +1976,37 @@ var
   LJSONArray: TJSONArray;
   LValue: TValue;
   LEnumType: TRttiType;
-  LSet: Integer;
+  LTypeData: PTypeData;
+  LSetData: array[0..31] of Byte;
+  LSize: Integer;
+  LOrdinal: Integer;
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.Empty);
 
   LEnumType := TRttiUtils.GetSetElementType(AParam.RttiType);
+  if not Assigned(LEnumType) then
+    raise ENeonException.Create(SNeonErrorEnumInvalid);
 
   if AParam.JSONValue is TJSONArray then
     LJSONArray := AParam.JSONValue as TJSONArray
   else
     raise ENeonException.Create(SNeonErrorArrExpected);
 
-  LSet := 0;
+  LTypeData := GetTypeData(LEnumType.Handle);
+
+  // Mirror the compiler's storage: the smallest of 1/2/4/8/16/32 bytes that
+  // can hold the enum range (sets with more than 32 elements are supported)
+  LSize := ((LTypeData.MaxValue - LTypeData.MinValue + 1) + 7) div 8;
+  if LSize <= 1 then LSize := 1
+  else if LSize <= 2 then LSize := 2
+  else if LSize <= 4 then LSize := 4
+  else if LSize <= 8 then LSize := 8
+  else if LSize <= 16 then LSize := 16
+  else LSize := 32;
+
+  FillChar(LSetData, SizeOf(LSetData), 0);
+
   for LJSONValue in LJSONArray do
   begin
     if LJSONValue is TJSONNull then
@@ -1974,9 +2019,15 @@ begin
     else if LJSONValue is TJSONString then
       LValue := ReadDataMember(LJSONValue, LEnumType, TValue.Empty);
 
-    Include(TIntegerSet(LSet), LValue.AsOrdinal);
+    LOrdinal := LValue.AsOrdinal;
+    if (LOrdinal < LTypeData.MinValue) or (LOrdinal > LTypeData.MaxValue) then
+      raise ENeonException.Create(SNeonErrorEnumInvalid);
+
+    LOrdinal := LOrdinal - LTypeData.MinValue;
+    LSetData[LOrdinal div 8] := LSetData[LOrdinal div 8] or (1 shl (LOrdinal mod 8));
   end;
-  TValue.Make(LSet, AParam.RttiType.Handle, Result);
+
+  TValue.Make(@LSetData, AParam.RttiType.Handle, Result);
 end;
 
 function TNeonDeserializerJSON.ReadStreamable(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;

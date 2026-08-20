@@ -122,7 +122,7 @@ var
   LArray: TArray<TObject>;
 begin
   // A nil element must serialize as JSON null, not as a nil TJSONValue
-  // (which corrupts the array or raises on newer RTLs) - review finding A1
+  // (which corrupts the array or raises on newer RTLs)
   SetLength(LArray, 3);
   Assert.AreEqual('[null,null,null]',
     TTestUtils.SerializeValue(TValue.From<TArray<TObject>>(LArray)));

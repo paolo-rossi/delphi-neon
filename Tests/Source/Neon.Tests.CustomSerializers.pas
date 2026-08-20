@@ -190,7 +190,7 @@ begin
   LConfig.GetSerializers.RegisterSerializer(TStreamSerializer);
   LHolder := TStreamHolder.Create;
   try
-    // A nil object member never reaches the custom serializer (review A2):
+    // A nil object member never reaches the custom serializer:
     // under the default IncludeIf.NotNull it is omitted instead of raising
     Assert.AreEqual('{}', TTestUtils.SerializeObject(LHolder, LConfig));
   finally
@@ -235,7 +235,7 @@ begin
     try
       // With RaiseExceptions, an error in a member of a nested object must
       // propagate out of the container writer instead of being swallowed
-      // at the WriteObject boundary (review finding A3)
+      // at the WriteObject boundary
       Assert.WillRaise(
         procedure begin TTestUtils.SerializeObject(LHolder, LConfig) end,
         ENeonException);
