@@ -314,6 +314,61 @@ type
     property Coords: TSchemaCoords read FCoords write FCoords;
   end;
 
+  // [NeonUnwrapped] on an interface member: the serializer flattens whatever
+  // object the implementing instance produced, so the schema must not nest a
+  // "Service" property (a required one would reject the flat JSON Neon writes)
+  ISchemaUnwrappedService = interface(IInvokable)
+    ['{3A7B4C5D-6E7F-4A8B-9C0D-1E2F3A4B5C6D}']
+  end;
+
+  TSchemaUnwrappedService = class(TInterfacedObject, ISchemaUnwrappedService)
+  private
+    FEndpoint: string;
+  public
+    property Endpoint: string read FEndpoint write FEndpoint;
+  end;
+
+  TSchemaUnwrappedClient = class
+  private
+    FName: string;
+    FService: ISchemaUnwrappedService;
+  public
+    property Name: string read FName write FName;
+
+    [NeonUnwrapped]
+    property Service: ISchemaUnwrappedService read FService write FService;
+  end;
+
+  // [NeonUnwrapped] on a map member: the serializer flattens the map's
+  // key/value pairs into the parent, so the schema must widen the parent's
+  // "additionalProperties" instead of nesting an "Attrs" property
+  TSchemaUnwrappedBag = class
+  private
+    FTitle: string;
+    FAttrs: TDictionary<string, Integer>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Title: string read FTitle write FTitle;
+
+    [NeonUnwrapped]
+    property Attrs: TDictionary<string, Integer> read FAttrs write FAttrs;
+  end;
+
+  // [NeonUnwrapped] on a member whose type is hoisted into the definitions (it
+  // closes a recursion cycle): the member schema is a bare $ref, so the parent
+  // must satisfy the referenced schema via allOf
+  TSchemaUnwrappedNode = class
+  private
+    FValue: string;
+    FChild: TSchemaUnwrappedNode;
+  public
+    property Value: string read FValue write FValue;
+
+    [NeonUnwrapped]
+    property Child: TSchemaUnwrappedNode read FChild write FChild;
+  end;
+
   // A TJSONValue descendant must be described like the class it derives from,
   // not dropped for failing an exact class match. TJSONString is one of the two
   // non-sealed ones, and it doubles as a check that the TJSONNumber/TJSONString
@@ -363,6 +418,24 @@ type
 
     [Test]
     procedure TestUnwrappedMemberCarriesItsRequiredNames;
+
+    [Test]
+    procedure TestUnwrappedInterfaceIsNotNested;
+
+    [Test]
+    procedure TestUnwrappedInterfaceValidatesFlattenedJSON;
+
+    [Test]
+    procedure TestUnwrappedMapWidensAdditionalProperties;
+
+    [Test]
+    procedure TestUnwrappedMapValidatesFlattenedJSON;
+
+    [Test]
+    procedure TestUnwrappedRecursiveMemberIsAllOfRef;
+
+    [Test]
+    procedure TestUnwrappedRecursiveMemberValidatesFlattenedJSON;
 
     [Test]
     [TestCase('null is allowed', '{"Tint":null}|True', '|')]
@@ -597,6 +670,20 @@ end;
 
 procedure TSchemaBlob.SaveToStream(AStream: TStream);
 begin
+end;
+
+{ TSchemaUnwrappedBag }
+
+constructor TSchemaUnwrappedBag.Create;
+begin
+  inherited;
+  FAttrs := TDictionary<string, Integer>.Create;
+end;
+
+destructor TSchemaUnwrappedBag.Destroy;
+begin
+  FAttrs.Free;
+  inherited;
 end;
 
 { TTestJsonSchemaEdgeCases }
@@ -912,6 +999,137 @@ begin
   Assert.IsNotNull(LRequired);
   Assert.AreEqual(1, LRequired.Count);
   Assert.AreEqual('Lat', LRequired.Items[0].Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestUnwrappedInterfaceIsNotNested;
+var
+  LProperties: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaUnwrappedClient);
+  LProperties := FSchema.GetValue('properties') as TJSONObject;
+
+  // The serializer flattens the implementing object's members, so the schema
+  // must not expect a "Service" property (a required one would reject the JSON
+  // the serializer actually produces)
+  Assert.IsNull(LProperties.GetValue('Service'));
+  Assert.IsNotNull(LProperties.GetValue('Name'));
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestUnwrappedInterfaceValidatesFlattenedJSON;
+var
+  LClient: TSchemaUnwrappedClient;
+  LService: TSchemaUnwrappedService;
+  LJSON: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaUnwrappedClient);
+
+  LClient := TSchemaUnwrappedClient.Create;
+  try
+    LService := TSchemaUnwrappedService.Create;
+    LService.Endpoint := 'https://example.test/api';
+    LClient.Service := LService; // the interface reference owns the instance
+
+    LJSON := TNeon.ObjectToJSON(LClient);
+    try
+      Assert.IsNotNull(LJSON.GetValue('Endpoint'),
+        'the interface''s members must be flattened into the parent object');
+      Assert.IsTrue(TNeon.ValidateJSON(LJSON, FSchema).IsValid,
+        'the schema rejects what the serializer wrote: ' + LJSON.ToJSON);
+    finally
+      LJSON.Free;
+    end;
+  finally
+    LClient.Free;
+  end;
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestUnwrappedMapWidensAdditionalProperties;
+var
+  LAdditional: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaUnwrappedBag);
+
+  // The map's key/value pairs are flattened into the parent, so there must be
+  // no "Attrs" property and the parent must admit the map's value schema for
+  // properties beyond its own
+  Assert.IsNull((FSchema.GetValue('properties') as TJSONObject).GetValue('Attrs'));
+
+  LAdditional := FSchema.GetValue('additionalProperties') as TJSONObject;
+  Assert.IsNotNull(LAdditional,
+    'the parent must widen additionalProperties to the map''s value schema');
+  Assert.AreEqual('integer', LAdditional.GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestUnwrappedMapValidatesFlattenedJSON;
+var
+  LBag: TSchemaUnwrappedBag;
+  LJSON: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaUnwrappedBag);
+
+  LBag := TSchemaUnwrappedBag.Create;
+  try
+    LBag.Title := 'probe';
+    LBag.Attrs.Add('k', 1);
+
+    LJSON := TNeon.ObjectToJSON(LBag);
+    try
+      Assert.IsNotNull(LJSON.GetValue('k'),
+        'the map pairs must be flattened into the parent');
+      Assert.IsTrue(TNeon.ValidateJSON(LJSON, FSchema).IsValid,
+        'the schema rejects what the serializer wrote: ' + LJSON.ToJSON);
+    finally
+      LJSON.Free;
+    end;
+  finally
+    LBag.Free;
+  end;
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestUnwrappedRecursiveMemberIsAllOfRef;
+var
+  LDefs, LNode, LAllOf: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaUnwrappedNode);
+
+  // The type closes a recursion cycle through the unwrapped member, so it is
+  // hoisted to the definitions and the parent must satisfy it via allOf
+  Assert.AreEqual('#/$defs/TSchemaUnwrappedNode', FSchema.GetValue('$ref').Value);
+
+  LDefs := FSchema.GetValue('$defs') as TJSONObject;
+  LNode := LDefs.GetValue('TSchemaUnwrappedNode') as TJSONObject;
+
+  Assert.IsNull((LNode.GetValue('properties') as TJSONObject).GetValue('Child'),
+    'the unwrapped recursive member must not appear as a property');
+
+  LAllOf := (LNode.GetValue('allOf') as TJSONArray).Items[0] as TJSONObject;
+  Assert.IsNotNull(LAllOf);
+  Assert.AreEqual('#/$defs/TSchemaUnwrappedNode', LAllOf.GetValue('$ref').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestUnwrappedRecursiveMemberValidatesFlattenedJSON;
+var
+  LNode: TSchemaUnwrappedNode;
+  LJSON: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaUnwrappedNode);
+
+  LNode := TSchemaUnwrappedNode.Create;
+  LNode.Value := 'a';
+  LNode.Child := TSchemaUnwrappedNode.Create;
+  LNode.Child.Value := 'b';
+  try
+    LJSON := TNeon.ObjectToJSON(LNode);
+    try
+      Assert.IsTrue(TNeon.ValidateJSON(LJSON, FSchema).IsValid,
+        'the schema rejects what the serializer wrote: ' + LJSON.ToJSON);
+    finally
+      LJSON.Free;
+    end;
+  finally
+    LNode.Child.Free;
+    LNode.Free;
+  end;
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestJSONValueDescendantIsDescribed;
