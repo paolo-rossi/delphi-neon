@@ -344,10 +344,10 @@ type
   ///   only; a $ref to another document is unsupported. allOf/anyOf/oneOf/not,
   ///   if/then/else and dependentRequired/dependentSchemas are implemented (as
   ///   is Draft-07's "dependencies", which merges the last two);
-  ///   unevaluatedProperties/unevaluatedItems are not implemented, and rather
-  ///   than silently accepting instances the schema rejects, the constructor
-  ///   refuses any schema that uses them (ENeonException). format is
-  ///   annotation-only (never validated) in v1.
+  ///   unevaluatedProperties/unevaluatedItems and $dynamicRef/$dynamicAnchor are
+  ///   not implemented, and rather than silently accepting instances the schema
+  ///   rejects, the constructor refuses any schema that uses them
+  ///   (ENeonException). format is annotation-only (never validated) in v1.
   /// </remarks>
   TJSONSchemaValidator = class
   private
@@ -1474,6 +1474,18 @@ begin
 
   if Assigned(LObj.GetValue('unevaluatedItems')) then
     raise ENeonException.CreateFmt(SNeonErrorSchemaKeywordUnsupportedF1, ['unevaluatedItems']);
+
+  // $dynamicRef/$dynamicAnchor are the 2020-12 dynamic-scope machinery: a
+  // $dynamicRef must resolve against the dynamic scope (the chain of schemas
+  // currently being evaluated), not just its static target. Static-only
+  // resolution would give wrong answers for the recursive-schema idiom they
+  // exist for, so - as with the unevaluated* keywords - any use is refused up
+  // front rather than silently mis-evaluated
+  if Assigned(LObj.GetValue('$dynamicRef')) then
+    raise ENeonException.CreateFmt(SNeonErrorSchemaKeywordUnsupportedF1, ['$dynamicRef']);
+
+  if Assigned(LObj.GetValue('$dynamicAnchor')) then
+    raise ENeonException.CreateFmt(SNeonErrorSchemaKeywordUnsupportedF1, ['$dynamicAnchor']);
 
   LAnchor := LObj.GetValue('$anchor');
   if Assigned(LAnchor) and (LAnchor is TJSONString) then

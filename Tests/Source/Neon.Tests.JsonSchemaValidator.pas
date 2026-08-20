@@ -245,6 +245,17 @@ type
     procedure TestUnevaluatedKeywordsAreRefused(const ASchemaJSON, AInstanceJSON: string);
 
     [Test]
+    [TestCase('root $dynamicRef refused',
+      '{"$dynamicRef":"#node"}|{}', '|')]
+    [TestCase('root $dynamicAnchor refused',
+      '{"$dynamicAnchor":"node"}|{}', '|')]
+    [TestCase('$dynamicRef inside $defs refused',
+      '{"$defs":{"a":{"$dynamicRef":"#/$defs/a"}}}|42', '|')]
+    [TestCase('$dynamicRef hidden in an untaken then branch is still refused',
+      '{"if":{"type":"string"},"then":{"$dynamicRef":"#node"}}|5', '|')]
+    procedure TestDynamicRefKeywordsAreRefused(const ASchemaJSON, AInstanceJSON: string);
+
+    [Test]
     procedure TestAnchorInsideInstanceDataIsNotCollected;
 
     [Test]
@@ -358,6 +369,20 @@ begin
   // silently accepting instances the schema rejects. The last case puts the
   // keyword in a branch no instance would ever run, proving the check happens at
   // construction time, not during validation
+  Assert.WillRaise(
+    procedure
+    begin
+      CheckValid(ASchemaJSON, AInstanceJSON);
+    end,
+    ENeonException);
+end;
+
+procedure TTestJsonSchemaValidator.TestDynamicRefKeywordsAreRefused(const ASchemaJSON, AInstanceJSON: string);
+begin
+  // $dynamicRef/$dynamicAnchor need dynamic-scope resolution, which this
+  // validator does not implement. Static-only evaluation would silently give
+  // wrong answers, so - as with the unevaluated* keywords - any use is refused
+  // up front. The last case proves the check runs at construction time
   Assert.WillRaise(
     procedure
     begin
