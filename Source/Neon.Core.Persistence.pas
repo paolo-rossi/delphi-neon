@@ -1576,20 +1576,16 @@ end;
 procedure TNeonSerializerRegistry.Assign(ARegistry: TNeonSerializerRegistry);
 var
   LInfo: TSerializerInfo;
-  LPair: TPair<PTypeInfo, TCustomSerializer>;
 begin
   for LInfo in ARegistry.FRegistryClass do
     FRegistryClass.Add(LInfo);
 
-  ARegistry.FRegistryCacheLock.Enter;
-  FRegistryCacheLock.Enter;
-  try
-    for LPair in ARegistry.FRegistryCache do
-      FRegistryCache.Add(LPair.Key, LPair.Value);
-  finally
-    FRegistryCacheLock.Leave;
-    ARegistry.FRegistryCacheLock.Leave
-  end;
+  // The instance cache is derived data: entries are recreated lazily from
+  // the registered serializer classes. Sharing cached instances between two
+  // registries would double-free them (both caches own their values), and
+  // merging the class list can change which serializer matches a type, so
+  // the target cache is dropped and rebuilt on demand.
+  ClearCache;
 end;
 
 procedure TNeonSerializerRegistry.Clear;

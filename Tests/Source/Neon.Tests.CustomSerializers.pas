@@ -84,6 +84,9 @@ type
     [Test]
     procedure TestNestedErrorSwallowedByDefault;
 
+    [Test]
+    procedure TestAssignDoesNotShareInstances;
+
   end;
 
 implementation
@@ -264,6 +267,32 @@ begin
     end;
   finally
     LHolder.Free;
+  end;
+end;
+
+procedure TTestCustomSerializers.TestAssignDoesNotShareInstances;
+var
+  LSource, LTarget: TNeonSerializerRegistry;
+  LSourceSerializer, LTargetSerializer: TCustomSerializer;
+begin
+  LSource := TNeonSerializerRegistry.Create;
+  LTarget := TNeonSerializerRegistry.Create;
+  try
+    LSource.RegisterSerializer(TGUIDSerializer);
+    LTarget.Assign(LSource);
+
+    // Each registry owns its own cached serializer instances; sharing them
+    // between two value-owning caches would free the same instance twice
+    LSourceSerializer := LSource.GetSerializer(TGUID);
+    LTargetSerializer := LTarget.GetSerializer(TGUID);
+    Assert.IsFalse(LSourceSerializer = LTargetSerializer);
+
+    // The merged class list still resolves types registered in the source
+    Assert.IsNotNull(LTarget.GetSerializer(TGUID));
+    Assert.AreEqual(TGUIDSerializer, LTargetSerializer.ClassType);
+  finally
+    LTarget.Free;
+    LSource.Free;
   end;
 end;
 
