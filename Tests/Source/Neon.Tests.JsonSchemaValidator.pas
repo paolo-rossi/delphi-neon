@@ -292,6 +292,12 @@ type
 
     [Test]
     procedure TestErrorPathPointsToNestedProperty;
+
+    [Test]
+    procedure TestErrorPathEscapesPointerTokens;
+
+    [Test]
+    procedure TestDuplicateAnchorIsRefused;
   end;
 
 implementation
@@ -500,6 +506,46 @@ begin
     LInstance.Free;
     LSchema.Free;
   end;
+end;
+
+procedure TTestJsonSchemaValidator.TestErrorPathEscapesPointerTokens;
+var
+  LSchema, LInstance: TJSONValue;
+  LValidator: TJSONSchemaValidator;
+  LResult: TJSONValidationResult;
+begin
+  // Property names containing "/" or "~" must be escaped in the reported
+  // instance path, or the pointer becomes ambiguous
+  LSchema := TJSONObject.ParseJSONValue('{"properties":{"a/b":{"type":"integer"}}}');
+  LInstance := TJSONObject.ParseJSONValue('{"a/b":"x"}');
+  try
+    LValidator := TJSONSchemaValidator.Create(LSchema);
+    try
+      LResult := LValidator.Validate(LInstance);
+      Assert.IsFalse(LResult.IsValid);
+      Assert.AreEqual(1, Length(LResult.Errors));
+      Assert.AreEqual('/a~1b', LResult.Errors[0].Path);
+    finally
+      LValidator.Free;
+    end;
+  finally
+    LInstance.Free;
+    LSchema.Free;
+  end;
+end;
+
+procedure TTestJsonSchemaValidator.TestDuplicateAnchorIsRefused;
+begin
+  // The 2020-12 meta-schema requires $anchor names to be unique within a
+  // document; a duplicate must not silently shadow the first
+  Assert.WillRaise(
+    procedure
+    begin
+      CheckValid(
+        '{"$defs":{"a":{"$anchor":"dup","type":"integer"},"b":{"$anchor":"dup","type":"string"}}}',
+        '{"x":1}');
+    end,
+    ENeonException);
 end;
 
 initialization

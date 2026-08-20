@@ -410,6 +410,29 @@ type
     property Tags: TArray<string> read FTags write FTags;
   end;
 
+  // A static array has a fixed length, which the schema states exactly via
+  // minItems/maxItems
+  TSchemaGridData = array[0..2] of Integer;
+
+  TSchemaGrid = class
+  private
+    FData: TSchemaGridData;
+  public
+    property Data: TSchemaGridData read FData write FData;
+  end;
+
+  // A generic self-referencing type: the definition name ("TSchemaBox<...>")
+  // must be percent-encoded in the $ref because "<"/">" are not valid in a
+  // URI fragment, and the validator must decode it back
+  TSchemaBox<T> = class
+  private
+    FValue: string;
+    FNext: TSchemaBox<T>;
+  public
+    property Value: string read FValue write FValue;
+    property Next: TSchemaBox<T> read FNext write FNext;
+  end;
+
   // A TJSONValue descendant must be described like the class it derives from,
   // not dropped for failing an exact class match. TJSONString is one of the two
   // non-sealed ones, and it doubles as a check that the TJSONNumber/TJSONString
@@ -581,6 +604,18 @@ type
 
     [Test]
     procedure TestNonRecursiveTypeHasNoDefs;
+
+    [Test]
+    procedure TestStaticArrayHasExactBounds;
+
+    [Test]
+    procedure TestClosedSchemaOption;
+
+    [Test]
+    procedure TestGenericDefNameIsPercentEncoded;
+
+    [Test]
+    procedure TestGenericDefRefResolvesAndValidates;
 
     [Test]
     procedure TestMutuallyRecursiveTypesValidate;
@@ -842,6 +877,10 @@ begin
   Assert.IsNotNull(LEnum);
   Assert.AreEqual(3, LEnum.Count);
   Assert.AreEqual('Red', LEnum.Items[0].Value);
+
+  // A set is an array of distinct members by construction
+  Assert.IsTrue((LColors.GetValue('uniqueItems') as TJSONBool).AsBoolean,
+    'a set serializes to a unique array');
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestEnumAsIntProducesIntegerSchema;
@@ -1444,7 +1483,12 @@ begin
 
   Assert.IsNotNull(FSchema.GetValue('definitions'));
   Assert.IsNull(FSchema.GetValue('$defs'));
-  Assert.AreEqual('#/definitions/TSchemaTreeNode', FSchema.GetValue('$ref').Value);
+
+  // Draft-07 "$ref" replaces its sibling keywords, so the reference is wrapped
+  // in "allOf" to keep the definitions visible to a strict validator
+  Assert.IsNull(FSchema.GetValue('$ref'), 'the root must not carry a bare $ref');
+  Assert.AreEqual('#/definitions/TSchemaTreeNode',
+    ((FSchema.GetValue('allOf') as TJSONArray).Items[0] as TJSONObject).GetValue('$ref').Value);
 end;
 
 procedure TTestJsonSchemaConstraints.TestMutuallyRecursiveTypesValidate;
@@ -1498,6 +1542,56 @@ begin
   Assert.IsNull(FSchema.GetValue('$defs'));
   Assert.IsNull(FSchema.GetValue('$ref'));
   Assert.AreEqual('object', FSchema.GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestStaticArrayHasExactBounds;
+var
+  LData: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid);
+
+  LData := (FSchema.GetValue('properties') as TJSONObject).GetValue('Data') as TJSONObject;
+  Assert.AreEqual(3, (LData.GetValue('minItems') as TJSONNumber).AsInt);
+  Assert.AreEqual(3, (LData.GetValue('maxItems') as TJSONNumber).AsInt);
+end;
+
+procedure TTestJsonSchemaConstraints.TestClosedSchemaOption;
+begin
+  // Default: open, matching the deserializer which ignores unknown properties
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid);
+  Assert.IsNull(FSchema.GetValue('additionalProperties'));
+
+  FSchema.Free;
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid,
+    TNeonConfiguration.Default.SetClosedSchema(True));
+  Assert.IsFalse((FSchema.GetValue('additionalProperties') as TJSONBool).AsBoolean,
+    'SetClosedSchema(True) must emit additionalProperties: false');
+end;
+
+procedure TTestJsonSchemaConstraints.TestGenericDefNameIsPercentEncoded;
+var
+  LRef: string;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBox<string>);
+
+  LRef := FSchema.GetValue('$ref').Value;
+  Assert.IsTrue(Pos('<', LRef) = 0, 'generic def names must be percent-encoded in the ref');
+  Assert.IsTrue(Pos('%3C', LRef) > 0, 'the "<" must appear as %3C');
+end;
+
+procedure TTestJsonSchemaConstraints.TestGenericDefRefResolvesAndValidates;
+var
+  LInstance: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBox<string>);
+
+  LInstance := TJSONObject.ParseJSONValue('{"Value":"a","Next":{"Value":"b"}}');
+  try
+    Assert.IsTrue(TNeon.ValidateJSON(LInstance, FSchema).IsValid,
+      'the validator must decode the percent-encoded $ref and accept the recursive instance');
+  finally
+    LInstance.Free;
+  end;
 end;
 
 initialization

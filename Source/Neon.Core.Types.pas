@@ -81,6 +81,7 @@ resourcestring
   SNeonErrorSchemaRefNotFoundF1 = 'Could not resolve $ref [%s]';
   SNeonErrorSchemaRefUnsupportedF1 = 'Unsupported $ref [%s]: only local (same-document) refs are supported';
   SNeonErrorSchemaKeywordUnsupportedF1 = 'Unsupported keyword [%s]: refusing to validate (keyword not implemented)';
+  SNeonErrorSchemaDuplicateAnchorF1 = 'Duplicate $anchor [%s] in the same document';
 
   SNeonErrorGenNoDocument = 'Entity generator: no JSON document, call Parse first';
   SNeonErrorGenNoSample = 'Entity generator: the JSON sample is empty';

@@ -537,10 +537,31 @@ begin
   Result := LName;
 end;
 
+// Percent-encodes a JSON-Pointer token for use inside a URI fragment: Delphi
+// generic type names ("TObjectList<TSchemaTreeNode>") contain "<", ">", "," and
+// spaces, none of which may appear raw in a fragment. The validator's
+// NavigatePointer decodes them back before applying ~0/~1 unescaping
+function EncodePointerToken(const AToken: string): string;
+var
+  LIndex: Integer;
+begin
+  Result := '';
+  for LIndex := 1 to AToken.Length do
+  begin
+    // RFC 3986 unreserved characters pass through, everything else is encoded
+    case AToken[LIndex] of
+      'A'..'Z', 'a'..'z', '0'..'9', '-', '.', '_', '~':
+        Result := Result + AToken[LIndex];
+    else
+      Result := Result + '%' + IntToHex(Ord(AToken[LIndex]), 2);
+    end;
+  end;
+end;
+
 function TNeonSchemaGenerator.ReferenceTo(const ADefName: string): TJSONObject;
 begin
   Result := TJSONObject.Create
-    .AddPair('$ref', '#/' + DefsKeyword + '/' + ADefName);
+    .AddPair('$ref', '#/' + DefsKeyword + '/' + EncodePointerToken(ADefName));
 end;
 
 function TNeonSchemaGenerator.GetPrimaryJSONType(AJSON: TJSONObject): string;
@@ -756,6 +777,8 @@ end;
 class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
 var
   LGenerator: TNeonSchemaGenerator;
+  LRefPair: TJSONPair;
+  LAllOf: TJSONArray;
 begin
   LGenerator := TNeonSchemaGenerator.Create(AConfig);
   try
@@ -776,6 +799,24 @@ begin
 
       if (AVersion <> TNeonJSchemaVersion.None) then
         Result.AddPair('$schema', SchemaURIFor(AVersion));
+
+      // Draft-07 nuance: "$ref" replaces its sibling keywords in the same
+      // schema object, so a recursive root that is nothing but
+      // {"$ref": ..., "definitions": {...}} would be mis-read by a strict
+      // Draft-07 validator (the definitions sibling is ignored). Wrapping the
+      // reference in "allOf" keeps the definitions visible:
+      // {"definitions": ..., "allOf": [{"$ref": ...}]}. (2020-12 applies
+      // siblings of "$ref", so the restructure is Draft-07-only.)
+      if (AVersion = TNeonJSchemaVersion.Draft07)
+        and Assigned(Result.GetValue('$ref'))
+        and Assigned(Result.GetValue(LGenerator.DefsKeyword)) then
+      begin
+        LRefPair := Result.RemovePair('$ref');
+        LAllOf := TJSONArray.Create;
+        LAllOf.AddElement(TJSONObject.Create.AddPair('$ref', LRefPair.JsonValue.Clone as TJSONValue));
+        Result.AddPair('allOf', LAllOf);
+        LRefPair.Free;
+      end;
     end;
   finally
     LGenerator.Free;
@@ -798,7 +839,14 @@ begin
     LItems := TJSONObject.Create;
   Result := TJSONObject.Create
     .AddPair('type', 'array')
-    .AddPair('items', LItems)
+    .AddPair('items', LItems);
+
+  // A static array has a fixed element count, which the serializer always
+  // writes in full, so the exact bounds are known
+  if (AType as TRttiArrayType).TotalElementCount > 0 then
+    Result
+      .AddPair('minItems', TJSONNumber.Create((AType as TRttiArrayType).TotalElementCount))
+      .AddPair('maxItems', TJSONNumber.Create((AType as TRttiArrayType).TotalElementCount));
 end;
 
 function TNeonSchemaGenerator.WriteBoolean(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
@@ -1353,7 +1401,11 @@ begin
       LAllOf.Free;
 
     if Assigned(LAdditionalProperties) then
-      LSchema.AddPair('additionalProperties', LAdditionalProperties);
+      LSchema.AddPair('additionalProperties', LAdditionalProperties)
+    else if FConfig.ClosedSchema then
+      // [SetClosedSchema(True)]: the object admits exactly the declared
+      // members, nothing more
+      LSchema.AddPair('additionalProperties', TJSONBool.Create(False));
   finally
     FVisitedTypes.Remove(AType.Handle);
   end;
@@ -1426,9 +1478,12 @@ begin
   if not Assigned(LItems) then
     LItems := TJSONObject.Create.AddPair('type', 'integer');
 
+  // A set serializes to one array element per member, each distinct by
+  // construction, so the array is inherently unique
   Result := TJSONObject.Create
     .AddPair('type', 'array')
-    .AddPair('items', LItems);
+    .AddPair('items', LItems)
+    .AddPair('uniqueItems', TJSONBool.Create(True));
 end;
 
 function TNeonSchemaGenerator.WriteStream(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
@@ -1588,12 +1643,22 @@ begin
 
   LAnchor := LObj.GetValue('$anchor');
   if Assigned(LAnchor) and (LAnchor is TJSONString) then
-    FAnchors.AddOrSetValue(LAnchor.Value, LObj);
+  begin
+    // The 2020-12 meta-schema requires $anchor names to be unique within a
+    // document; a duplicate would silently shadow the first, so it is refused
+    if FAnchors.ContainsKey(LAnchor.Value) then
+      raise ENeonException.CreateFmt(SNeonErrorSchemaDuplicateAnchorF1, [LAnchor.Value]);
+    FAnchors.Add(LAnchor.Value, LObj);
+  end;
 
   // Draft-07's equivalent of $anchor: a fragment-only "$id" (e.g. "$id": "#foo")
   LId := LObj.GetValue('$id');
   if Assigned(LId) and (LId is TJSONString) and LId.Value.StartsWith('#') and (LId.Value.Length > 1) then
-    FAnchors.AddOrSetValue(LId.Value.Substring(1), LObj);
+  begin
+    if FAnchors.ContainsKey(LId.Value.Substring(1)) then
+      raise ENeonException.CreateFmt(SNeonErrorSchemaDuplicateAnchorF1, [LId.Value.Substring(1)]);
+    FAnchors.Add(LId.Value.Substring(1), LObj);
+  end;
 
   // Descend only where a subschema can actually live. Walking every member would
   // walk instance data as well - the object under a "const", "default" or
@@ -1610,6 +1675,37 @@ begin
       for LPair in (LValue as TJSONObject) do
         CollectAnchors(LPair.JsonValue);
   end;
+end;
+
+// Decodes the percent-escapes of one URI-fragment pointer segment
+// ("%3C" -> "<"); invalid escapes are left verbatim
+function PercentDecode(const ASegment: string): string;
+var
+  LIndex, LCode: Integer;
+begin
+  Result := '';
+  LIndex := 1;
+  while LIndex <= ASegment.Length do
+  begin
+    if (ASegment[LIndex] = '%') and (LIndex + 2 <= ASegment.Length)
+      and TryStrToInt('$' + Copy(ASegment, LIndex + 1, 2), LCode) then
+    begin
+      Result := Result + Chr(LCode);
+      Inc(LIndex, 3);
+    end
+    else
+    begin
+      Result := Result + ASegment[LIndex];
+      Inc(LIndex);
+    end;
+  end;
+end;
+
+// JSON-Pointer escaping for the instance paths reported in validation errors:
+// "~" and "/" inside a property name would otherwise corrupt the pointer
+function EscapePointerToken(const AToken: string): string;
+begin
+  Result := AToken.Replace('~', '~0', [rfReplaceAll]).Replace('/', '~1', [rfReplaceAll]);
 end;
 
 function TJSONSchemaValidator.NavigatePointer(const APointer: string): TJSONValue;
@@ -1632,7 +1728,8 @@ begin
     if not Assigned(LCurrent) then
       Exit(nil);
 
-    LUnescaped := LSegment.Replace('~1', '/', [rfReplaceAll]).Replace('~0', '~', [rfReplaceAll]);
+    LUnescaped := PercentDecode(LSegment);
+    LUnescaped := LUnescaped.Replace('~1', '/', [rfReplaceAll]).Replace('~0', '~', [rfReplaceAll]);
 
     if LCurrent is TJSONObject then
       LCurrent := (LCurrent as TJSONObject).GetValue(LUnescaped)
@@ -2289,7 +2386,7 @@ begin
         LValue := AInstance.GetValue(LPair.JsonString.Value);
         if Assigned(LValue) then
         begin
-          ValidateNode(LValue, LPair.JsonValue, APath + '/' + LPair.JsonString.Value, AErrors);
+          ValidateNode(LValue, LPair.JsonValue, APath + '/' + EscapePointerToken(LPair.JsonString.Value), AErrors);
           LEvaluated.AddOrSetValue(LPair.JsonString.Value, True);
           if ShouldStop(AErrors, LBaseline) then
             Exit;
@@ -2302,7 +2399,7 @@ begin
         for LInstPair in AInstance do
           if TRegEx.IsMatch(LInstPair.JsonString.Value, LPair.JsonString.Value) then
           begin
-            ValidateNode(LInstPair.JsonValue, LPair.JsonValue, APath + '/' + LInstPair.JsonString.Value, AErrors);
+            ValidateNode(LInstPair.JsonValue, LPair.JsonValue, APath + '/' + EscapePointerToken(LInstPair.JsonString.Value), AErrors);
             LEvaluated.AddOrSetValue(LInstPair.JsonString.Value, True);
             if ShouldStop(AErrors, LBaseline) then
               Exit;
@@ -2313,7 +2410,7 @@ begin
       for LPair in AInstance do
         if not LEvaluated.ContainsKey(LPair.JsonString.Value) then
         begin
-          ValidateNode(LPair.JsonValue, LAdditionalProperties, APath + '/' + LPair.JsonString.Value, AErrors);
+          ValidateNode(LPair.JsonValue, LAdditionalProperties, APath + '/' + EscapePointerToken(LPair.JsonString.Value), AErrors);
           if ShouldStop(AErrors, LBaseline) then
             Exit;
         end;
@@ -2324,7 +2421,7 @@ begin
       begin
         LPropSchema := TJSONString.Create(LPair.JsonString.Value);
         try
-          ValidateNode(LPropSchema, LPropertyNames, APath + '/' + LPair.JsonString.Value, AErrors);
+          ValidateNode(LPropSchema, LPropertyNames, APath + '/' + EscapePointerToken(LPair.JsonString.Value), AErrors);
         finally
           LPropSchema.Free;
         end;

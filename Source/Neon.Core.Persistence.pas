@@ -220,6 +220,7 @@ type
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
+    function SetClosedSchema(AValue: Boolean): INeonConfiguration;
     function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
     function RegisterFactory(AClass: TCustomFactoryClass): INeonConfiguration;
 
@@ -285,6 +286,7 @@ type
     FEnumAsInt: Boolean;
     FAutoCreate: Boolean;
     FStrictTypes: Boolean;
+    FClosedSchema: Boolean;
     FFactoryList: TNeonFactoryRegistry;
     FIgnoreMembers: TArray<string>;
 
@@ -312,6 +314,7 @@ type
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
+    function SetClosedSchema(AValue: Boolean): INeonConfiguration;
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
@@ -340,6 +343,7 @@ type
     property EnumAsInt: Boolean read FEnumAsInt write FEnumAsInt;
     property AutoCreate: Boolean read FAutoCreate write FAutoCreate;
     property StrictTypes: Boolean read FStrictTypes write FStrictTypes;
+    property ClosedSchema: Boolean read FClosedSchema write FClosedSchema;
 
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
     property FactoryList: TNeonFactoryRegistry read FFactoryList write FFactoryList;
@@ -726,6 +730,7 @@ begin
   SetUseUTCDate(True);
   SetPrettyPrint(False);
   SetStrictTypes(True);
+  FClosedSchema := False;
 end;
 
 destructor TNeonConfiguration.Destroy;
@@ -887,6 +892,16 @@ end;
 function TNeonConfiguration.SetEnumAsInt(AValue: Boolean): INeonConfiguration;
 begin
   FEnumAsInt := AValue;
+  Result := Self;
+end;
+
+function TNeonConfiguration.SetClosedSchema(AValue: Boolean): INeonConfiguration;
+begin
+  // When True, generated JSON Schemas for classes/records carry
+  // "additionalProperties": false - the object admits exactly the declared
+  // members. Defaults to False (open), matching the deserializer, which
+  // ignores unknown properties
+  FClosedSchema := AValue;
   Result := Self;
 end;
 
