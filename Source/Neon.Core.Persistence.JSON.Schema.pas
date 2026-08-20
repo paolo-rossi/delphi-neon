@@ -30,13 +30,15 @@ type
   private
     FTagString: string;
     FTags: TAttributeTags;
+    FParsed: Boolean;
+    procedure SetTagString(const AValue: string);
   public
     constructor Create(const ATagString: string);
     destructor Destroy; override;
 
     procedure ParseTags();
 
-    property TagString: string read FTagString write FTagString;
+    property TagString: string read FTagString write SetTagString;
     property Tags: TAttributeTags read FTags write FTags;
   end;
 
@@ -67,6 +69,12 @@ type
     ///   first needs to reference it
     /// </summary>
     FDefNames: TDictionary<PTypeInfo, string>;
+
+    /// <summary>
+    ///   The definition names already handed out, for O(1) collision checks in
+    ///   DefNameFor (FDefNames only offers the reverse lookup)
+    /// </summary>
+    FDefNameSet: TDictionary<string, Boolean>;
 
     /// <summary>
     ///   The draft the document is being generated for, so that the writers can
@@ -484,12 +492,14 @@ begin
   FVersion := TNeonJSchemaVersion.None;
   FVisitedTypes := TDictionary<PTypeInfo, Boolean>.Create;
   FDefNames := TDictionary<PTypeInfo, string>.Create;
+  FDefNameSet := TDictionary<string, Boolean>.Create;
   FDefs := TJSONObject.Create;
 end;
 
 destructor TNeonSchemaGenerator.Destroy;
 begin
   FDefs.Free; // nil once TypeToJSONSchema has attached it to the document
+  FDefNameSet.Free;
   FDefNames.Free;
   FVisitedTypes.Free;
   inherited;
@@ -507,33 +517,23 @@ function TNeonSchemaGenerator.DefNameFor(AType: TRttiType): string;
 var
   LName: string;
   LIndex: Integer;
-  LTaken: Boolean;
-  LOther: TPair<PTypeInfo, string>;
 begin
   if FDefNames.TryGetValue(AType.Handle, Result) then
     Exit;
 
   // Two units can declare types of the same name, and they would otherwise
-  // collide in a single flat definitions object
+  // collide in a single flat definitions object. The taken-name set keeps the
+  // uniqueness check O(1) instead of scanning FDefNames for every candidate
   LName := AType.Name;
   LIndex := 1;
-  repeat
-    LTaken := False;
-    for LOther in FDefNames do
-      if LOther.Value = LName then
-      begin
-        LTaken := True;
-        Break;
-      end;
-
-    if LTaken then
-    begin
-      Inc(LIndex);
-      LName := AType.Name + LIndex.ToString;
-    end;
-  until not LTaken;
+  while FDefNameSet.ContainsKey(LName) do
+  begin
+    Inc(LIndex);
+    LName := AType.Name + LIndex.ToString;
+  end;
 
   FDefNames.Add(AType.Handle, LName);
+  FDefNameSet.Add(LName, True);
   Result := LName;
 end;
 
@@ -1557,7 +1557,11 @@ begin
   LTypes.Add('string');
   LTypes.Add('number');
   LTypes.Add('boolean');
-  LTypes.Add('null');
+
+  // null is only written for IncludeIf.Always (the default); the other include
+  // policies drop a null variant, so admitting it would be over-permissive
+  if ANeonObject.NeonInclude.Value = IncludeIf.Always then
+    LTypes.Add('null');
 
   Result := TJSONObject.Create.AddPair('type', LTypes);
 end;
@@ -1568,6 +1572,7 @@ constructor JsonSchemaAttribute.Create(const ATagString: string);
 begin
   FTagString := ATagString;
   FTags := TAttributeTags.Create();
+  FParsed := False;
 end;
 
 destructor JsonSchemaAttribute.Destroy;
@@ -1578,8 +1583,19 @@ end;
 
 procedure JsonSchemaAttribute.ParseTags;
 begin
-  if FTags.Count = 0 then
+  // An explicit flag, not a Count check: an empty tag string parses to zero
+  // entries, and without the flag ParseTags would re-parse on every call
+  if not FParsed then
+  begin
     FTags.Parse(FTagString);
+    FParsed := True;
+  end;
+end;
+
+procedure JsonSchemaAttribute.SetTagString(const AValue: string);
+begin
+  FTagString := AValue;
+  FParsed := False; // a new tag string must be re-parsed
 end;
 
 { TJSONValidationError }
@@ -2397,6 +2413,8 @@ var
   LProperties, LPatternProperties: TJSONValue;
   LAdditionalProperties, LPropertyNames, LRequired: TJSONValue;
   LEvaluated: TDictionary<string, Boolean>;
+  LPatternCache: TDictionary<string, TRegEx>;
+  LRegEx: TRegEx;
   LPair, LInstPair: TJSONPair;
   LPropSchema: TJSONValue;
   LValue: TJSONValue;
@@ -2422,15 +2440,32 @@ begin
 
     LPatternProperties := ASchema.GetValue('patternProperties');
     if Assigned(LPatternProperties) and (LPatternProperties is TJSONObject) then
-      for LPair in (LPatternProperties as TJSONObject) do
-        for LInstPair in AInstance do
-          if TRegEx.IsMatch(LInstPair.JsonString.Value, LPair.JsonString.Value) then
+    begin
+      // Compile each pattern once for this object instead of once per
+      // (pattern, property) pair
+      LPatternCache := TDictionary<string, TRegEx>.Create;
+      try
+        for LPair in (LPatternProperties as TJSONObject) do
+        begin
+          if not LPatternCache.TryGetValue(LPair.JsonString.Value, LRegEx) then
           begin
-            ValidateNode(LInstPair.JsonValue, LPair.JsonValue, APath + '/' + EscapePointerToken(LInstPair.JsonString.Value), AErrors);
-            LEvaluated.AddOrSetValue(LInstPair.JsonString.Value, True);
-            if ShouldStop(AErrors, LBaseline) then
-              Exit;
+            LRegEx := TRegEx.Create(LPair.JsonString.Value);
+            LPatternCache.Add(LPair.JsonString.Value, LRegEx);
           end;
+
+          for LInstPair in AInstance do
+            if LRegEx.IsMatch(LInstPair.JsonString.Value) then
+            begin
+              ValidateNode(LInstPair.JsonValue, LPair.JsonValue, APath + '/' + EscapePointerToken(LInstPair.JsonString.Value), AErrors);
+              LEvaluated.AddOrSetValue(LInstPair.JsonString.Value, True);
+              if ShouldStop(AErrors, LBaseline) then
+                Exit;
+            end;
+        end;
+      finally
+        LPatternCache.Free;
+      end;
+    end;
 
     LAdditionalProperties := ASchema.GetValue('additionalProperties');
     if Assigned(LAdditionalProperties) then

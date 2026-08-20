@@ -54,6 +54,9 @@ type
 
     [Test]
     procedure TestParseTagsIsIdempotent;
+
+    [Test]
+    procedure TestParseTagsOnEmptyStringIsIdempotent;
   end;
 
   TSchemaConstraintPerson = class
@@ -290,6 +293,16 @@ type
     property Mixed: TArray<Variant> read FMixed write FMixed;
 
     property Tag: Nullable<TSchemaTag> read FTag write FTag;
+  end;
+
+  // Under IncludeIf.NotNull a null variant is dropped by the serializer, so the
+  // schema must not admit null either
+  TSchemaVariantNotNull = class
+  private
+    FData: Variant;
+  public
+    [NeonInclude(IncludeIf.NotNull)]
+    property Data: Variant read FData write FData;
   end;
 
   TSchemaCoords = class
@@ -642,6 +655,9 @@ type
     procedure TestVariantMemberIsDescribed;
 
     [Test]
+    procedure TestVariantNotNullOmitsNullFromUnion;
+
+    [Test]
     procedure TestArrayOfVariantKeepsItsItems;
 
     [Test]
@@ -778,6 +794,22 @@ begin
     LAttribute.ParseTags;
     LAttribute.ParseTags;
     Assert.AreEqual(2, LAttribute.Tags.Count);
+  finally
+    LAttribute.Free;
+  end;
+end;
+
+procedure TTestJsonSchemaAttribute.TestParseTagsOnEmptyStringIsIdempotent;
+var
+  LAttribute: JsonSchemaAttribute;
+begin
+  // An empty tag string parses to zero entries; without an explicit parsed
+  // flag every call would re-parse it
+  LAttribute := JsonSchemaAttribute.Create('');
+  try
+    LAttribute.ParseTags;
+    LAttribute.ParseTags;
+    Assert.AreEqual(0, LAttribute.Tags.Count);
   finally
     LAttribute.Free;
   end;
@@ -1146,7 +1178,28 @@ begin
   for LItem in LTypes do
     LNames := LNames + LItem.Value + ' ';
 
-  Assert.AreEqual('string number boolean null ', LNames);
+  // The default include policy is IncludeIf.NotNull, under which the serializer
+  // drops a null variant instead of writing it, so "null" must not be admitted
+  Assert.AreEqual('string number boolean ', LNames);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestVariantNotNullOmitsNullFromUnion;
+var
+  LData: TJSONObject;
+  LTypes: TJSONArray;
+  LNames: string;
+  LItem: TJSONValue;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaVariantNotNull);
+
+  LData := (FSchema.GetValue('properties') as TJSONObject).GetValue('Data') as TJSONObject;
+  LTypes := LData.GetValue('type') as TJSONArray;
+  LNames := '';
+  for LItem in LTypes do
+    LNames := LNames + LItem.Value + ' ';
+
+  Assert.AreEqual('string number boolean ', LNames,
+    'with IncludeIf.NotNull a null variant is dropped, so "null" must not be admitted');
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestArrayOfVariantKeepsItsItems;
