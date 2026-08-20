@@ -601,6 +601,9 @@ begin
 end;
 
 function TNeonSchemaGenerator.TagValueToJSON(ATags: TAttributeTags; const AName, AJSONType: string): TJSONValue;
+var
+  LValue: string;
+  LJSON: TJSONValue;
 begin
   // Only scalar (string/number/integer/boolean) values are supported; an array/object
   // "default"/"const"/"examples" would need embedded JSON syntax in the tag string,
@@ -612,6 +615,20 @@ begin
     Result := TJSONNumber.Create(ATags.GetValueAs<Double>(AName))
   else if AJSONType = 'boolean' then
     Result := TJSONBool.Create(ATags.GetValueAs<Boolean>(AName))
+  else if AJSONType = '' then
+  begin
+    // No "type" in the schema (a NeonRawValue or TJSONValue member): the JSON
+    // type of the actual value is unknowable from the declared type, so the
+    // tag value is interpreted as JSON when it parses (const=123 becomes the
+    // number 123, const=true a boolean, const=null null) and as a plain string
+    // otherwise
+    LValue := ATags.GetValueAs<string>(AName);
+    LJSON := TJSONObject.ParseJSONValue(LValue);
+    if Assigned(LJSON) then
+      Result := LJSON
+    else
+      Result := TJSONString.Create(LValue);
+  end
   else
     Result := TJSONString.Create(ATags.GetValueAs<string>(AName));
 end;

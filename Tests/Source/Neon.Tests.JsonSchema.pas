@@ -410,6 +410,26 @@ type
     property Tags: TArray<string> read FTags write FTags;
   end;
 
+  // Tag values on a schema with no "type" (a NeonRawValue or TJSONValue
+  // member) are interpreted as JSON when they parse: const=123 is the number
+  // 123, default=true a boolean, and a non-JSON value stays a string
+  TSchemaRawConst = class
+  private
+    FText: string;
+    FData: TJSONValue;
+    FName: string;
+  public
+    [NeonRawValue]
+    [JsonSchema('const=123')]
+    property Text: string read FText write FText;
+
+    [JsonSchema('default=true')]
+    property Data: TJSONValue read FData write FData;
+
+    [JsonSchema('const=hello')]
+    property Name: string read FName write FName;
+  end;
+
   // A static array has a fixed length, which the schema states exactly via
   // minItems/maxItems
   TSchemaGridData = array[0..2] of Integer;
@@ -512,6 +532,9 @@ type
 
     [Test]
     procedure TestBareBooleanTagStillTrue;
+
+    [Test]
+    procedure TestTypelessTagValuesAreJSONParsed;
 
     [Test]
     [TestCase('null is allowed', '{"Tint":null}|True', '|')]
@@ -1281,6 +1304,31 @@ begin
   LCode := (FSchema.GetValue('properties') as TJSONObject).GetValue('Code') as TJSONObject;
   Assert.IsTrue((LCode.GetValue('readOnly') as TJSONBool).AsBoolean,
     'a bare readOnly flag must stay true');
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestTypelessTagValuesAreJSONParsed;
+var
+  LProps: TJSONObject;
+  LText, LData, LName: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaRawConst);
+  LProps := FSchema.GetValue('properties') as TJSONObject;
+
+  // No "type" in the schema (a NeonRawValue or TJSONValue member): the tag
+  // value is interpreted as JSON when it parses
+  LText := LProps.GetValue('Text') as TJSONObject;
+  Assert.IsTrue(LText.GetValue('const') is TJSONNumber,
+    'const=123 must become the number 123, not the string "123"');
+  Assert.AreEqual(123, (LText.GetValue('const') as TJSONNumber).AsInt);
+
+  LData := LProps.GetValue('Data') as TJSONObject;
+  Assert.IsTrue(LData.GetValue('default') is TJSONBool,
+    'default=true must become a boolean');
+
+  LName := LProps.GetValue('Name') as TJSONObject;
+  Assert.IsTrue(LName.GetValue('const') is TJSONString,
+    'a non-JSON tag value stays a string');
+  Assert.AreEqual('hello', LName.GetValue('const').Value);
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestJSONValueDescendantIsDescribed;
