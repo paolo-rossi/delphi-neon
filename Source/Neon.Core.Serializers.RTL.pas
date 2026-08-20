@@ -31,6 +31,7 @@ type
   public
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+    function SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; override;
   end;
 
   /// <summary>
@@ -144,6 +145,17 @@ begin
     Result := True
   else
     Result := False;
+end;
+
+function TGUIDSerializer.SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+begin
+  // The serializer writes the canonical textual form of the GUID, so without
+  // this hook the generator would describe the record as an object of its D1/
+  // D2/D3/D4 fields. "uuid" is the de-facto format for it (annotation-only in
+  // 2020-12, harmless in older drafts)
+  Result := TJSONObject.Create
+    .AddPair('type', 'string')
+    .AddPair('format', 'uuid');
 end;
 
 function TGUIDSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;

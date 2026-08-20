@@ -893,9 +893,19 @@ var
   LNeonList: INeonTypeInfoList absolute LNeonTypeInfo;
   LNeonStream: INeonTypeInfoStream absolute LNeonTypeInfo;
   LNeonNullable: INeonTypeInfoNullable absolute LNeonTypeInfo;
+  LCustomSer: TCustomSerializer;
 begin
   Result := nil;
 
+  // A registered custom serializer may describe the JSON it writes. The
+  // runtime engine consults the same registry first, so a serializer that
+  // overrides SerializeSchema wins over the structural inference below; one that
+  // does not returns nil and the type-based writers apply, exactly as before
+  LCustomSer := FConfig.Serializers.GetSerializer(AType.Handle);
+  if Assigned(LCustomSer) then
+    Result := LCustomSer.SerializeSchema(AType, ANeonObject);
+
+  if not Assigned(Result) then
   case AType.TypeKind of
     tkChar,
     tkWChar,

@@ -12,7 +12,7 @@ unit Neon.Tests.JsonSchema;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.TypInfo, System.JSON, System.Generics.Collections,
+  System.SysUtils, System.Classes, System.TypInfo, System.Rtti, System.JSON, System.Generics.Collections,
   Data.DB,
   DUnitX.TestFramework,
   Neon.Core.Types,
@@ -21,7 +21,8 @@ uses
   Neon.Core.Utils,
   Neon.Core.Persistence,
   Neon.Core.Persistence.JSON,
-  Neon.Core.Persistence.JSON.Schema;
+  Neon.Core.Persistence.JSON.Schema,
+  Neon.Core.Serializers.RTL;
 
 type
   TSchemaPerson = class
@@ -430,6 +431,44 @@ type
     property Name: string read FName write FName;
   end;
 
+  // A record whose serialized shape is decided by a custom serializer; the
+  // generator must use the serializer's SerializeSchema when one is registered
+  TSchemaPoint = record
+    X: Integer;
+    Y: Integer;
+  end;
+
+  TSchemaPointSerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+    function SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; override;
+  end;
+
+  // Same record, but a serializer WITHOUT the schema hook: the generator must
+  // fall back to its structural inference (compatibility)
+  TSchemaPointNoSchema = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
+  TSchemaShapeHolder = class
+  private
+    FPoint: TSchemaPoint;
+    FId: TGUID;
+  public
+    [JsonSchema('description=A point')]
+    property Point: TSchemaPoint read FPoint write FPoint;
+    property Id: TGUID read FId write FId;
+  end;
+
   // A static array has a fixed length, which the schema states exactly via
   // minItems/maxItems
   TSchemaGridData = array[0..2] of Integer;
@@ -535,6 +574,15 @@ type
 
     [Test]
     procedure TestTypelessTagValuesAreJSONParsed;
+
+    [Test]
+    procedure TestCustomSerializerContributesSchema;
+
+    [Test]
+    procedure TestCustomSerializerWithoutSchemaFallsBack;
+
+    [Test]
+    procedure TestGUIDMemberUsesSerializerSchema;
 
     [Test]
     [TestCase('null is allowed', '{"Tint":null}|True', '|')]
@@ -802,6 +850,59 @@ end;
 procedure TTestJsonSchemaEdgeCases.TearDown;
 begin
   FreeAndNil(FSchema);
+end;
+
+{ TSchemaPointSerializer }
+
+class function TSchemaPointSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := TypeInfo(TSchemaPoint);
+end;
+
+class function TSchemaPointSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := AType = GetTargetInfo;
+end;
+
+function TSchemaPointSerializer.Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+begin
+  Result := TJSONObject.Create;
+end;
+
+function TSchemaPointSerializer.Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
+begin
+  Result := AData;
+end;
+
+function TSchemaPointSerializer.SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+begin
+  // Deliberately a string with a marker title, so the test can tell the custom
+  // schema apart from the structural record inference (an object of X/Y fields)
+  Result := TJSONObject.Create
+    .AddPair('type', 'string')
+    .AddPair('title', 'point');
+end;
+
+{ TSchemaPointNoSchema }
+
+class function TSchemaPointNoSchema.GetTargetInfo: PTypeInfo;
+begin
+  Result := TypeInfo(TSchemaPoint);
+end;
+
+class function TSchemaPointNoSchema.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := AType = GetTargetInfo;
+end;
+
+function TSchemaPointNoSchema.Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+begin
+  Result := TJSONObject.Create;
+end;
+
+function TSchemaPointNoSchema.Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
+begin
+  Result := AData;
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestRequiredObjectMemberKeepsItsOwnRequiredArray;
@@ -1329,6 +1430,48 @@ begin
   Assert.IsTrue(LName.GetValue('const') is TJSONString,
     'a non-JSON tag value stays a string');
   Assert.AreEqual('hello', LName.GetValue('const').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestCustomSerializerContributesSchema;
+var
+  LPoint: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaShapeHolder,
+    TNeonConfiguration.Default.RegisterSerializer(TSchemaPointSerializer));
+
+  LPoint := (FSchema.GetValue('properties') as TJSONObject).GetValue('Point') as TJSONObject;
+  Assert.AreEqual('string', LPoint.GetValue('type').Value,
+    'a registered serializer with SerializeSchema wins over the structural inference');
+  Assert.AreEqual('point', LPoint.GetValue('title').Value);
+  Assert.AreEqual('A point', LPoint.GetValue('description').Value,
+    'member JsonSchema tags still apply to the custom schema');
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestCustomSerializerWithoutSchemaFallsBack;
+var
+  LPoint: TJSONObject;
+begin
+  // A registered serializer that does not override SerializeSchema must not
+  // change anything: the structural inference applies
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaShapeHolder,
+    TNeonConfiguration.Default.RegisterSerializer(TSchemaPointNoSchema));
+
+  LPoint := (FSchema.GetValue('properties') as TJSONObject).GetValue('Point') as TJSONObject;
+  Assert.AreEqual('object', LPoint.GetValue('type').Value,
+    'a serializer without a schema falls back to structural inference');
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestGUIDMemberUsesSerializerSchema;
+var
+  LId: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaShapeHolder,
+    TNeonConfiguration.Default.RegisterSerializer(TGUIDSerializer));
+
+  LId := (FSchema.GetValue('properties') as TJSONObject).GetValue('Id') as TJSONObject;
+  Assert.AreEqual('string', LId.GetValue('type').Value,
+    'a GUID serializes as a string, so its schema must not be an object of fields');
+  Assert.AreEqual('uuid', LId.GetValue('format').Value);
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestJSONValueDescendantIsDescribed;

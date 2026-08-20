@@ -115,6 +115,16 @@ type
     class procedure ChangeConfig(AConfig: INeonConfiguration); virtual;
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; virtual; abstract;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; virtual; abstract;
+
+    /// <summary>
+    ///   Optional hook for the JSON Schema generator: return the JSON Schema (a
+    ///   TJSONObject) describing the JSON this serializer writes for AType, or
+    ///   nil (the default) to let the generator fall back to its structural
+    ///   type inference. Never called during serialization/deserialization.
+    ///   Returning nil is always safe, so existing serializers that do not
+    ///   override this method keep their previous behaviour unchanged.
+    /// </summary>
+    function SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; virtual;
   end;
 
   TNeonSerializerRegistry = class
@@ -1738,6 +1748,13 @@ end;
 class procedure TCustomSerializer.ChangeConfig(AConfig: INeonConfiguration);
 begin
 
+end;
+
+function TCustomSerializer.SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+begin
+  // No schema contributed: the generator falls back to its structural
+  // inference, exactly as if the serializer were not registered
+  Result := nil;
 end;
 
 class function TCustomSerializer.ClassDistance: Integer;
