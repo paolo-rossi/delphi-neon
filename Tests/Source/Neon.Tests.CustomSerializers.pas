@@ -286,12 +286,12 @@ begin
 
     // Each registry owns its own cached serializer instances; sharing them
     // between two value-owning caches would free the same instance twice
-    LSourceSerializer := LSource.GetSerializer(TGUID);
-    LTargetSerializer := LTarget.GetSerializer(TGUID);
+    LSourceSerializer := LSource.GetSerializer(TypeInfo(TGUID));
+    LTargetSerializer := LTarget.GetSerializer(TypeInfo(TGUID));
     Assert.IsFalse(LSourceSerializer = LTargetSerializer);
 
     // The merged class list still resolves types registered in the source
-    Assert.IsNotNull(LTarget.GetSerializer(TGUID));
+    Assert.IsNotNull(LTarget.GetSerializer(TypeInfo(TGUID)));
     Assert.AreEqual(TGUIDSerializer, LTargetSerializer.ClassType);
   finally
     LTarget.Free;

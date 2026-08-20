@@ -1363,7 +1363,7 @@ begin
 
     LJSON := TNeon.ObjectToJSON(LClient);
     try
-      Assert.IsNotNull(LJSON.GetValue('Endpoint'),
+      Assert.IsNotNull(LJSON.GetValue<TJSONValue>('Endpoint'),
         'the interface''s members must be flattened into the parent object');
       Assert.IsTrue(TNeon.ValidateJSON(LJSON, FSchema).IsValid,
         'the schema rejects what the serializer wrote: ' + LJSON.ToJSON);
@@ -1406,7 +1406,7 @@ begin
 
     LJSON := TNeon.ObjectToJSON(LBag);
     try
-      Assert.IsNotNull(LJSON.GetValue('k'),
+      Assert.IsNotNull(LJSON.GetValue<TJSONValue>('k'),
         'the map pairs must be flattened into the parent');
       Assert.IsTrue(TNeon.ValidateJSON(LJSON, FSchema).IsValid,
         'the schema rejects what the serializer wrote: ' + LJSON.ToJSON);
