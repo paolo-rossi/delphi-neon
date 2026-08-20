@@ -28,6 +28,7 @@ uses
   Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas',
   Neon.Tests.Entities in 'Source\Neon.Tests.Entities.pas',
   Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas',
+  Neon.Tests.DynamicTypes in 'Source\Neon.Tests.DynamicTypes.pas',
   Neon.Tests.Types.Bytes in 'Source\Neon.Tests.Types.Bytes.pas',
   Neon.Tests.Types.Enums in 'Source\Neon.Tests.Types.Enums.pas',
   Neon.Tests.Types.Simple in 'Source\Neon.Tests.Types.Simple.pas',

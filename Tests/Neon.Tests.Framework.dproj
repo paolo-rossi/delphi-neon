@@ -1,4 +1,4 @@
-﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{838CCB26-5CA2-48E5-9080-1332A8A77EA2}</ProjectGuid>
         <ProjectVersion>20.4</ProjectVersion>
@@ -112,6 +112,7 @@
         <DCCReference Include="Source\Neon.Tests.Utils.pas"/>
         <DCCReference Include="Source\Neon.Tests.Entities.pas"/>
         <DCCReference Include="Source\Neon.Tests.Serializer.pas"/>
+    <DCCReference Include="Source\Neon.Tests.DynamicTypes.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Bytes.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Enums.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Simple.pas"/>

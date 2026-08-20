@@ -343,30 +343,37 @@ begin
     if not Assigned(LEnumInstance) then
       Exit;
 
-    LEnumType := TRttiUtils.Context.GetType(LEnumInstance.ClassType);
+    // The probing enumerator is owned by this method until it is handed to
+    // the adapter below; every failed validation must free it
+    try
+      LEnumType := TRttiUtils.Context.GetType(LEnumInstance.ClassType);
 
-    LCurrentProp := LEnumType.GetProperty('Current');
-    if not Assigned(LCurrentProp) then
-      Exit;
+      LCurrentProp := LEnumType.GetProperty('Current');
+      if not Assigned(LCurrentProp) then
+        Exit;
 
-    LMethodMoveNext := LEnumType.GetMethod('MoveNext');
-    if not Assigned(LMethodMoveNext) or
-       (Length(LMethodMoveNext.GetParameters) <> 0) or
-       (LMethodMoveNext.MethodKind <> mkFunction) or
-       (LMethodMoveNext.ReturnType.Handle <> TypeInfo(Boolean))
-    then
-      Exit;
+      LMethodMoveNext := LEnumType.GetMethod('MoveNext');
+      if not Assigned(LMethodMoveNext) or
+         (Length(LMethodMoveNext.GetParameters) <> 0) or
+         (LMethodMoveNext.MethodKind <> mkFunction) or
+         (LMethodMoveNext.ReturnType.Handle <> TypeInfo(Boolean))
+      then
+        Exit;
 
-    Result := TDynamicList.Create(
-      AInstance,
-      LEnumInstance,
-      LItemType,
-      LMethodAdd,
-      LMethodClear,
-      LMethodMoveNext,
-      LCurrentProp,
-      LCountProp
-    );
+      Result := TDynamicList.Create(
+        AInstance,
+        LEnumInstance,
+        LItemType,
+        LMethodAdd,
+        LMethodClear,
+        LMethodMoveNext,
+        LCurrentProp,
+        LCountProp
+      );
+    finally
+      if not Assigned(Result) then
+        LEnumInstance.Free;
+    end;
   finally
     TNeonLogger.ProfileEnd('Dynamic:GuessList', LStamp);
   end;
@@ -487,49 +494,59 @@ begin
   LKeyEnumMethod := TRttiUtils.Context.GetType(LKeyEnumObject.ClassInfo).GetMethod('GetEnumerator');
   LValEnumMethod := TRttiUtils.Context.GetType(LValEnumObject.ClassInfo).GetMethod('GetEnumerator');
 
+  // The probing enumerators are owned by this method until they are handed
+  // to the adapter below; every failed validation must free them
   LKeyEnum := TDynamicMap.TEnumerator.Create(LKeyEnumMethod, LKeyEnumObject);
-  LValEnum := TDynamicMap.TEnumerator.Create(LValEnumMethod, LValEnumObject);
-  // End Keys & Values Enumerator
+  try
+    LValEnum := TDynamicMap.TEnumerator.Create(LValEnumMethod, LValEnumObject);
+    try
+      LClearMethod := LMapType.GetMethod('Clear');
+      if not Assigned(LClearMethod) then
+        Exit;
 
-  LClearMethod := LMapType.GetMethod('Clear');
-  if not Assigned(LClearMethod) then
-    Exit;
+      LAddMethod := LMapType.GetMethod('Add');
+      if not Assigned(LAddMethod) or (Length(LAddMethod.GetParameters) <> 2) then
+        Exit;
 
-  LAddMethod := LMapType.GetMethod('Add');
-  if not Assigned(LAddMethod) or (Length(LAddMethod.GetParameters) <> 2) then
-    Exit;
+      LKeyType := LAddMethod.GetParameters[0].ParamType;
+      LValType := LAddMethod.GetParameters[1].ParamType;
 
-  LKeyType := LAddMethod.GetParameters[0].ParamType;
-  LValType := LAddMethod.GetParameters[1].ParamType;
+      LCountProp := LMapType.GetProperty('Count');
+      if not Assigned(LCountProp) then
+        Exit;
 
-  LCountProp := LMapType.GetProperty('Count');
-  if not Assigned(LCountProp) then
-    Exit;
+      LToStringMethod := nil;
+      LFromStringMethod := nil;
 
-  LToStringMethod := nil;
-  LFromStringMethod := nil;
+      // Optional methods (on Key object)
+      case LKeyType.TypeKind of
+        tkClass{, tkRecord, tkInterface}:
+        begin
+          LToStringMethod := LKeyType.GetMethod('ToString');
+          LFromStringMethod := LKeyType.GetMethod('FromString');
+        end;
+      end;
 
-  // Optional methods (on Key object)
-  case LKeyType.TypeKind of
-    tkClass{, tkRecord, tkInterface}:
-    begin
-      LToStringMethod := LKeyType.GetMethod('ToString');
-      LFromStringMethod := LKeyType.GetMethod('FromString');
+      Result := TDynamicMap.Create(
+        AInstance,
+        LKeyType,
+        LValType,
+        LAddMethod,
+        LClearMethod,
+        LCountProp,
+        LKeyEnum,
+        LValEnum,
+        LToStringMethod,
+        LFromStringMethod
+      );
+    finally
+      if not Assigned(Result) then
+        LValEnum.Free;
     end;
+  finally
+    if not Assigned(Result) then
+      LKeyEnum.Free;
   end;
-
-  Result := TDynamicMap.Create(
-    AInstance,
-    LKeyType,
-    LValType,
-    LAddMethod,
-    LClearMethod,
-    LCountProp,
-    LKeyEnum,
-    LValEnum,
-    LToStringMethod,
-    LFromStringMethod
-  );
   finally
     TNeonLogger.ProfileEnd('Dynamic:GuessMap', LStamp);
   end;
@@ -570,13 +587,19 @@ begin
   // Memory creation, must destroy the object
   FInstance := AMethod.Invoke(AInstance, []).AsObject;
 
-  FCurrentProperty := TRttiUtils.Context.GetType(FInstance.ClassInfo).GetProperty(CURRENT_PROP);
-  if not Assigned(FCurrentProperty) then
-    raise ENeonException.CreateFmt(SNeonErrorPropertyNotFoundF1, [CURRENT_PROP]);
+  try
+    FCurrentProperty := TRttiUtils.Context.GetType(FInstance.ClassInfo).GetProperty(CURRENT_PROP);
+    if not Assigned(FCurrentProperty) then
+      raise ENeonException.CreateFmt(SNeonErrorPropertyNotFoundF1, [CURRENT_PROP]);
 
-  FMoveNextMethod := TRttiUtils.Context.GetType(FInstance.ClassInfo).GetMethod(MOVENEXT_METH);
-  if not Assigned(FMoveNextMethod) then
-    raise ENeonException.CreateFmt(SNeonErrorMethodNotFoundF1, [MOVENEXT_METH]);
+    FMoveNextMethod := TRttiUtils.Context.GetType(FInstance.ClassInfo).GetMethod(MOVENEXT_METH);
+    if not Assigned(FMoveNextMethod) then
+      raise ENeonException.CreateFmt(SNeonErrorMethodNotFoundF1, [MOVENEXT_METH]);
+  except
+    // The constructor never completed, so the caller cannot free FInstance
+    FInstance.Free;
+    raise;
+  end;
 end;
 
 function TDynamicMap.TEnumerator.Current: TValue;
