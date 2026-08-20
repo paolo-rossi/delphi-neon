@@ -173,6 +173,7 @@ type
     ///   Writer for TDate* types
     /// </summary>
     function WriteDate(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+    function WriteTime(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
     function WriteDateTime(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
@@ -210,11 +211,6 @@ type
     ///   The object that implements the interface is serialized
     /// </remarks>
     function WriteInterface(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
-
-    /// <summary>
-    ///   Writer for Exception (descendants) objects
-    /// </summary>
-    function WriteException(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
     ///   Writer for TStream (descendants) objects
@@ -668,7 +664,7 @@ begin
   // Draft-07 document. ("const", by contrast, dates from Draft-06 and is emitted
   // for every draft this generator can target.)
   if LTags.Exists('deprecated') and (FVersion <> TNeonJSchemaVersion.Draft07) then
-    AJSON.AddPair('deprecated', TJSONBool.Create(True));
+    AJSON.AddPair('deprecated', TJSONBool.Create(LTags.GetBoolValue('deprecated')));
 
   if LTags.Exists('default') then
     AJSON.AddPair('default', TagValueToJSON(LTags, 'default', LJSONType));
@@ -698,8 +694,10 @@ begin
   // Emitting it as a member-level boolean would collide with the "required" array
   // an object/record member gets from its own members
 
+  // Boolean-valued tags honour their value: "readOnly" alone means True,
+  // "readOnly=false" means False
   if LTags.Exists('readOnly') then
-    AJSON.AddPair('readOnly', TJSONBool.Create(True));
+    AJSON.AddPair('readOnly', TJSONBool.Create(LTags.GetBoolValue('readOnly')));
 
   // Numeric constraints
   if LTags.Exists('minimum') then
@@ -735,7 +733,7 @@ begin
     AJSON.AddPair('maxItems', TJSONNumber.Create(LTags.GetValueAs<Integer>('maxItems')));
 
   if LTags.Exists('uniqueItems') then
-    AJSON.AddPair('uniqueItems', TJSONBool.Create(True));
+    AJSON.AddPair('uniqueItems', TJSONBool.Create(LTags.GetBoolValue('uniqueItems')));
 
   // Object constraints
   if LTags.Exists('minProperties') then
@@ -794,6 +792,10 @@ var
   LItems: TJSONObject;
 begin
   LItems := WriteDataMember((AType as TRttiArrayType).ElementType);
+  // A nil element schema (a method pointer element, say) would silently drop
+  // the "items" pair, leaving the array unconstrained
+  if not Assigned(LItems) then
+    LItems := TJSONObject.Create;
   Result := TJSONObject.Create
     .AddPair('type', 'array')
     .AddPair('items', LItems)
@@ -865,7 +867,7 @@ begin
       else if AType.Handle = TypeInfo(TDateTime) then
         Result := WriteDateTime(AType, ANeonObject)
       else if AType.Handle = TypeInfo(TTime) then
-        Result := WriteDateTime(AType, ANeonObject)
+        Result := WriteTime(AType, ANeonObject)
       else if AType.Handle = TypeInfo(TDate) then
         Result := WriteDate(AType, ANeonObject)
       else
@@ -956,6 +958,15 @@ begin
     .AddPair('format', 'date-time');
 end;
 
+function TNeonSchemaGenerator.WriteTime(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
+begin
+  // TNeonSerializerJSON.WriteTime emits a time-only ISO string
+  // (TJSONUtils.TimeToJSON), so the schema says "time", not "date-time"
+  Result := TJSONObject.Create
+    .AddPair('type', 'string')
+    .AddPair('format', 'time');
+end;
+
 function TNeonSchemaGenerator.WriteDouble(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 begin
   Result := TJSONObject.Create
@@ -968,6 +979,10 @@ var
   LItems: TJSONObject;
 begin
   LItems := WriteDataMember((AType as TRttiDynamicArrayType).ElementType);
+  // A nil element schema (a method pointer element, say) would silently drop
+  // the "items" pair, leaving the array unconstrained
+  if not Assigned(LItems) then
+    LItems := TJSONObject.Create;
   Result := TJSONObject.Create
     .AddPair('type', 'array')
     .AddPair('items', LItems)
@@ -982,6 +997,14 @@ begin
   LTypeData := GetTypeData(AType.Handle);
   LEnumArray := TJSONArray.Create;
 
+  // Walking MinValue..MaxValue is only exact when every ordinal in the range
+  // is a declared value. A non-contiguous enum (TEnum = (a = 1, b = 3)) would
+  // otherwise admit phantom ordinals, and in name mode emit empty strings.
+  // Verified with compiler probes: no supported Delphi emits RTTI for such an
+  // enum at all (TypeInfo() fails to compile), and the RTL's name storage
+  // offers no count or terminator to enumerate them anyway - so every enum
+  // that can reach this code is contiguous and the range walk is exact.
+  //
   // Must mirror TNeonSerializerJSON.WriteEnum: the ordinal is written when the
   // configuration asks for it, the enum name otherwise
   if FConfig.EnumAsInt then
@@ -1359,6 +1382,9 @@ begin
     Exit(nil);
 
   LJSONItems := WriteDataMember(AList.GetItemType);
+  // A nil element schema would silently drop the "items" pair
+  if not Assigned(LJSONItems) then
+    LJSONItems := TJSONObject.Create;
 
   Result := TJSONObject.Create
     .AddPair('type', 'array')
@@ -1374,29 +1400,12 @@ begin
     Exit(nil);
 
   LValueJSON := WriteDataMember(AMap.GetValueType);
+  // A nil value schema would silently drop the "additionalProperties" pair
+  if not Assigned(LValueJSON) then
+    LValueJSON := TJSONObject.Create;
   Result := TJSONObject.Create
     .AddPair('type', 'object')
     .AddPair('additionalProperties', LValueJSON);
-end;
-
-function TNeonSchemaGenerator.WriteException(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
-var
-  LProps: TJSONObject;
-  LInner: TJSONObject;
-begin
-  //Result := WriteObject(AType, ANeonObject);
-
-  Result := TJSONObject.Create;
-
-  LProps := TJSONObject.Create
-      .AddPair('message', 'string')
-      .AddPair('error', 'string');
-
-  LInner := TJSONObject.Create
-      .AddPair('type', 'object')
-      .AddPair('properties', LProps);
-
-  Result.AddPair('innerException', LInner);
 end;
 
 function TNeonSchemaGenerator.WriteSet(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;

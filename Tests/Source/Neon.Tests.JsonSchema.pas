@@ -369,6 +369,47 @@ type
     property Child: TSchemaUnwrappedNode read FChild write FChild;
   end;
 
+  // TTime serializes as a time-only ISO string, so its schema says format
+  // "time" rather than the "date-time" a full TDateTime gets
+  TSchemaSchedule = class
+  private
+    FStart: TTime;
+    FWhen: TDateTime;
+  public
+    property Start: TTime read FStart write FStart;
+    property When: TDateTime read FWhen write FWhen;
+  end;
+
+  // An array whose element type has no writer at all (a method pointer) must
+  // keep its "items" keyword rather than silently dropping it
+  TSchemaEventList = class
+  private
+    FName: string;
+    FHandlers: TArray<TNotifyEvent>;
+  public
+    property Name: string read FName write FName;
+    property Handlers: TArray<TNotifyEvent> read FHandlers write FHandlers;
+  end;
+
+  // Boolean-valued tags honour their value: a bare "readOnly" means True,
+  // "readOnly=false" means False, and so on
+  [JsonSchema('deprecated=false')]
+  TSchemaBoolTags = class
+  private
+    FName: string;
+    FCode: string;
+    FTags: TArray<string>;
+  public
+    [JsonSchema('readOnly=false')]
+    property Name: string read FName write FName;
+
+    [JsonSchema('readOnly')]
+    property Code: string read FCode write FCode;
+
+    [JsonSchema('uniqueItems=false')]
+    property Tags: TArray<string> read FTags write FTags;
+  end;
+
   // A TJSONValue descendant must be described like the class it derives from,
   // not dropped for failing an exact class match. TJSONString is one of the two
   // non-sealed ones, and it doubles as a check that the TJSONNumber/TJSONString
@@ -436,6 +477,18 @@ type
 
     [Test]
     procedure TestUnwrappedRecursiveMemberValidatesFlattenedJSON;
+
+    [Test]
+    procedure TestTimeMemberUsesTimeFormat;
+
+    [Test]
+    procedure TestArrayOfMethodPointersKeepsItems;
+
+    [Test]
+    procedure TestBooleanTagsHonourTheirValue;
+
+    [Test]
+    procedure TestBareBooleanTagStillTrue;
 
     [Test]
     [TestCase('null is allowed', '{"Tint":null}|True', '|')]
@@ -1130,6 +1183,65 @@ begin
     LNode.Child.Free;
     LNode.Free;
   end;
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestTimeMemberUsesTimeFormat;
+var
+  LStart, LWhen: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaSchedule);
+
+  LStart := (FSchema.GetValue('properties') as TJSONObject).GetValue('Start') as TJSONObject;
+  Assert.AreEqual('string', LStart.GetValue('type').Value);
+  Assert.AreEqual('time', LStart.GetValue('format').Value,
+    'a TTime serializes as a time-only string, not date-time');
+
+  LWhen := (FSchema.GetValue('properties') as TJSONObject).GetValue('When') as TJSONObject;
+  Assert.AreEqual('date-time', LWhen.GetValue('format').Value);
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestArrayOfMethodPointersKeepsItems;
+var
+  LHandlers, LItems: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaEventList);
+
+  LHandlers := (FSchema.GetValue('properties') as TJSONObject).GetValue('Handlers') as TJSONObject;
+  Assert.AreEqual('array', LHandlers.GetValue('type').Value);
+
+  LItems := LHandlers.GetValue('items') as TJSONObject;
+  Assert.IsNotNull(LItems, 'a nil element schema must not silently drop "items"');
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestBooleanTagsHonourTheirValue;
+var
+  LName, LTags: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBoolTags, TNeonJSchemaVersion.v202012);
+
+  LName := (FSchema.GetValue('properties') as TJSONObject).GetValue('Name') as TJSONObject;
+  Assert.IsNotNull(LName.GetValue('readOnly'));
+  Assert.IsFalse((LName.GetValue('readOnly') as TJSONBool).AsBoolean,
+    'readOnly=false must not emit true');
+
+  LTags := (FSchema.GetValue('properties') as TJSONObject).GetValue('Tags') as TJSONObject;
+  Assert.IsNotNull(LTags.GetValue('uniqueItems'));
+  Assert.IsFalse((LTags.GetValue('uniqueItems') as TJSONBool).AsBoolean,
+    'uniqueItems=false must not emit true');
+
+  Assert.IsFalse((FSchema.GetValue('deprecated') as TJSONBool).AsBoolean,
+    'deprecated=false must not emit true');
+end;
+
+procedure TTestJsonSchemaEdgeCases.TestBareBooleanTagStillTrue;
+var
+  LCode: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBoolTags);
+
+  LCode := (FSchema.GetValue('properties') as TJSONObject).GetValue('Code') as TJSONObject;
+  Assert.IsTrue((LCode.GetValue('readOnly') as TJSONBool).AsBoolean,
+    'a bare readOnly flag must stay true');
 end;
 
 procedure TTestJsonSchemaEdgeCases.TestJSONValueDescendantIsDescribed;
