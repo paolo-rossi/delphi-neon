@@ -53,6 +53,8 @@ resourcestring
   SNeonErrorDateTimeInvalidF1 = 'Invalid JSON date/time value [%s]';
   SNeonErrorArrExpected = 'Set deserialization: Expected JSON Array';
   SNeonErrorDictKeyInvalid = 'Dictionary [Key]: type not supported';
+  SNeonErrorVariantNotScalarF1 = 'Variant deserialization: the JSON %s is not a scalar value';
+  SNeonErrorVariantArray = 'Variant serialization: variant arrays are not supported';
   SNeonErrorFieldProp = 'Member type must be Field or Property';
   SNeonErrorEnumInvalid = 'Invalid enum value';
   SNeonErrorEnumNames = 'No correspondence with enum names';

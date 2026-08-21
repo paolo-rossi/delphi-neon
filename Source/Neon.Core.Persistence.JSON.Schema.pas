@@ -1548,7 +1548,8 @@ begin
   // of everything TNeonSerializerJSON.WriteVariant can write: a number for the
   // integer/float/currency variants, a boolean, null, and a string for dates, for
   // varString and for every variant type it does not recognise. It never writes
-  // an object or an array - a variant array fails to convert and is logged instead
+  // an object or an array - a variant array is rejected with SNeonErrorVariantArray,
+  // and the deserializer refuses a JSON object or array in return
   //
   // "string" leads deliberately: GetPrimaryJSONType reports the first non-null
   // entry, and a string is the one interpretation of a "default"/"const" tag that

@@ -14,7 +14,7 @@ interface
 //{$R+,O+}
 
 uses
-  System.SysUtils, System.Rtti, DUnitX.TestFramework,
+  System.SysUtils, System.Rtti, System.Variants, DUnitX.TestFramework,
 
   Neon.Core.Types,
   Neon.Core.Persistence,
@@ -111,6 +111,13 @@ type
     procedure TestTimeType;
     [Test]
     procedure TestTimeTypeMilliseconds;
+
+    [Test]
+    procedure TestVariantDateOnly;
+    [Test]
+    procedure TestVariantDateTimeKeepsTime;
+    [Test]
+    procedure TestVariantArrayRaises;
 
   end;
 
@@ -237,6 +244,15 @@ type
     [TestCase('TestTimeMinuteOutOfRange', '"01:61:01"')]
     procedure TestTimeTypeInvalid(const AValue: string);
 
+    [Test]
+    procedure TestVariantScalars;
+    [Test]
+    procedure TestVariantDateTimeRoundTrip;
+    [Test]
+    procedure TestVariantObjectRaises;
+    [Test]
+    procedure TestVariantArrayRaises;
+
   end;
 
 implementation
@@ -287,6 +303,42 @@ begin
   // A TTime with a fractional second must keep its milliseconds (A16)
   Assert.AreEqual('"01:01:01.500"',
     TTestUtils.SerializeValue(TValue.From<TTime>(EncodeTime(1, 1, 1, 500))));
+end;
+
+procedure TTestSimpleTypesSer.TestVariantDateOnly;
+var
+  LValue: Variant;
+begin
+  LValue := VarFromDateTime(EncodeDate(2019, 12, 23));
+  Assert.AreEqual('"2019-12-23"',
+    TTestUtils.SerializeValue(TValue.From<Variant>(LValue)));
+end;
+
+procedure TTestSimpleTypesSer.TestVariantDateTimeKeepsTime;
+var
+  LValue: Variant;
+begin
+  // A varDate carries a full TDateTime: writing it as a plain date dropped the
+  // time of anything ReadVariant decoded from an ISO-8601 string (A17)
+  LValue := VarFromDateTime(EncodeDate(2019, 12, 23) + EncodeTime(1, 1, 1, 0));
+  Assert.AreEqual('"2019-12-23T01:01:01.000Z"',
+    TTestUtils.SerializeValue(TValue.From<Variant>(LValue)));
+end;
+
+procedure TTestSimpleTypesSer.TestVariantArrayRaises;
+var
+  LValue: Variant;
+begin
+  // A variant array has no scalar JSON form: it must fail with an ENeonException
+  // instead of an opaque variant cast error (A17)
+  LValue := VarArrayCreate([0, 1], varVariant);
+  LValue[0] := 1;
+  LValue[1] := 'two';
+
+  Assert.WillRaise(
+    procedure begin TTestUtils.SerializeValue(TValue.From<Variant>(LValue)) end,
+    ENeonException
+  );
 end;
 
 procedure TTestSimpleTypesSer.TestDouble(const AValue: Double; _Result: string);
@@ -492,6 +544,53 @@ begin
   // Unparsable times must raise instead of silently returning the epoch (A16)
   Assert.WillRaise(
     procedure begin TTestUtils.DeserializeValueTo<TTime>(AValue) end,
+    ENeonException
+  );
+end;
+
+procedure TTestSimpleTypesDes.TestVariantScalars;
+var
+  LValue: Variant;
+begin
+  LValue := TTestUtils.DeserializeValueTo<Variant>('42');
+  Assert.AreEqual(42, Integer(LValue));
+
+  LValue := TTestUtils.DeserializeValueTo<Variant>('"text"');
+  Assert.AreEqual('text', string(LValue));
+
+  LValue := TTestUtils.DeserializeValueTo<Variant>('true');
+  Assert.IsTrue(Boolean(LValue));
+
+  LValue := TTestUtils.DeserializeValueTo<Variant>('null');
+  Assert.IsTrue(VarIsNull(LValue));
+end;
+
+procedure TTestSimpleTypesDes.TestVariantDateTimeRoundTrip;
+var
+  LValue: Variant;
+begin
+  // An ISO-8601 date/time read into a Variant keeps its time on the way out;
+  // it used to come back as a plain date (A17)
+  LValue := TTestUtils.DeserializeValueTo<Variant>('"2019-12-23T01:01:01.000Z"');
+  Assert.AreEqual('"2019-12-23T01:01:01.000Z"',
+    TTestUtils.SerializeValue(TValue.From<Variant>(LValue)));
+end;
+
+procedure TTestSimpleTypesDes.TestVariantObjectRaises;
+begin
+  // A JSON object has no Variant representation: it must fail instead of
+  // silently leaving the value Unassigned (A17)
+  Assert.WillRaise(
+    procedure begin TTestUtils.DeserializeValueTo<Variant>('{"a":1}') end,
+    ENeonException
+  );
+end;
+
+procedure TTestSimpleTypesDes.TestVariantArrayRaises;
+begin
+  // Same for a JSON array (A17)
+  Assert.WillRaise(
+    procedure begin TTestUtils.DeserializeValueTo<Variant>('[1,2,3]') end,
     ENeonException
   );
 end;

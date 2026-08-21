@@ -97,6 +97,15 @@ type
     function WriteVariant(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
+    ///   Writer for the date carried by a varDate variant
+    /// </summary>
+    /// <remarks>
+    ///   A varDate holds a full TDateTime, so it is written as a plain date only
+    ///   when there is no time to lose
+    /// </remarks>
+    function WriteVariantDate(const AValue: TDateTime; ANeonObject: TNeonRttiObject): TJSONValue;
+
+    /// <summary>
     ///   Writer for static and dynamic arrays
     /// </summary>
     function WriteArray(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1309,6 +1318,16 @@ begin
     Result := TJSONString.Create(AValue.AsString);
 end;
 
+function TNeonSerializerJSON.WriteVariantDate(const AValue: TDateTime; ANeonObject: TNeonRttiObject): TJSONValue;
+begin
+  // A varDate carries a full TDateTime: writing it as a plain date would drop
+  // the time of everything that ReadVariant decoded from an ISO-8601 string
+  if Frac(AValue) = 0 then
+    Result := WriteDate(TValue.From<TDate>(AValue), ANeonObject)
+  else
+    Result := WriteDateTime(TValue.From<TDateTime>(AValue), ANeonObject);
+end;
+
 function TNeonSerializerJSON.WriteVariant(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 var
   LValue: Variant;
@@ -1335,6 +1354,12 @@ begin
     end;
   end;
 
+  // A variant array has no scalar JSON form, and ReadVariant refuses a JSON
+  // array in return: fail with a clear message instead of letting the branches
+  // below escape as an opaque EVariantTypeCastError
+  if VarIsArray(LValue) then
+    raise ENeonException.Create(SNeonErrorVariantArray);
+
   LVariantType := VarType(LValue) and VarTypeMask;
   case LVariantType of
     //varEmpty   :
@@ -1344,7 +1369,7 @@ begin
     varSingle  ,
     varDouble  ,
     varCurrency: Result := WriteFloat(Currency(LValue), ANeonObject);
-    varDate    : Result := WriteDate(VarToDateTime(LValue), ANeonObject);
+    varDate    : Result := WriteVariantDate(VarToDateTime(LValue), ANeonObject);
     //varOleStr  :
     //varDispatch:
     //varError   :
@@ -2118,6 +2143,9 @@ begin
   // Because the property is a variant we have to guess the type based (only)
   // on the information of the JSON data
 
+  if not Assigned(AParam.JSONValue) then
+    Exit(TValue.Empty);
+
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.From<Variant>(Null));
 
@@ -2137,6 +2165,17 @@ begin
 
     Exit(TValue.From<Variant>(AParam.JSONValue.Value));
   end;
+
+  // A Variant holds scalars only (WriteVariant writes nothing else), so an
+  // object or an array has to fail loudly instead of leaving the member
+  // Unassigned, which is indistinguishable from "not in the JSON at all"
+  if AParam.JSONValue is TJSONObject then
+    raise ENeonException.CreateFmt(SNeonErrorVariantNotScalarF1, ['object']);
+
+  if AParam.JSONValue is TJSONArray then
+    raise ENeonException.CreateFmt(SNeonErrorVariantNotScalarF1, ['array']);
+
+  raise ENeonException.CreateFmt(SNeonErrorVariantNotScalarF1, [AParam.JSONValue.ClassName]);
 end;
 
 function TNeonDeserializerJSON.CreateItem(ANeonRtti: TNeonRttiObject;
