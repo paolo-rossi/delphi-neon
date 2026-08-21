@@ -105,6 +105,13 @@ type
     [TestCase('TestTimeOnly', '01:01:01,"1899-12-30T01:01:01.000Z"')]
     procedure TestDateTime(const AValue: TDateTime; _Result: string);
 
+    [Test]
+    procedure TestDateType;
+    [Test]
+    procedure TestTimeType;
+    [Test]
+    procedure TestTimeTypeMilliseconds;
+
   end;
 
   [TestFixture]
@@ -207,6 +214,29 @@ type
     [TestCase('TestTimeOnly', '"1899-12-30T01:01:01.000Z", 01:01:01')]
     procedure TestDateTime(const AValue: string; _Result: TDateTime);
 
+    [Test]
+    procedure TestDateType;
+    [Test]
+    procedure TestTimeType;
+    [Test]
+    procedure TestTimeTypeMilliseconds;
+    [Test]
+    procedure TestDateTypeFromDateTime;
+    [Test]
+    procedure TestTimeTypeFromDateTime;
+
+    [Test]
+    [TestCase('TestDateGarbage', '"not-a-date"')]
+    [TestCase('TestDateNumber', '44197')]
+    [TestCase('TestDateTruncated', '"2019-12"')]
+    procedure TestDateTypeInvalid(const AValue: string);
+
+    [Test]
+    [TestCase('TestTimeGarbage', '"not-a-time"')]
+    [TestCase('TestTimeHourOutOfRange', '"25:01:01"')]
+    [TestCase('TestTimeMinuteOutOfRange', '"01:61:01"')]
+    procedure TestTimeTypeInvalid(const AValue: string);
+
   end;
 
 implementation
@@ -238,6 +268,25 @@ end;
 procedure TTestSimpleTypesSer.TestDateTime(const AValue: TDateTime; _Result: string);
 begin
   Assert.AreEqual(_Result, TTestUtils.SerializeValue(TValue.From<TDateTime>(AValue)));
+end;
+
+procedure TTestSimpleTypesSer.TestDateType;
+begin
+  Assert.AreEqual('"2019-12-23"',
+    TTestUtils.SerializeValue(TValue.From<TDate>(EncodeDate(2019, 12, 23))));
+end;
+
+procedure TTestSimpleTypesSer.TestTimeType;
+begin
+  Assert.AreEqual('"01:01:01"',
+    TTestUtils.SerializeValue(TValue.From<TTime>(EncodeTime(1, 1, 1, 0))));
+end;
+
+procedure TTestSimpleTypesSer.TestTimeTypeMilliseconds;
+begin
+  // A TTime with a fractional second must keep its milliseconds (A16)
+  Assert.AreEqual('"01:01:01.500"',
+    TTestUtils.SerializeValue(TValue.From<TTime>(EncodeTime(1, 1, 1, 500))));
 end;
 
 procedure TTestSimpleTypesSer.TestDouble(const AValue: Double; _Result: string);
@@ -390,6 +439,59 @@ procedure TTestSimpleTypesDes.TestSmallIntRange(const AValue: string);
 begin
   Assert.WillRaise(
     procedure begin TTestUtils.DeserializeValueTo<SmallInt>(AValue) end,
+    ENeonException
+  );
+end;
+
+procedure TTestSimpleTypesDes.TestDateType;
+begin
+  Assert.AreEqual('2019-12-23',
+    FormatDateTime('yyyy-mm-dd', TTestUtils.DeserializeValueTo<TDate>('"2019-12-23"')));
+end;
+
+procedure TTestSimpleTypesDes.TestTimeType;
+begin
+  Assert.AreEqual('01:01:01.000',
+    FormatDateTime('hh:nn:ss.zzz', TTestUtils.DeserializeValueTo<TTime>('"01:01:01"')));
+end;
+
+procedure TTestSimpleTypesDes.TestTimeTypeMilliseconds;
+begin
+  // The milliseconds written by TimeToJSON must come back (A16)
+  Assert.AreEqual('01:01:01.500',
+    FormatDateTime('hh:nn:ss.zzz', TTestUtils.DeserializeValueTo<TTime>('"01:01:01.500"')));
+end;
+
+procedure TTestSimpleTypesDes.TestDateTypeFromDateTime;
+begin
+  // A full ISO-8601 date/time into a TDate keeps the date instead of silently
+  // becoming 0 (A16)
+  Assert.AreEqual('2019-12-23',
+    FormatDateTime('yyyy-mm-dd', TTestUtils.DeserializeValueTo<TDate>('"2019-12-23T01:01:01.500Z"')));
+end;
+
+procedure TTestSimpleTypesDes.TestTimeTypeFromDateTime;
+begin
+  // A full ISO-8601 date/time into a TTime keeps the time instead of silently
+  // becoming 0 (A16)
+  Assert.AreEqual('01:01:01.500',
+    FormatDateTime('hh:nn:ss.zzz', TTestUtils.DeserializeValueTo<TTime>('"2019-12-23T01:01:01.500Z"')));
+end;
+
+procedure TTestSimpleTypesDes.TestDateTypeInvalid(const AValue: string);
+begin
+  // Unparsable dates must raise instead of silently returning the epoch (A16)
+  Assert.WillRaise(
+    procedure begin TTestUtils.DeserializeValueTo<TDate>(AValue) end,
+    ENeonException
+  );
+end;
+
+procedure TTestSimpleTypesDes.TestTimeTypeInvalid(const AValue: string);
+begin
+  // Unparsable times must raise instead of silently returning the epoch (A16)
+  Assert.WillRaise(
+    procedure begin TTestUtils.DeserializeValueTo<TTime>(AValue) end,
     ENeonException
   );
 end;

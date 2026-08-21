@@ -48,6 +48,9 @@ resourcestring
   SNeonErrorParse = 'Error parsing JSON string';
   SNeonErrorNumExpected = 'Invalid JSON value. Number expected';
   SNeonErrorBoolExpected = 'Invalid JSON value. Boolean expected';
+  SNeonErrorDateInvalidF1 = 'Invalid JSON date value [%s]';
+  SNeonErrorTimeInvalidF1 = 'Invalid JSON time value [%s]';
+  SNeonErrorDateTimeInvalidF1 = 'Invalid JSON date/time value [%s]';
   SNeonErrorArrExpected = 'Set deserialization: Expected JSON Array';
   SNeonErrorDictKeyInvalid = 'Dictionary [Key]: type not supported';
   SNeonErrorFieldProp = 'Member type must be Field or Property';

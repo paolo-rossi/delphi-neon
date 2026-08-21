@@ -61,6 +61,10 @@ type
     class function JSONToTime(const ATime: string): TTime; static;
     class function JSONToDateTime(const ADateTime: string; AReturnUTC: Boolean = True): TDateTime; static;
 
+    class function TryJSONToDate(const ADate: string; out AValue: TDate): Boolean; static;
+    class function TryJSONToTime(const ATime: string; out AValue: TTime): Boolean; static;
+    class function TryJSONToDateTime(const ADateTime: string; out AValue: TDateTime; AReturnUTC: Boolean = True): Boolean; static;
+
     class procedure Prettify(const AJSONString: string; AWriter: TTextWriter);
   end;
 
@@ -730,10 +734,20 @@ begin
 end;
 
 class function TJSONUtils.TimeToJSON(ATime: TTime): string;
+var
+  LHour, LMin, LSec, LMSec: Word;
 begin
   Result := '';
-  if ATime <> 0 then
-  Result := FormatDateTime('hh:nn:ss', ATime);
+  if ATime = 0 then
+    Exit;
+
+  { Milliseconds are emitted only when they carry information, so whole-second
+    times keep the plain hh:nn:ss form and no sub-second data is ever lost }
+  DecodeTime(ATime, LHour, LMin, LSec, LMSec);
+  if LMSec = 0 then
+    Result := Format('%.2d:%.2d:%.2d', [LHour, LMin, LSec])
+  else
+    Result := Format('%.2d:%.2d:%.2d.%.3d', [LHour, LMin, LSec, LMSec]);
 end;
 
 class function TJSONUtils.TimeToJSONValue(ATime: TTime): TJSONValue;
@@ -939,18 +953,142 @@ begin
   end;
 end;
 
+class function TJSONUtils.TryJSONToDate(const ADate: string; out AValue: TDate): Boolean;
+
+  {YYYY-MM-DD} // Possible RegEx => ^(?:\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))$
+  function TryParsePlainDate(const AText: string; out ADateTime: TDateTime): Boolean;
+  var
+    LYear, LMonth, LDay: Integer;
+  begin
+    Result := False;
+
+    if (Length(AText) <> 10) or (AText[5] <> '-') or (AText[8] <> '-') then
+      Exit;
+
+    if not TryStrToInt(Copy(AText, 1, 4), LYear) then
+      Exit;
+    if not TryStrToInt(Copy(AText, 6, 2), LMonth) then
+      Exit;
+    if not TryStrToInt(Copy(AText, 9, 2), LDay) then
+      Exit;
+
+    { Explicit range check: TryEncodeDate takes Word parameters }
+    if (LYear < 1) or (LYear > 9999) or (LMonth < 1) or (LMonth > 12) or
+       (LDay < 1) or (LDay > 31) then
+      Exit;
+
+    Result := TryEncodeDate(LYear, LMonth, LDay, ADateTime);
+  end;
+
+var
+  LDateTime: TDateTime;
+begin
+  AValue := 0.0;
+  if ADate.IsEmpty then
+    Exit(True);
+
+  if TryParsePlainDate(ADate, LDateTime) then
+  begin
+    AValue := LDateTime;
+    Exit(True);
+  end;
+
+  { Anything else is handed to the RTL parser, so a full ISO-8601 date/time is
+    accepted for a TDate as well (the time part is dropped) }
+  Result := TryISO8601ToDate(ADate, LDateTime, True);
+  if Result then
+    AValue := DateOf(LDateTime);
+end;
+
+class function TJSONUtils.TryJSONToTime(const ATime: string; out AValue: TTime): Boolean;
+
+  {hh:nn[:ss[.zzz]][Z]} // Possible RegEx => ^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:[.,]\d+)?)?Z?$
+  function TryParsePlainTime(const AText: string; out ADateTime: TDateTime): Boolean;
+  var
+    LTime, LFraction: string;
+    LParts: TArray<string>;
+    LHour, LMin, LSec, LMSec, LSepIndex: Integer;
+  begin
+    Result := False;
+
+    LTime := AText;
+    if LTime.EndsWith('Z', True) then
+      LTime := LTime.Substring(0, LTime.Length - 1);
+
+    LMSec := 0;
+    LSepIndex := LTime.IndexOfAny(['.', ',']);
+    if LSepIndex >= 0 then
+    begin
+      { Normalize the fractional part to exactly 3 digits (milliseconds) }
+      LFraction := LTime.Substring(LSepIndex + 1);
+      LTime := LTime.Substring(0, LSepIndex);
+      if LFraction.IsEmpty then
+        Exit;
+      LFraction := Copy(LFraction + '000', 1, 3);
+      if not TryStrToInt(LFraction, LMSec) then
+        Exit;
+    end;
+
+    LParts := LTime.Split([':']);
+    if (Length(LParts) < 2) or (Length(LParts) > 3) then
+      Exit;
+
+    LSec := 0;
+    if not TryStrToInt(LParts[0], LHour) then
+      Exit;
+    if not TryStrToInt(LParts[1], LMin) then
+      Exit;
+    if (Length(LParts) = 3) and not TryStrToInt(LParts[2], LSec) then
+      Exit;
+
+    { Explicit range check: TryEncodeTime takes Word parameters }
+    if (LHour < 0) or (LHour > 23) or (LMin < 0) or (LMin > 59) or
+       (LSec < 0) or (LSec > 59) or (LMSec < 0) or (LMSec > 999) then
+      Exit;
+
+    Result := TryEncodeTime(LHour, LMin, LSec, LMSec, ADateTime);
+  end;
+
+var
+  LDateTime: TDateTime;
+begin
+  AValue := 0.0;
+  if ATime.IsEmpty then
+    Exit(True);
+
+  if not ATime.Contains('-') and TryParsePlainTime(ATime, LDateTime) then
+  begin
+    AValue := LDateTime;
+    Exit(True);
+  end;
+
+  { Anything else is handed to the RTL parser, so a full ISO-8601 date/time is
+    accepted for a TTime as well (the date part is dropped) }
+  Result := TryISO8601ToDate(ATime, LDateTime, True);
+  if Result then
+    AValue := TimeOf(LDateTime);
+end;
+
+class function TJSONUtils.TryJSONToDateTime(const ADateTime: string; out AValue: TDateTime;
+  AReturnUTC: Boolean): Boolean;
+begin
+  AValue := 0.0;
+  if ADateTime.IsEmpty then
+    Exit(True);
+
+  Result := TryISO8601ToDate(ADateTime, AValue, AReturnUTC);
+end;
+
 class function TJSONUtils.JSONToDate(const ADate: string): TDate;
 begin
-  Result := 0.0;
-  if Length(ADate) = 10 then  {YYYY-MM-DD} // Possible RegEx => ^(?:\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01]))$
-    Result := EncodeDate(StrToInt(Copy(ADate, 1, 4)), StrToInt(Copy(ADate, 6, 2)), StrToInt(Copy(ADate, 9, 2)));
+  if not TryJSONToDate(ADate, Result) then
+    raise ENeonException.CreateFmt(SNeonErrorDateInvalidF1, [ADate]);
 end;
 
 class function TJSONUtils.JSONToTime(const ATime: string): TTime;
 begin
-  Result := 0.0;
-  if Length(ATime) = 8 then {hh:nn:ss} // Possible RegEx => ^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$
-    Result := EncodeTime(StrToInt(Copy(ATime, 1, 2)), StrToInt(Copy(ATime, 4, 2)), StrToInt(Copy(ATime, 7, 2)), 0);
+  if not TryJSONToTime(ATime, Result) then
+    raise ENeonException.CreateFmt(SNeonErrorTimeInvalidF1, [ATime]);
 end;
 
 class procedure TJSONUtils.Prettify(const AJSONString: string; AWriter: TTextWriter);
@@ -1026,9 +1164,8 @@ end;
 
 class function TJSONUtils.JSONToDateTime(const ADateTime: string; AReturnUTC: Boolean = True): TDateTime;
 begin
-  Result := 0.0;
-  if ADateTime <> '' then
-    Result := ISO8601ToDate(ADateTime, AReturnUTC);
+  if not TryJSONToDateTime(ADateTime, Result, AReturnUTC) then
+    raise ENeonException.CreateFmt(SNeonErrorDateTimeInvalidF1, [ADateTime]);
 end;
 
 class function TJSONUtils.ToJSON(AJSONValue: TJSONValue): string;
