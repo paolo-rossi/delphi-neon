@@ -35,6 +35,7 @@ type
 
   TNeonSerializerRegistry = class;
   TNeonRttiObject = class;
+  TNeonRttiCache = class;
 
   INeonConfiguration = interface;
   TNeonConfiguration = class;
@@ -371,6 +372,9 @@ type
     FIgnoreMembers: TArray<string>;
 
     FTypeConfigurator: TTypeConfigurator;
+
+    FRttiCaches: TObjectDictionary<UInt64, TNeonRttiCache>;
+    FRttiCachesLock: TCriticalSection;
   public
     constructor Create;
     destructor Destroy; override;
@@ -409,6 +413,21 @@ type
     function GetSerializers: TNeonSerializerRegistry;
     function GetFactoryList: TNeonFactoryRegistry;
     function GetTypeConfigurator: TTypeConfigurator;
+
+    /// <summary>
+    ///   The RTTI work accumulated for this configuration, for the calling
+    ///   thread and the given operation. Serializers take theirs from here
+    ///   instead of starting empty, so a type is enumerated and its attributes
+    ///   parsed once per configuration rather than once per top-level call
+    /// </summary>
+    function GetRttiCache(AOperation: TNeonOperation): TNeonRttiCache;
+
+    /// <summary>
+    ///   Drops what was cached from the current settings. Called by every
+    ///   setter that feeds the member plans; a configuration must not be
+    ///   changed while a serialization using it is in flight
+    /// </summary>
+    procedure ClearRttiCache;
 
     property Members: TNeonMembersSet read FMembers write FMembers;
     property MemberSort: TNeonSort read FMemberSort write FMemberSort;
@@ -589,6 +608,30 @@ type
   ///   TMemberRegistry
   /// </summary>
   TNeonObjectRegistry = class(TObjectDictionary<PTypeInfo, TNeonRttiObject>);
+
+  /// <summary>
+  ///   Everything a serializer or deserializer resolves per type: the member
+  ///   lists and the parsed type objects
+  /// </summary>
+  /// <remarks>
+  ///   Owned by the configuration and handed out per thread and per operation,
+  ///   so repeated top-level calls reuse it instead of rebuilding it. It is
+  ///   deliberately not shared between threads: TNeonRttiMembers carries
+  ///   per-instance state (FilterSerialize writes each member's Serializable)
+  ///   and TNeonRttiMember fills its JSON name lazily, so one thread must never
+  ///   see another's entries
+  /// </remarks>
+  TNeonRttiCache = class
+  private
+    FMembers: TMemberRegistry;
+    FObjects: TNeonObjectRegistry;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    property Members: TMemberRegistry read FMembers;
+    property Objects: TNeonObjectRegistry read FObjects;
+  end;
   
   {$ENDREGION}
 
@@ -604,10 +647,15 @@ type
     FConfigIntf: INeonConfiguration;
     FOperation: TNeonOperation;
     FOriginalInstance: TValue;
-    FMemberRegistry: TMemberRegistry;
-    FObjectRegistry: TNeonObjectRegistry;
+    FRttiCache: TNeonRttiCache;
     FErrors: TStrings;
     function GetTypeMembers(AType: TRttiType): TArray<TRttiMember>;
+
+    /// <summary>
+    ///   The configuration's cache for this thread and operation, fetched on
+    ///   first use (FOperation is only set by the descendant's constructor)
+    /// </summary>
+    function GetRttiCache: TNeonRttiCache;
     function GetNeonMembers(AType: TRttiType): TNeonRttiMembers;
 
     /// <summary>
@@ -647,17 +695,21 @@ constructor TNeonBase.Create(const AConfig: INeonConfiguration);
 begin
   FConfigIntf := AConfig;
   FConfig := AConfig as TNeonConfiguration;
-  FMemberRegistry := TMemberRegistry.Create([doOwnsValues]);
-  FObjectRegistry := TNeonObjectRegistry.Create([doOwnsValues]);
   FErrors := TStringList.Create;
 end;
 
 destructor TNeonBase.Destroy;
 begin
+  // FRttiCache belongs to the configuration and outlives this instance
   FErrors.Free;
-  FObjectRegistry.Free;
-  FMemberRegistry.Free;
   inherited;
+end;
+
+function TNeonBase.GetRttiCache: TNeonRttiCache;
+begin
+  if not Assigned(FRttiCache) then
+    FRttiCache := FConfig.GetRttiCache(FOperation);
+  Result := FRttiCache;
 end;
 
 function TNeonBase.GetConfiguration: INeonConfiguration;
@@ -723,7 +775,7 @@ begin
   // and cache miss (the one-off build below) are lumped into one section:
   // over many calls for the same type, hits dominate the average.
   LStamp := TNeonLogger.ProfileBegin;
-  if FMemberRegistry.TryGetValue(AType.Handle, Result) then
+  if GetRttiCache.Members.TryGetValue(AType.Handle, Result) then
   begin
     TNeonLogger.ProfileEnd('Core:GetNeonMembers', LStamp);
     Exit(Result);
@@ -758,7 +810,7 @@ begin
     LNeonMember := Result.NewMember(LMember);
     Result.Add(LNeonMember);
   end;
-  FMemberRegistry.Add(AType.Handle, Result);
+  GetRttiCache.Members.Add(AType.Handle, Result);
 
   case FConfig.MemberSort of
     TNeonSort.Rtti: ; // Default, do nothing
@@ -817,12 +869,12 @@ begin
   // and re-parsed the attributes, then threw the result away.
   // Nothing writes back into a parsed TNeonRttiObject, so a single instance can
   // serve every element of its type
-  if FObjectRegistry.TryGetValue(ATypeInfo, Result) then
+  if GetRttiCache.Objects.TryGetValue(ATypeInfo, Result) then
     Exit;
 
   Result := TNeonRttiObject.Create(TRttiUtils.Context.GetType(ATypeInfo), FOperation);
   Result.ParseAttributes;
-  FObjectRegistry.Add(ATypeInfo, Result);
+  GetRttiCache.Objects.Add(ATypeInfo, Result);
 end;
 
 procedure TNeonBase.LogError(const AMessage: string);
@@ -830,10 +882,29 @@ begin
   FErrors.Add(AMessage);
 end;
 
+{ TNeonRttiCache }
+
+constructor TNeonRttiCache.Create;
+begin
+  FMembers := TMemberRegistry.Create([doOwnsValues]);
+  FObjects := TNeonObjectRegistry.Create([doOwnsValues]);
+end;
+
+destructor TNeonRttiCache.Destroy;
+begin
+  FObjects.Free;
+  FMembers.Free;
+  inherited;
+end;
+
 { TNeonConfiguration }
 
 constructor TNeonConfiguration.Create;
 begin
+  // Before the setters below, which invalidate it
+  FRttiCaches := TObjectDictionary<UInt64, TNeonRttiCache>.Create([doOwnsValues]);
+  FRttiCachesLock := TCriticalSection.Create;
+
   FSerializers := TNeonSerializerRegistry.Create;
   FFactoryList := TNeonFactoryRegistry.Create;
   FTypeConfigurator := TTypeConfigurator.Create(Self);
@@ -848,8 +919,41 @@ begin
   FClosedSchema := False;
 end;
 
+function TNeonConfiguration.GetRttiCache(AOperation: TNeonOperation): TNeonRttiCache;
+var
+  LKey: UInt64;
+begin
+  // One cache per thread and per operation: the entries hold per-instance state
+  // and are filled lazily, so they cannot be shared across threads, and the
+  // serialize and deserialize member plans differ
+  LKey := (UInt64(TThread.CurrentThread.ThreadID) shl 1) or UInt64(Ord(AOperation));
+
+  FRttiCachesLock.Enter;
+  try
+    if not FRttiCaches.TryGetValue(LKey, Result) then
+    begin
+      Result := TNeonRttiCache.Create;
+      FRttiCaches.Add(LKey, Result);
+    end;
+  finally
+    FRttiCachesLock.Leave;
+  end;
+end;
+
+procedure TNeonConfiguration.ClearRttiCache;
+begin
+  FRttiCachesLock.Enter;
+  try
+    FRttiCaches.Clear;
+  finally
+    FRttiCachesLock.Leave;
+  end;
+end;
+
 destructor TNeonConfiguration.Destroy;
 begin
+  FRttiCaches.Free;
+  FRttiCachesLock.Free;
   FTypeConfigurator.Free;
   FFactoryList.Free;
   FSerializers.Free;
@@ -923,6 +1027,9 @@ end;
 
 function TNeonConfiguration.GetTypeConfigurator: TTypeConfigurator;
 begin
+  // Handed out so the caller can add rules, and those feed the member
+  // plans: whatever was cached from the current rules is dropped now
+  ClearRttiCache;
   Result := FTypeConfigurator;
 end;
 
@@ -958,12 +1065,14 @@ end;
 function TNeonConfiguration.SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
 begin
   FMembers := AValue;
+  ClearRttiCache;
   Result := Self;
 end;
 
 function TNeonConfiguration.SetMemberSort(AValue: TNeonSort): INeonConfiguration;
 begin
   FMemberSort := AValue;
+  ClearRttiCache;
   Result := Self;
 end;
 
@@ -1023,18 +1132,21 @@ end;
 function TNeonConfiguration.SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
 begin
   FIgnoreFieldPrefix := AValue;
+  ClearRttiCache;
   Result := Self;
 end;
 
 function TNeonConfiguration.SetIgnoreMembers(const AMemberList: TArray<string>): INeonConfiguration;
 begin
   FIgnoreMembers := AMemberList;
+  ClearRttiCache;
   Result := Self;
 end;
 
 function TNeonConfiguration.SetIgnoreReadOnlyProps(AValue: Boolean): INeonConfiguration;
 begin
   FIgnoreReadOnlyProps := AValue;
+  ClearRttiCache;
   Result := Self;
 end;
 
@@ -1053,12 +1165,14 @@ end;
 function TNeonConfiguration.SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
 begin
   FMemberCustomCase := AValue;
+  ClearRttiCache;
   Result := Self;
 end;
 
 function TNeonConfiguration.SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
 begin
   FVisibility := AValue;
+  ClearRttiCache;
   Result := Self;
 end;
 

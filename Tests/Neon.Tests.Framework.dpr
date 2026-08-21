@@ -47,6 +47,7 @@ uses
   Neon.Tests.Config.IncludeIf in 'Source\Neon.Tests.Config.IncludeIf.pas',
   Neon.Tests.Config.ReadOnlyProps in 'Source\Neon.Tests.Config.ReadOnlyProps.pas',
   Neon.Tests.Config.MapSort in 'Source\Neon.Tests.Config.MapSort.pas',
+  Neon.Tests.Config.Cache in 'Source\Neon.Tests.Config.Cache.pas',
   Neon.Tests.ConfigTypes in 'Source\Neon.Tests.ConfigTypes.pas',
   Neon.Tests.Tags in 'Source\Neon.Tests.Tags.pas',
   Neon.Tests.StructTags in 'Source\Neon.Tests.StructTags.pas',
