@@ -56,6 +56,12 @@ type
     class function GetTargetInfo: PTypeInfo; override;
     class function CanHandle(AType: PTypeInfo): Boolean; override;
   public
+    /// <summary>
+    ///   Deserialize returns a clone of the JSON it is given, so it does not
+    ///   need an instance to read into and a TJSONValue member works without
+    ///   AutoCreate or [NeonAutoCreate]
+    /// </summary>
+    class function NeedsInstance: Boolean; override;
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
@@ -223,6 +229,11 @@ begin
   Result := TypeInfoIs(AType);
 end;
 
+class function TJSONValueSerializer.NeedsInstance: Boolean;
+begin
+  Result := False;
+end;
+
 function TJSONValueSerializer.Deserialize(AValue: TJSONValue;
   const AData: TValue; ANeonObject: TNeonRttiObject;
   AContext: IDeserializerContext): TValue;
@@ -230,38 +241,67 @@ var
   LJSONData: TJSONValue;
   LPair: TJSONPair;
   LValue: TJSONValue;
+  LTargetClass: TClass;
+  LMemberType: TRttiType;
 begin
   Result := AData;
-  LJSONData := Result.AsObject as TJSONValue;
 
-  // Check the TypeInfo of AData as TJSONValue and AValue
-  if not (LJSONData.ClassType = AValue.ClassType) then
+  LJSONData := nil;
+  if AData.IsObject then
+    LJSONData := AData.AsObject as TJSONValue;
+
+  // The instance the caller passed to JSONToObject cannot be replaced: there is
+  // no reference to update and the entry point discards the result, so the JSON
+  // is merged into it - the only thing this serializer used to do, for every
+  // target. Note that the merge appends: reading two documents into the same
+  // instance keeps the pairs of both
+  if Assigned(LJSONData) and AContext.IsOriginalInstance(AData) then
   begin
-    AContext.LogError(Format(SNeonErrorSerializerIncompatibleF2, [LJSONData.ClassName, AValue.ClassName]));
+    if LJSONData.ClassType <> AValue.ClassType then
+    begin
+      AContext.LogError(Format(SNeonErrorSerializerIncompatibleF2, [LJSONData.ClassName, AValue.ClassName]));
+      Exit;
+    end;
+
+    if LJSONData is TJSONObject then
+      for LPair in (AValue as TJSONObject) do
+        (LJSONData as TJSONObject).AddPair(LPair.Clone as TJSONPair)
+
+    else if LJSONData is TJSONArray then
+      for LValue in (AValue as TJSONArray) do
+        (LJSONData as TJSONArray).AddElement(LValue.Clone as TJSONValue);
+
     Exit;
   end;
 
-  if LJSONData is TJSONObject then
-    for LPair in (AValue as TJSONObject) do
-      (LJSONData as TJSONObject).AddPair(LPair.Clone as TJSONPair)
+  // Everywhere else the target simply takes a clone of the JSON it is read
+  // from, whatever its kind: the mirror image of Serialize, which clones
+  // whatever it is given. Merging into the instance could only ever work for an
+  // object or an array of the exact same class, left a nil member untouched,
+  // and appended the same pairs again on a second read
+  LTargetClass := TJSONValue;
+  if ANeonObject is TNeonRttiMember then
+  begin
+    LMemberType := TNeonRttiMember(ANeonObject).RttiType;
+    if LMemberType is TRttiInstanceType then
+      LTargetClass := TRttiInstanceType(LMemberType).MetaclassType;
+  end
+  else if Assigned(LJSONData) then
+    LTargetClass := LJSONData.ClassType;
 
-  else if LJSONData is TJSONArray then
-    for LValue in (AValue as TJSONArray) do
-      (LJSONData as TJSONArray).AddElement(LValue.Clone as TJSONValue)
+  // A TJSONString cannot be stored in a TJSONObject member: say so instead of
+  // letting the assignment fail with an unrelated cast error
+  if not AValue.InheritsFrom(LTargetClass) then
+  begin
+    AContext.LogError(Format(SNeonErrorSerializerIncompatibleF2, [LTargetClass.ClassName, AValue.ClassName]));
+    Exit;
+  end;
 
-  {
-  else if LJSONData is TJSONString then
-    (LJSONData as TJSONString). Value := (AValue as TJSONString).Value
+  Result := AValue.Clone as TJSONValue;
 
-  else if LJSONData is TJSONNumber then
-    (LJSONData as TJSONNumber).Value := (AValue as TJSONNumber).Value
-
-  else if LJSONData is TJSONBool then
-    (LJSONData as TJSONString).Value := (AValue as TJSONString).Value
-
-  else if LJSONData is TJSONNull then
-    (LJSONData as TJSONString).Value := (AValue as TJSONString).Value
-  }
+  // Neon is replacing the value the target holds, so it disposes of the
+  // instance it replaces: leaving it behind would leak it
+  LJSONData.Free;
 end;
 
 class function TJSONValueSerializer.GetTargetInfo: PTypeInfo;

@@ -38,6 +38,11 @@ type
     /// <summary>
     ///   Writer for string types
     /// </summary>
+    /// <remarks>
+    ///   Under [NeonRawValue] the string is JSON text spliced into the document
+    ///   instead of a value to quote, so it has to parse: see the attribute for
+    ///   the contract that puts on both directions
+    /// </remarks>
     function WriteString(const AValue: TValue; ANeonObject: TNeonRttiObject): TJSONValue;
 
     /// <summary>
@@ -241,6 +246,11 @@ type
     /// <summary>
     ///   reader for string types
     /// </summary>
+    /// <remarks>
+    ///   Under [NeonRawValue] the member is given the JSON text of the value,
+    ///   which is what the writer expects back: a scalar therefore arrives
+    ///   JSON-encoded ("abc", quotes included). See the attribute
+    /// </remarks>
     function ReadString(const AParam: TNeonDeserializerParam): TValue;
 
     /// <summary>
@@ -332,6 +342,16 @@ type
     ///   refuses the same ones with the same error
     /// </remarks>
     function ReadEnumerableMap(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
+
+    /// <summary>
+    ///   Reader for a JSON null: an explicit "no value" for the target type
+    /// </summary>
+    /// <remarks>
+    ///   Simple types go back to their default, a Nullable loses its value, and
+    ///   an object or interface reference is left alone: Neon does not own what
+    ///   a member points to, so clearing the reference here would leak it
+    /// </remarks>
+    function ReadNull(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 
     /// <summary>
     ///   Tells whether a map key of this type can be read back from a JSON name
@@ -1345,7 +1365,16 @@ begin
   end;
 
   if ANeonObject.NeonRawValue then
-    Result := TNeon.ParseJSON(AValue.AsString, False, True)
+  begin
+    // [NeonRawValue] means the member holds JSON text to splice into the
+    // document as it is, so it has to parse. Report what failed and where the
+    // library's error catalog can be read, instead of letting the RTL's parse
+    // exception (or, when the parser just returns nil, a silently missing
+    // member) out of a member whose only job is to carry JSON
+    Result := TNeon.ParseJSON(AValue.AsString, False, False);
+    if not Assigned(Result) then
+      raise ENeonException.CreateFmt(SNeonErrorRawValueF1, [AValue.AsString]);
+  end
   else
     Result := TJSONString.Create(AValue.AsString);
 end;
@@ -1481,6 +1510,15 @@ begin
     begin
       LItemParam.JSONValue := LJSONArray.Items[LIndex];
 
+      // A null item has nothing to read into: the slot gets the element type's
+      // default (nil for a class), instead of the empty instance the factory or
+      // the constructor used to build for it
+      if LItemParam.JSONValue is TJSONNull then
+      begin
+        Result.SetArrayElement(LIndex, TValue.Empty.Cast(LItemParam.RttiType.Handle));
+        Continue;
+      end;
+
       if AParam.RttiType.TypeKind = tkArray then // Static Array
       begin
         // Replace the stored element with a fresh one via the item factory
@@ -1564,8 +1602,9 @@ begin
       // A nil target instance (no AutoCreate/factory and no parameterless
       // constructor - e.g. an abstract TStream member) cannot be populated by
       // the serializer without dereferencing nil: skip it and log, matching
-      // the engine's "no AutoCreate -> member stays nil"
-      if (LValue.Kind = tkClass) and (LValue.AsObject = nil) then
+      // the engine's "no AutoCreate -> member stays nil". A serializer that
+      // builds the value itself (NeedsInstance = False) is called anyway
+      if LCustom.NeedsInstance and (LValue.Kind = tkClass) and (LValue.AsObject = nil) then
       begin
         LogError(Format(SNeonErrorDeserializeNilF1, [AParam.RttiType.Name]));
         Exit(LValue);
@@ -1575,6 +1614,12 @@ begin
       Exit(Result);
     end;
   end;
+
+  // A JSON null is a value, not a missing member: it is applied here, after the
+  // custom serializers (which may have their own reading of null) and before
+  // every type reader, so that null means the same thing everywhere
+  if AParam.JSONValue is TJSONNull then
+    Exit(ReadNull(AParam, AData));
 
   case AParam.RttiType.TypeKind of
     // Simple types
@@ -1594,25 +1639,45 @@ begin
     tkDynArray:    Result := ReadArray(AParam, AData);
     tkInterface:   Result := ReadInterface(AParam, AData);
 
-    tkClass:
+    tkClass:      Result := ReadReference(AParam, AData);
+
+    tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
     begin
-      if TJSONUtils.HasItems(AParam.JSONValue) then
-        Result := ReadReference(AParam, AData)
+      if ReadNullable(AParam, AData) then
+        Result := AData
+      else
+        Result := ReadRecord(AParam, AData);
+    end;
+
+  end;
+end;
+
+function TNeonDeserializerJSON.ReadNull(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+begin
+  case AParam.RttiType.TypeKind of
+    // Neon does not own the instance a reference points to, so a null cannot
+    // clear it here without leaking it: the reference keeps its value
+    tkClass, tkInterface:
+      Result := AData;
+
+    // A Variant has a null of its own, which is not the same as Unassigned
+    tkVariant:
+      Result := TValue.From<Variant>(Null);
+
+    tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
+    begin
+      // A zeroed Nullable<T> is exactly "no value"; any other record has no
+      // null form and is left as it is
+      if Assigned(TDynamicNullable.GuessType(AData)) then
+        Result := TValue.Empty.Cast(AParam.RttiType.Handle)
       else
         Result := AData;
     end;
 
-    tkRecord{$IFDEF HAS_MRECORDS}, tkMRecord{$ENDIF}:
-    begin
-      if TJSONUtils.HasItems(AParam.JSONValue) then
-      begin
-        if ReadNullable(AParam, AData) then
-          Result := AData
-        else
-          Result := ReadRecord(AParam, AData);
-      end;
-    end;
-
+  else
+    // Everything else goes back to its default: '' for a string, 0 for a
+    // number, the empty set, an empty array
+    Result := TValue.Empty.Cast(AParam.RttiType.Handle);
   end;
 end;
 
@@ -1691,6 +1756,15 @@ begin
     for LIndex := 0 to LJSONArray.Count - 1 do
     begin
       LParam.JSONValue := LJSONArray.Items[LIndex];
+
+      // A null item has nothing to read into: the list gets the item type's
+      // default (nil for a class), instead of the empty instance the factory or
+      // the constructor used to build for it
+      if LParam.JSONValue is TJSONNull then
+      begin
+        LList.Add(TValue.Empty.Cast(LParam.RttiType.Handle));
+        Continue;
+      end;
 
       if LParam.RttiType.TypeKind = tkClass then
         LItemValue := CreateItem(AParam.NeonObject, LParam.JSONValue, LParam.RttiType)
@@ -1824,12 +1898,20 @@ begin
 
         // Value creation and deserialization
         LParamValue.JSONValue := LEnum.Current.JsonValue;
-        if LParamValue.RttiType.TypeKind = tkClass then
-          LValue := CreateItem(AParam.NeonObject, LParamValue.JSONValue, LParamValue.RttiType)
-        else
-          LValue := LMap.NewValue;
 
-        LValue := ReadDataMember(LParamValue, LValue, True);
+        // A null value has nothing to read into: the pair gets the value type's
+        // default (nil for a class), not a freshly created empty instance
+        if LParamValue.JSONValue is TJSONNull then
+          LValue := TValue.Empty.Cast(LParamValue.RttiType.Handle)
+        else
+        begin
+          if LParamValue.RttiType.TypeKind = tkClass then
+            LValue := CreateItem(AParam.NeonObject, LParamValue.JSONValue, LParamValue.RttiType)
+          else
+            LValue := LMap.NewValue;
+
+          LValue := ReadDataMember(LParamValue, LValue, True);
+        end;
 
         // Add the pair to the Map
         LMap.Add(LKey, LValue);
@@ -2028,11 +2110,18 @@ begin
       if not Assigned(LParam.JSONValue) then
         Continue;
 
-      if not TJSONUtils.HasItems(LParam.JSONValue) then
-        Continue;
-
       try
+        // Every JSON value the member has is read, a null and an empty {} or []
+        // included: the old TJSONUtils.HasItems filter skipped exactly those, so
+        // a value the document states explicitly could not clear, create or
+        // empty a member - it silently kept whatever the member already had
         LMemberValue := ReadDataMember(LParam, LNeonMember.GetValue(AInstance), True);
+
+        // A reader that produced no typed value (an unsupported type kind)
+        // must not overwrite the member with an untyped TValue
+        if LMemberValue.TypeInfo = nil then
+          Continue;
+
         LNeonMember.SetValue(LMemberValue, AInstance);
       except
         on E: Exception do
@@ -2344,7 +2433,10 @@ begin
   if not (AData.AsObject = nil) then
     Exit;
 
-  if not TJSONUtils.HasItems(AParam.JSONValue) then
+  // Anything that is not a JSON null declares a value for the member, so the
+  // instance to read it into is created - an empty {} or [] included, which
+  // used to count as "nothing to read" and left the member nil
+  if AParam.JSONValue is TJSONNull then
     Exit;
 
   if Assigned(AParam.NeonObject.NeonFactoryClass) then

@@ -86,6 +86,15 @@ type
     ///   Useful method to add deserialization errors in the deserializer's log
     /// </summary>
     procedure LogError(const AMessage: string);
+
+    /// <summary>
+    ///   Tells whether AValue is the instance the caller passed to the entry
+    ///   point (JSONToObject/JSONToTValue). Such an instance cannot be replaced
+    ///   by a serializer - there is no reference to update, and the caller owns
+    ///   it - so a serializer that would otherwise return a new instance has to
+    ///   read into this one instead
+    /// </summary>
+    function IsOriginalInstance(const AValue: TValue): Boolean;
   end;
 
   //TCustomItemCreator = reference to function (AType: TRttiType; AValue: TJSONValue): TObject;
@@ -113,7 +122,58 @@ type
     class function TypeInfoIsClass(AInfo: PTypeInfo): Boolean;
   public
     class procedure ChangeConfig(AConfig: INeonConfiguration); virtual;
+
+    /// <summary>
+    ///   Writes AValue as JSON. Called for every value whose type this
+    ///   serializer claims through CanHandle, wherever it appears: a member, an
+    ///   array or list item, a dictionary key or value, a top-level value.
+    /// </summary>
+    /// <remarks>
+    ///   The result belongs to the engine: it is added to the JSON tree and
+    ///   freed with it. Return nil to write nothing at all - the member is then
+    ///   left out of the JSON object entirely, which is how the IncludeIf
+    ///   policies are honoured; read ANeonObject.NeonInclude to apply them.
+    /// </remarks>
+    /// <remarks>
+    ///   AValue never holds a nil object: the engine applies the member's
+    ///   IncludeIf first (omitted under the default NotNull, JSON null under
+    ///   Always), so a serializer never has to guard against one.
+    /// </remarks>
+    /// <remarks>
+    ///   ANeonObject carries the resolved Neon attributes of what is being
+    ///   written (NeonInclude, NeonRawValue, NeonEnumNames, ...). AContext
+    ///   recurses back into the engine - WriteDataMember for a value,
+    ///   WriteMembers for the members of an object or record - and logs errors,
+    ///   which is how a serializer reuses the engine instead of restating it.
+    /// </remarks>
     function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; virtual; abstract;
+
+    /// <summary>
+    ///   Reads AValue (the JSON) and returns the value the target must be set
+    ///   to. Called wherever a value of a type this serializer claims through
+    ///   CanHandle is read.
+    /// </summary>
+    /// <remarks>
+    ///   AData is what the target holds right now: for a class, the instance to
+    ///   read into, already built by AutoCreate, [NeonAutoCreate] or a factory
+    ///   when one of them applies. Return AData once it has been filled in
+    ///   place, or a different value to replace it - in which case disposing of
+    ///   the instance being replaced is the serializer's job, nothing else will
+    ///   do it. Do not replace the instance AContext.IsOriginalInstance
+    ///   recognises: it belongs to the caller and the result is discarded there.
+    /// </remarks>
+    /// <remarks>
+    ///   A class target with no instance (no AutoCreate, no factory, no
+    ///   parameterless constructor) is skipped and logged before it gets here,
+    ///   unless NeedsInstance is overridden to return False - a serializer that
+    ///   builds the value itself is called with nothing and returns the new
+    ///   value.
+    /// </remarks>
+    /// <remarks>
+    ///   AValue can be a TJSONNull: a null reaches the serializer so it can
+    ///   decide what "no value" means for its type. The returned TValue has to
+    ///   fit the target's declared type - the engine assigns it as it is.
+    /// </remarks>
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; virtual; abstract;
 
     /// <summary>
@@ -125,6 +185,16 @@ type
     ///   override this method keep their previous behaviour unchanged.
     /// </summary>
     function SerializeSchema(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject; virtual;
+
+    /// <summary>
+    ///   True (the default) when Deserialize needs the instance it is given: a
+    ///   member with no instance - no AutoCreate, no factory, no parameterless
+    ///   constructor - is then skipped and logged instead of handing the
+    ///   serializer a nil to dereference. A serializer that builds the value
+    ///   itself, and can therefore be called with nothing, returns False.
+    /// </summary>
+    class function NeedsInstance: Boolean; virtual;
+
   end;
 
   TNeonSerializerRegistry = class
@@ -530,7 +600,6 @@ type
     FOriginalInstance: TValue;
     FMemberRegistry: TMemberRegistry;
     FErrors: TStrings;
-    function IsOriginalInstance(const AValue: TValue): Boolean;
     function GetTypeMembers(AType: TRttiType): TArray<TRttiMember>;
     function GetNeonMembers(AType: TRttiType): TNeonRttiMembers;
     function GetNameFromMember(AMember: TNeonRttiMember): string; virtual;
@@ -540,6 +609,7 @@ type
 
     procedure LogError(const AMessage: string);
     function GetConfiguration: INeonConfiguration;
+    function IsOriginalInstance(const AValue: TValue): Boolean;
   public
     property Config: TNeonConfiguration read FConfig;
     property Errors: TStrings read FErrors;
@@ -714,10 +784,13 @@ end;
 
 function TNeonBase.IsOriginalInstance(const AValue: TValue): Boolean;
 begin
-  if NativeInt(AValue.GetReferenceToRawData^) = NativeInt(FOriginalInstance.GetReferenceToRawData^) then
-    Result := True
-  else
-    Result := False;
+  // Both sides must hold something: FOriginalInstance is not set by every entry
+  // point (JSONToArray, for one) and a nil member has no raw data either, so
+  // dereferencing the pointers unconditionally would fault
+  if AValue.IsEmpty or FOriginalInstance.IsEmpty then
+    Exit(False);
+
+  Result := NativeInt(AValue.GetReferenceToRawData^) = NativeInt(FOriginalInstance.GetReferenceToRawData^);
 end;
 
 procedure TNeonBase.LogError(const AMessage: string);
@@ -1744,6 +1817,11 @@ end;
 
 
 { TCustomSerializer }
+
+class function TCustomSerializer.NeedsInstance: Boolean;
+begin
+  Result := True;
+end;
 
 class procedure TCustomSerializer.ChangeConfig(AConfig: INeonConfiguration);
 begin

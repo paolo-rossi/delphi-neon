@@ -259,6 +259,24 @@ type
   ///   normally have enclosed the value in quotation marks, but if annotated with the
   ///   NeonRawValue property Neon won't do that.
   /// </summary>
+  /// <remarks>
+  ///   The member therefore holds JSON *text*, not a value: it has to parse, or
+  ///   serialization raises SNeonErrorRawValueF1. '{"a":1}' is written as the
+  ///   object it spells, and 'abc' is an error - the text a plain string member
+  ///   would have produced is '"abc"', quotes included.
+  /// </remarks>
+  /// <remarks>
+  ///   Deserialization is the exact inverse and hands back JSON text as well, so
+  ///   whatever is read can be written again unchanged: an object or an array
+  ///   comes back as its JSON, and a scalar comes back JSON-encoded - the member
+  ///   reading "abc" gets '"abc"', with the quotes, and reading 12 gets '12'.
+  ///   Assigning a plain, unquoted string to such a member is what breaks the
+  ///   round trip, not reading one.
+  /// </remarks>
+  /// <remarks>
+  ///   Only string members are affected: the attribute is read by the string
+  ///   writer and reader, and does nothing on a member of any other type.
+  /// </remarks>
   NeonRawValueAttribute = class(NeonAttribute);
 
   /// <summary>

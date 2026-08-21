@@ -46,6 +46,7 @@ resourcestring
   { Catalog of every message Neon raises or logs, so the whole library can
     be localized (e.g. with a translated resource DLL) without recompiling. }
   SNeonErrorParse = 'Error parsing JSON string';
+  SNeonErrorRawValueF1 = 'NeonRawValue: the member does not contain valid JSON [%s]';
   SNeonErrorNumExpected = 'Invalid JSON value. Number expected';
   SNeonErrorBoolExpected = 'Invalid JSON value. Boolean expected';
   SNeonErrorDateInvalidF1 = 'Invalid JSON date value [%s]';

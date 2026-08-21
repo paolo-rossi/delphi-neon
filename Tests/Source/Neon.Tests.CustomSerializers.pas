@@ -12,7 +12,7 @@ unit Neon.Tests.CustomSerializers;
 interface
 
 uses
-  System.Classes, System.SysUtils, System.Rtti, DUnitX.TestFramework,
+  System.Classes, System.SysUtils, System.Rtti, System.JSON, DUnitX.TestFramework,
 
   FireDAC.Comp.DataSet, FireDAC.Comp.Client,
 
@@ -50,6 +50,17 @@ type
     FValue: Nullable<TGUID>;
   public
     property Value: Nullable<TGUID> read FValue write FValue;
+  end;
+
+  TJSONValueHolder = class
+  private
+    FData: TJSONObject;
+    FAny: TJSONValue;
+  public
+    destructor Destroy; override;
+
+    property Data: TJSONObject read FData write FData;
+    property Any: TJSONValue read FAny write FAny;
   end;
 
   [TestFixture]
@@ -101,11 +112,27 @@ type
     [Test]
     procedure TestNullableInnerSerializerRoundTrips;
 
+    [Test]
+    procedure TestJSONValueMemberWithoutAnInstance;
+
+    [Test]
+    procedure TestJSONValueMemberTakesAnyKind;
+
+    [Test]
+    procedure TestJSONValueMemberReplacesOnASecondRead;
+
+    [Test]
+    procedure TestJSONValueMemberRefusesAnIncompatibleKind;
+
+    [Test]
+    procedure TestJSONValueAsTheOriginalInstance;
+
   end;
 
 implementation
 
 uses
+  Neon.Core.Persistence.JSON,
   Neon.Core.Serializers.DB,
   Neon.Core.Serializers.RTL,
   Neon.Core.Serializers.VCL,
@@ -137,6 +164,106 @@ procedure TTestCustomSerializers.TearDown;
 begin
   FConfig := nil;
   FData.Free;
+end;
+
+destructor TJSONValueHolder.Destroy;
+begin
+  FData.Free;
+  FAny.Free;
+  inherited;
+end;
+
+function JSONValueConfig: INeonConfiguration;
+begin
+  Result := TNeonConfiguration.Default.SetRaiseExceptions(True);
+  Result.GetSerializers.RegisterSerializer(TJSONValueSerializer);
+end;
+
+procedure TTestCustomSerializers.TestJSONValueMemberWithoutAnInstance;
+var
+  LHolder: TJSONValueHolder;
+begin
+  // The serializer returns a clone of the JSON, so it no longer needs an
+  // instance to read into: the member used to be skipped and logged unless
+  // AutoCreate or [NeonAutoCreate] had built one for it (A22)
+  LHolder := TJSONValueHolder.Create;
+  try
+    Assert.IsNull(LHolder.Data, 'the member starts nil');
+
+    TNeon.JSONToObject(LHolder, '{"Data":{"a":1}}', JSONValueConfig);
+
+    Assert.IsNotNull(LHolder.Data, 'a nil member must be filled, not skipped');
+    Assert.AreEqual('{"a":1}', LHolder.Data.ToJSON);
+  finally
+    LHolder.Free;
+  end;
+end;
+
+procedure TTestCustomSerializers.TestJSONValueMemberTakesAnyKind;
+var
+  LHolder: TJSONValueHolder;
+begin
+  // A TJSONValue member takes whatever the document holds, scalars included:
+  // only objects and arrays of the exact same class used to work (A22)
+  LHolder := TJSONValueHolder.Create;
+  try
+    TNeon.JSONToObject(LHolder, '{"Any":"abc"}', JSONValueConfig);
+
+    Assert.IsNotNull(LHolder.Any);
+    Assert.IsTrue(LHolder.Any is TJSONString, 'a JSON string must arrive as a TJSONString');
+    Assert.AreEqual('abc', LHolder.Any.Value);
+  finally
+    LHolder.Free;
+  end;
+end;
+
+procedure TTestCustomSerializers.TestJSONValueMemberReplacesOnASecondRead;
+var
+  LHolder: TJSONValueHolder;
+begin
+  // Reading a second document replaces the member: the pairs used to be merged
+  // into the instance, so they accumulated (A22)
+  LHolder := TJSONValueHolder.Create;
+  try
+    TNeon.JSONToObject(LHolder, '{"Data":{"a":1}}', JSONValueConfig);
+    TNeon.JSONToObject(LHolder, '{"Data":{"b":2}}', JSONValueConfig);
+
+    Assert.AreEqual('{"b":2}', LHolder.Data.ToJSON);
+  finally
+    LHolder.Free;
+  end;
+end;
+
+procedure TTestCustomSerializers.TestJSONValueMemberRefusesAnIncompatibleKind;
+var
+  LHolder: TJSONValueHolder;
+begin
+  // A TJSONString cannot be stored in a TJSONObject member: the member is left
+  // alone and the error is logged
+  LHolder := TJSONValueHolder.Create;
+  try
+    TNeon.JSONToObject(LHolder, '{"Data":"abc"}', JSONValueConfig);
+
+    Assert.IsNull(LHolder.Data, 'an incompatible kind must not be assigned');
+  finally
+    LHolder.Free;
+  end;
+end;
+
+procedure TTestCustomSerializers.TestJSONValueAsTheOriginalInstance;
+var
+  LJSON: TJSONObject;
+begin
+  // JSONToObject<T> creates the instance and discards the deserializer's
+  // result, so the serializer has to read into that instance instead of
+  // replacing it - replacing would free the object the caller gets back
+  LJSON := TNeon.JSONToObject<TJSONObject>('{"a":1}', JSONValueConfig);
+  try
+    Assert.IsNotNull(LJSON);
+    Assert.AreEqual('{"a":1}', LJSON.ToJSON);
+  finally
+    LJSON.Free;
+  end;
 end;
 
 procedure TTestCustomSerializers.TestNullableInnerSerializerRoundTrips;
