@@ -59,6 +59,12 @@ type
 
     [TestCase('TestScreamingSnakeCase', 'TestScreamingSnakeCase')]
     procedure TestScreamingSnakeCase(const AMethod: string);
+
+    /// <summary>
+    ///   Pins the documented acronym behavior of the case conversions
+    /// </summary>
+    [Test]
+    procedure TestAcronymsAreOneWord;
   end;
 
 implementation
@@ -140,6 +146,35 @@ begin
   Assert.AreEqual(
     TTestUtils.ExpectedFromFile(GetFileName(AMethod)),
     TTestUtils.SerializeObject(FCaseObj1, LConfig));
+end;
+
+procedure TTestConfigMemberCase.TestAcronymsAreOneWord;
+begin
+  // A run of capitals is never split: this is the documented behavior of the
+  // conversions (see the remarks on TCaseAlgorithm and the README), not an
+  // accident of the current regex. ignoreCase = False everywhere - DUnitX
+  // compares strings case-insensitively by default, which would pass anyway
+  Assert.AreEqual('first_name', TCaseAlgorithm.PascalToSnake('FirstName'), False);
+  Assert.AreEqual('httpresponse', TCaseAlgorithm.PascalToSnake('HTTPResponse'), False);
+  Assert.AreEqual('ipaddress', TCaseAlgorithm.PascalToSnake('IPAddress'), False);
+  Assert.AreEqual('my_urlvalue', TCaseAlgorithm.PascalToSnake('MyURLValue'), False);
+
+  // A trailing run of two or more capitals splits, a single one does not
+  Assert.AreEqual('user_id', TCaseAlgorithm.PascalToSnake('UserID'), False);
+  Assert.AreEqual('valuex', TCaseAlgorithm.PascalToSnake('ValueX'), False);
+
+  Assert.AreEqual('httpresponse', TCaseAlgorithm.PascalToKebab('HTTPResponse'), False);
+  Assert.AreEqual('user-id', TCaseAlgorithm.PascalToKebab('UserID'), False);
+  Assert.AreEqual('HTTPRESPONSE', TCaseAlgorithm.PascalToScreamingSnake('HTTPResponse'), False);
+  Assert.AreEqual('USER_ID', TCaseAlgorithm.PascalToScreamingSnake('UserID'), False);
+
+  // camelCase lowercases the first character only
+  Assert.AreEqual('hTTPResponse', TCaseAlgorithm.PascalToCamel('HTTPResponse'), False);
+  Assert.AreEqual('firstName', TCaseAlgorithm.PascalToCamel('FirstName'), False);
+
+  // The inverse conversions cannot restore the capitalization of a run
+  Assert.AreEqual('UserId', TCaseAlgorithm.SnakeToPascal('user_id'), False);
+  Assert.AreEqual('Httpresponse', TCaseAlgorithm.SnakeToPascal('httpresponse'), False);
 end;
 
 initialization

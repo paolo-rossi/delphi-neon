@@ -50,7 +50,7 @@ Four console applications (grouped in `Demos/Source/ConsoleDemos.groupproj`), tw
 ### Configuration
 
 Extensive configuration through `INeonConfiguration` interface:
-- Word case (Unchanged, UPPERCASE, lowercase, PascalCase, camelCase, snake_case)
+- Word case (Unchanged, UPPERCASE, lowercase, PascalCase, camelCase, snake_case, kebab-case, SCREAMING_SNAKE_CASE)
 - CuStOM CAse (through anonymous method)
 - Member types (Fields, Properties)
 - Option to ignore the "F" if you choose to serialize the fields
@@ -59,6 +59,29 @@ Extensive configuration through `INeonConfiguration` interface:
 - Use UTC date in serialization
 - Auto creation of nil (object) members
 - Map/dictionary key sort order (natural, reverse, alphabetical, reverse-alphabetical)
+
+> [!NOTE]
+> **A run of capitals counts as one word.** `snake_case`, `kebab-case` and `SCREAMING_SNAKE_CASE` split a member name before a capital that starts a new capitalized word, so an acronym is never split:
+>
+> | Delphi member | camelCase | snake_case | kebab-case |
+> | --- | --- | --- | --- |
+> | `FirstName` | `firstName` | `first_name` | `first-name` |
+> | `HTTPResponse` | `hTTPResponse` | `httpresponse` | `httpresponse` |
+> | `IPAddress` | `iPAddress` | `ipaddress` | `ipaddress` |
+> | `MyURLValue` | `myURLValue` | `my_urlvalue` | `my-urlvalue` |
+> | `UserID` | `userID` | `user_id` | `user-id` |
+> | `ValueX` | `valueX` | `valuex` | `valuex` |
+>
+> A trailing run of two or more capitals splits (`UserID` → `user_id`), a single trailing capital does not (`ValueX` → `valuex`), and `camelCase` only lowercases the first character.
+>
+> Inside Neon this is symmetric — the JSON name of a member is computed the same way when writing and when reading, so a Neon-to-Neon round trip matches. It is interop that breaks: a producer that spells the same field `http_response` will not match `httpresponse`. Give the member the name the document uses, which wins over the case conversion:
+>
+> ```delphi
+> [NeonProperty('http_response')]
+> property HTTPResponse: string read FHTTPResponse write FHTTPResponse;
+> ```
+>
+> Two more consequences: names that differ only in the capitalization of a run (`ID` and `Id`) converge on the same JSON name, and Neon does not check for collisions; and `TCaseAlgorithm.SnakeToPascal`/`KebabToPascal` are not exact inverses of the conversions above, since the capitalization of a run cannot be recovered (`user_id` comes back as `UserId`, not `UserID`).
 
 ### Delphi Types Support
 
@@ -78,6 +101,47 @@ Neon supports the (de)serialization of most Delphi standard types, records, arra
 
 #### Custom Serializers
 - Inherit from `TCustomSerializer` and register the new serializer class in the configuration
+
+Neon ships with serializers for a number of RTL / FireDAC / VCL types — `TGUID`, `TBytes`, `TStream`, `TJSONValue`, `TCollection` (`Neon.Core.Serializers.RTL`), `TDataSet` (`.DB`), `TImage` (`.VCL`) and `Nullable<T>` (`.Nullables`).
+
+> [!IMPORTANT]
+> **None of them is registered for you.** `TNeonConfiguration.Default` — and `Create`, `.Camel`, `.Snake`, `.Kebab`, `.Pretty`, `.ScreamingSnake` — starts with an *empty* serializer registry. A type whose serializer is not registered falls back to the generic RTTI handling, which is rarely what you want:
+>
+> | Member | Fresh configuration | With its serializer registered |
+> | --- | --- | --- |
+> | `TGUID` | `{"D1":3298963421,"D2":17471,"D3":18231}` | `"C4A22FDD-443F-4737-AA7D-2323F635E207"` |
+> | `TCollection` | `{"Capacity":4,"Count":1,"IsEmpty":false}` — the items are lost | `[{"Name":"first","ID":0}]` |
+> | `TJSONValue` | `{"Count":1,"IsEmpty":false,"Null":false,"Owned":true}` | `{"key":"value"}` |
+> | `TBytes` | `[104,101,108,108,111]` | `"aGVsbG8="` |
+> | `TDataSet` | not the rows: the engine falls back to walking the dataset object itself, and a `TFDMemTable` member access-violates outright | `[{"Name":"Paolo","Age":42}]` |
+>
+> `TStream` and `Nullable<T>` are the two exceptions: the engine recognizes them structurally, so they are written as Base64 and as their inner value whether or not their serializers are registered.
+
+Register what you need through the **configuration**:
+
+```delphi
+uses
+  Neon.Core.Serializers.RTL,
+  Neon.Core.Serializers.DB,        // needs Data.DB
+  Neon.Core.Serializers.VCL,       // needs Vcl.ExtCtrls
+  Neon.Core.Serializers.Nullables;
+
+LConfig := TNeonConfiguration.Default
+  .RegisterSerializer(TGUIDSerializer)
+  .RegisterSerializer(TBytesSerializer)
+  .RegisterSerializer(TStreamSerializer)
+  .RegisterSerializer(TJSONValueSerializer)
+  .RegisterSerializer(TCollectionSerializer)
+  .RegisterSerializer(TDataSetSerializer)
+  .RegisterSerializer(TImageSerializer);
+
+RegisterNullableSerializers(LConfig.GetSerializers);
+```
+
+> [!WARNING]
+> `INeonConfiguration.RegisterSerializer` is the registration path to use: it is the one that runs the serializer's `ChangeConfig` hook. The `RegisterDefaultSerializers` helpers in `Neon.Core.Serializers.RTL` / `.DB` add classes straight to the registry and skip that hook — with `TCollectionSerializer` that leaves the `TCollectionItem.Collection` back-reference in play, and serializing a `TCollection` recurses until the stack gives out. (The two `RegisterDefaultSerializers` are also different procedures sharing a name: qualify them with the unit name when both units are in the `uses` clause.)
+
+A configuration is worth keeping around rather than rebuilding per call — it owns the RTTI caches as well as the registry.
 
 #### Unwrapped members
 - `[NeonUnwrapped]` flattens a class/record member: its own members are written directly into the parent object instead of being nested under the member's name
@@ -298,8 +362,8 @@ begin
     .SetIgnoreFieldPrefix(True)             // F Prefix settings
     .SetVisibility([mvPublic, mvPublished]) // Visibility settings
 
-    // Custom serializer registration
-    .GetSerializers.RegisterSerializer(TGUIDSerializer)
+    // Custom serializer registration (nothing is registered by default)
+    .RegisterSerializer(TGUIDSerializer)
   ;
 end;
 ```

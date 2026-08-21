@@ -29,6 +29,16 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+/// <summary>
+///   Registers TDataSetSerializer. <b>Nothing in the library calls it</b>: a
+///   configuration starts with an empty registry, and a TDataSet member that
+///   has no serializer is not written as its array of rows - the engine walks
+///   the dataset's own published properties instead
+/// </summary>
+/// <remarks>
+///   Neon.Core.Serializers.RTL declares a procedure with the same name, so
+///   qualify the call with the unit name when both units are in scope
+/// </remarks>
 procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 
 implementation

@@ -113,6 +113,19 @@ type
   end;
 
 
+/// <summary>
+///   Registers every serializer in this unit. <b>Nothing in the library calls
+///   it</b>: a configuration starts with an empty registry, so this is the
+///   consumer's call to make - see the "Custom Serializers" section of the
+///   README for what each type serializes as when it is not registered
+/// </summary>
+/// <remarks>
+///   Neon.Core.Serializers.DB declares a procedure with the same name, so
+///   qualify the call with the unit name when both units are in scope.
+///   Registering into the registry skips TCustomSerializer.ChangeConfig, which
+///   TCollectionSerializer needs: register that one (or all of them) through
+///   INeonConfiguration.RegisterSerializer instead
+/// </remarks>
 procedure RegisterDefaultSerializers(ARegistry: TNeonSerializerRegistry);
 
 implementation

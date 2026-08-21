@@ -303,6 +303,19 @@ type
     function SetOnError(AValue: TNeonErrorCallback): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
     function SetClosedSchema(AValue: Boolean): INeonConfiguration;
+
+    /// <summary>
+    ///   Registers a custom serializer for this configuration, whose registry
+    ///   starts empty - the serializers bundled with Neon included
+    /// </summary>
+    /// <remarks>
+    ///   This is the registration path to use: it is the one that runs the
+    ///   serializer's ChangeConfig hook. Adding a class straight to
+    ///   GetSerializers (as the Register*Serializers helpers in the serializer
+    ///   units do) skips that hook, which for TCollectionSerializer means the
+    ///   TCollectionItem.Collection back-reference is never ignored and
+    ///   serializing a TCollection recurses until the stack gives out
+    /// </remarks>
     function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
     function RegisterFactory(AClass: TCustomFactoryClass): INeonConfiguration;
 
@@ -316,16 +329,66 @@ type
     property Rules: TTypeConfigurator read GetTypeConfigurator;
   end;
 
+  /// <summary>
+  ///   The word-case conversions behind TNeonCase, applied to a member name to
+  ///   produce its JSON name
+  /// </summary>
+  /// <remarks>
+  ///   <para>
+  ///     <b>Consecutive capitals are one word.</b> The Pascal-to-snake/kebab
+  ///     conversions split before a capital that starts a new capitalized word,
+  ///     so a run of capitals - an acronym - is never split:
+  ///   </para>
+  ///   <code>
+  ///     FirstName    -> first_name     first-name
+  ///     HTTPResponse -> httpresponse   httpresponse   (not http_response)
+  ///     IPAddress    -> ipaddress      ipaddress
+  ///     MyURLValue   -> my_urlvalue    my-urlvalue
+  ///     UserID       -> user_id        user-id        (a trailing run of 2+ splits)
+  ///     ValueX       -> valuex         valuex         (a trailing single capital does not)
+  ///   </code>
+  ///   <para>
+  ///     This is symmetric inside Neon - a member's JSON name is computed the
+  ///     same way when writing and when reading, so a Neon-to-Neon round trip
+  ///     matches - but it does not match a producer that spells the same field
+  ///     http_response. Give such a member the name the document uses with
+  ///     [NeonProperty('http_response')], which wins over the case conversion.
+  ///     Note also that names differing only in the capitalization of a run
+  ///     (ID and Id) converge on the same JSON name, and Neon does not check
+  ///     for collisions
+  ///   </para>
+  /// </remarks>
   TCaseAlgorithm = class
   public
+    /// <summary>
+    ///   Lowercases the first character only: HTTPResponse -> hTTPResponse
+    /// </summary>
     class function PascalToCamel(const AString: string): string;
     class function CamelToPascal(const AString: string): string;
 
+    /// <summary>
+    ///   Underscores between words, all lowercase. Acronyms are one word - see
+    ///   the remarks on TCaseAlgorithm
+    /// </summary>
     class function PascalToSnake(const AString: string): string;
     class function PascalToScreamingSnake(const AString: string): string;
+
+    /// <summary>
+    ///   Capitalizes each underscore-separated word. Not an exact inverse of
+    ///   PascalToSnake: the case of a run of capitals is lost on the way out
+    ///   and cannot be restored - user_id comes back as UserId, not UserID
+    /// </summary>
     class function SnakeToPascal(const AString: string): string;
 
+    /// <summary>
+    ///   Hyphens between words, all lowercase. Acronyms are one word - see the
+    ///   remarks on TCaseAlgorithm
+    /// </summary>
     class function PascalToKebab(const AString: string): string;
+    /// <summary>
+    ///   Capitalizes each hyphen-separated word, with the same caveat as
+    ///   SnakeToPascal
+    /// </summary>
     class function KebabToPascal(const AString: string): string;
 
     class function ConvertCase(const AName: string; ACase: TNeonCase; ACaseFunc: TCaseFunc): string;
@@ -352,6 +415,16 @@ type
   /// <summary>
   ///   Main configuration class for TNeon engine
   /// </summary>
+  /// <remarks>
+  ///   Every constructor - Create, Default, Camel, Snake, Kebab, Pretty,
+  ///   ScreamingSnake - starts with an <b>empty serializer registry</b>: the
+  ///   serializers Neon ships with (Neon.Core.Serializers.RTL, .DB, .VCL,
+  ///   .Nullables) are not registered for you, and a type that has one but is
+  ///   not registered falls back to the generic RTTI handling - a TGUID is
+  ///   written as its D1/D2/D3 fields, a TCollection as its own Count and
+  ///   Capacity with the items lost. See RegisterSerializer and the
+  ///   "Custom Serializers" section of the README
+  /// </remarks>
   TNeonConfiguration = class sealed(TInterfacedObject, INeonConfiguration)
   private
     FVisibility: TNeonVisibility;

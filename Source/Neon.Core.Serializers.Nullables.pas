@@ -75,6 +75,15 @@ type
     function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
   end;
 
+  /// <summary>
+  ///   Registers the Nullable<T> serializers. <b>Nothing in the library calls
+  ///   it</b>: a configuration starts with an empty registry
+  /// </summary>
+  /// <remarks>
+  ///   Unlike the other bundled serializers these are an override, not the
+  ///   only way in: the engine detects Nullable<T> structurally (IDynamicNullable)
+  ///   and reads and writes it as its inner value either way
+  /// </remarks>
   procedure RegisterNullableSerializers(ARegistry: TNeonSerializerRegistry);
   procedure UnregisterNullableSerializers(ARegistry: TNeonSerializerRegistry);
 

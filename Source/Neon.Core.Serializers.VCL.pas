@@ -20,6 +20,15 @@ uses
   Neon.Core.Persistence;
 
 type
+  /// <summary>
+  ///   Custom serializer for the TImage control, which it serializes as the
+  ///   Base64 of its picture
+  /// </summary>
+  /// <remarks>
+  ///   This unit has no Register* helper: register it with
+  ///   Config.RegisterSerializer(TImageSerializer). Like every bundled
+  ///   serializer it is not registered by the library
+  /// </remarks>
   TImageSerializer = class(TCustomSerializer)
   protected
     class function GetTargetInfo: PTypeInfo; override;
