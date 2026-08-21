@@ -89,6 +89,9 @@ resourcestring
   SNeonErrorUnknownGenericType = 'TTypeConfigurator: Unknown type T';
   SNeonErrorDeserializeIncompatible = '.Deserialize: incompatible types';
   SNeonErrorDeserializeNilF1 = 'Deserialization skipped: instance of [%s] is nil and could not be created';
+  SNeonErrorInterfaceNoFactoryF1 = 'Deserialization skipped: the interface [%s] has no instance to read into and no [NeonFactory] to build one';
+  SNeonErrorInterfaceNoGuidF1 = 'Interface deserialization: the interface [%s] has no GUID, so no object can be asked for it';
+  SNeonErrorInterfaceNotImplF2 = 'Interface deserialization: the factory built a [%s], which does not implement [%s]';
   SNeonErrorStreamableNoValue = 'Streamable deserialization: the JSON object has no $value member';
   SNeonErrorJSONNotString = 'JSONValue must be a string';
   SNeonErrorJSONNotArray = 'The JSON must be an array';

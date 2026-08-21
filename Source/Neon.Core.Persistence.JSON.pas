@@ -242,6 +242,17 @@ type
     ///   Manages the creation of an Item of a collection (array, list, dictionary)
     /// </summary>
     function CreateItem(ANeonRtti: TNeonRttiObject; AValue: TJSONValue; var AType: TRttiType): TValue;
+
+    /// <summary>
+    ///   Builds the object that implements an interface member through its
+    ///   [NeonFactory], and returns it as a value of the interface type
+    /// </summary>
+    /// <remarks>
+    ///   Returns an empty value (and AObject nil) when the member has no
+    ///   factory - the one case that is logged and skipped instead of raising,
+    ///   since it means the member was simply not configured for reading
+    /// </remarks>
+    function CreateInterface(const AParam: TNeonDeserializerParam; out AObject: TObject): TValue;
   private
     /// <summary>
     ///   reader for string types
@@ -305,6 +316,12 @@ type
     /// <summary>
     ///   Reader for an Interface type
     /// </summary>
+    /// <remarks>
+    ///   The object behind the interface is read, the same object
+    ///   WriteInterface writes: an interface that already points at one is
+    ///   filled in place, otherwise the member's [NeonFactory] builds it (see
+    ///   CreateInterface). Interfaces without a GUID cannot be built
+    /// </remarks>
     function ReadInterface(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
 
     /// <summary>
@@ -961,6 +978,19 @@ var
 begin
   LInterface := AValue.AsInterface;
   LObject := LInterface as TObject;
+
+  // A member holding no interface follows the same IncludeIf rules as a nil
+  // object member: omitted by default, an explicit null under Always
+  if not Assigned(LObject) then
+  begin
+    case ANeonObject.NeonInclude.Value of
+      IncludeIf.Always, IncludeIf.CustomFunction:
+        Exit(TJSONNull.Create);
+    else
+      Exit(nil);
+    end;
+  end;
+
   Result := WriteObject(LObject, ANeonObject);
 end;
 
@@ -2074,9 +2104,83 @@ begin
   Result := LInt;
 end;
 
+function TNeonDeserializerJSON.CreateInterface(const AParam: TNeonDeserializerParam; out AObject: TObject): TValue;
+var
+  LFactory: TCustomFactory;
+  LIntfType: TRttiInterfaceType;
+  LInterface: IInterface;
+begin
+  Result := TValue.Empty;
+  AObject := nil;
+
+  // Nothing in the JSON says which class implements an interface, and the
+  // engine cannot guess one: without a [NeonFactory] - on the member or on the
+  // interface type - there is nothing to read into, so the member keeps what it
+  // has, exactly like a nil class member with no AutoCreate
+  if not Assigned(AParam.NeonObject.NeonFactoryClass) then
+  begin
+    LogError(Format(SNeonErrorInterfaceNoFactoryF1, [AParam.RttiType.Name]));
+    Exit;
+  end;
+
+  // Asking an object for an interface goes through its GUID, so an interface
+  // declared without one cannot be built from a class
+  LIntfType := AParam.RttiType as TRttiInterfaceType;
+  if not (ifHasGuid in LIntfType.IntfFlags) then
+    raise ENeonException.CreateFmt(SNeonErrorInterfaceNoGuidF1, [LIntfType.Name]);
+
+  LFactory := AParam.NeonObject.NeonFactoryClass.Create;
+  try
+    AObject := LFactory.Build(AParam.RttiType, AParam.JSONValue);
+  finally
+    LFactory.Free;
+  end;
+
+  if not Assigned(AObject) then
+    raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [LIntfType.Name]);
+
+  // The reference is taken before anything is read, so a failed read releases
+  // the object with the TValue instead of leaking it. An object that does not
+  // implement the interface is reported and left alone - it is the factory's,
+  // and freeing what the factory may still own would be worse than the leak
+  if not Supports(AObject, LIntfType.GUID, LInterface) then
+    raise ENeonException.CreateFmt(SNeonErrorInterfaceNotImplF2,
+      [AObject.ClassName, LIntfType.Name]);
+
+  TValue.Make(@LInterface, AParam.RttiType.Handle, Result);
+end;
+
 function TNeonDeserializerJSON.ReadInterface(const AParam: TNeonDeserializerParam; const AData: TValue): TValue;
+var
+  LInterface: IInterface;
+  LObject: TObject;
+  LParam: TNeonDeserializerParam;
 begin
   Result := AData;
+
+  // The object behind the interface is what WriteInterface serializes, so it is
+  // what gets read: an interface that already points at one is filled in place
+  LObject := nil;
+  if AData.Kind = tkInterface then
+  begin
+    LInterface := AData.AsInterface;
+    if Assigned(LInterface) then
+      LObject := LInterface as TObject;
+  end;
+
+  if not Assigned(LObject) then
+  begin
+    Result := CreateInterface(AParam, LObject);
+    if not Assigned(LObject) then
+      Exit;
+  end;
+
+  // The members are read from the implementing class, not from the interface:
+  // an interface publishes properties the class may map to different members,
+  // and the serializer writes the class's members too
+  LParam := AParam;
+  LParam.RttiType := TRttiUtils.Context.GetType(LObject.ClassType);
+  ReadObject(LParam, LObject);
 end;
 
 procedure TNeonDeserializerJSON.ReadMembers(AType: TRttiType; AInstance: Pointer; AJSONObject: TJSONObject);

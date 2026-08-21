@@ -121,6 +121,7 @@
         <DCCReference Include="Source\Neon.Tests.Types.Strings.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Records.pas"/>
         <DCCReference Include="Source\Neon.Tests.Types.Reference.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Types.Interfaces.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.MemberCase.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.EnumAsInt.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.AutoCreate.pas"/>

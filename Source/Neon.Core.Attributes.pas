@@ -218,6 +218,15 @@ type
   ///     The factory class must be registerd in the config with
   ///     Config.RegisterFactory()
   ///   </para>
+  ///   <para>
+  ///     On an <b>interface</b> member this is what makes deserialization
+  ///     possible at all: the engine cannot guess which class implements an
+  ///     interface, so the factory builds the implementing object (Build
+  ///     returns it as a TObject) and the engine reads the JSON into it, the
+  ///     same object the serializer writes. The interface must have a GUID,
+  ///     and the attribute can be placed on the member or on the interface
+  ///     type itself, where it covers every member declared with it
+  ///   </para>
   /// </remarks>
   NeonFactoryAttribute = class(NeonAttribute)
   private
