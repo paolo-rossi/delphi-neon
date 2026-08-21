@@ -113,16 +113,28 @@ type
     class procedure FreeArrayItems(const AData: TValue); static;
 
     /// <summary>
+    ///   Raises when there is no type to create an instance of, so the
+    ///   CreateInstance overloads report it instead of dereferencing nil
+    /// </summary>
+    class procedure CheckType(AType: TRttiType); static;
+
+    /// <summary>
     ///   Create new value data
     /// </summary>
     class function CreateNewValue(AType: TRttiType): TValue; static;
 
     /// <summary>
-    ///   Create instance of class with parameterless constructor
+    ///   Creates an instance of a class through its parameterless constructor,
+    ///   and returns an empty value when the class has none
     /// </summary>
+    /// <remarks>
+    ///   The no-raise primitive the TryCreateInstance overloads are built on
+    /// </remarks>
     class function CreateInstanceValue(AType: TRttiType): TValue; overload;
 
-    // Create instance of class with parameterless constructor
+    // Create instance of class with parameterless constructor. Raises
+    // ENeonException (SNeonErrorCreateInstanceF1) when the class has no such
+    // constructor - see TryCreateInstance for the overloads that return nil
     class function CreateInstance<T: class, constructor>: TObject;  overload;
     class function CreateInstance(AClass: TClass): TObject;  overload;
     class function CreateInstance(AType: TRttiType): TObject; overload;
@@ -137,6 +149,29 @@ type
     class function CreateInstance(AClass: TClass; const Args: array of TValue): TObject;  overload;
     class function CreateInstance(AType: TRttiType;  const Args: array of TValue): TObject; overload;
     class function CreateInstance(const ATypeName: string; const Args: array of TValue): TObject; overload;
+
+    /// <summary>
+    ///   The CreateInstance overloads for callers that treat "cannot create" as
+    ///   a normal outcome: they return nil where CreateInstance raises
+    /// </summary>
+    /// <remarks>
+    ///   The engine uses these where a member that cannot be built is logged and
+    ///   skipped (no AutoCreate, no factory, an abstract class); everything that
+    ///   cannot continue without the instance calls CreateInstance and lets the
+    ///   exception out
+    /// </remarks>
+    class function TryCreateInstance<T: class, constructor>: TObject;  overload;
+    class function TryCreateInstance(AClass: TClass): TObject;  overload;
+    class function TryCreateInstance(AType: TRttiType): TObject; overload;
+    class function TryCreateInstance(const ATypeName: string): TObject; overload;
+
+    class function TryCreateInstance(AClass: TClass; const AValue: string): TObject;  overload;
+    class function TryCreateInstance(AType: TRttiType; const AValue: string): TObject; overload;
+    class function TryCreateInstance(const ATypeName, AValue: string): TObject; overload;
+
+    class function TryCreateInstance(AClass: TClass; const Args: array of TValue): TObject;  overload;
+    class function TryCreateInstance(AType: TRttiType; const Args: array of TValue): TObject; overload;
+    class function TryCreateInstance(const ATypeName: string; const Args: array of TValue): TObject; overload;
 
     // Rtti general helper functions
     class function IfHasAttribute<T: TCustomAttribute>(AInstance: TObject): Boolean; overload;
@@ -259,6 +294,12 @@ begin
   end;
 end;
 
+class procedure TRttiUtils.CheckType(AType: TRttiType);
+begin
+  if not Assigned(AType) then
+    raise ENeonException.Create(SNeonErrorObjectNoType);
+end;
+
 class function TRttiUtils.CreateNewValue(AType: TRttiType): TValue;
 var
   LAllocatedMem: Pointer;
@@ -280,7 +321,10 @@ begin
     tkUString:     Result := TValue.From<string>('');
     tkVariant:     Result := TValue.From<Variant>(Null);
 
-    tkClass:       Result := CreateInstance(AType);
+    // A class with no parameterless constructor is left as a nil object here:
+    // the caller (a list/array/map item, a member) logs and skips it, which is
+    // why this is the Try overload and not CreateInstance
+    tkClass:       Result := TryCreateInstance(AType);
 
     {$IFDEF HAS_MRECORDS}tkMRecord,{$ENDIF}
     tkRecord, tkDynArray:
@@ -293,11 +337,11 @@ begin
       end;
     end;
   else
-    raise Exception.CreateFmt(SNeonErrorCreateTypeF1, [AType.Name]);
+    raise ENeonException.CreateFmt(SNeonErrorCreateTypeF1, [AType.Name]);
   end;
 end;
 
-class function TRttiUtils.CreateInstance(AClass: TClass): TObject;
+class function TRttiUtils.TryCreateInstance(AClass: TClass): TObject;
 var
   LType: TRttiType;
 begin
@@ -305,12 +349,12 @@ begin
   Result := CreateInstanceValue(LType).AsObject;
 end;
 
-class function TRttiUtils.CreateInstance(AType: TRttiType): TObject;
+class function TRttiUtils.TryCreateInstance(AType: TRttiType): TObject;
 begin
   Result := CreateInstanceValue(AType).AsObject;
 end;
 
-class function TRttiUtils.CreateInstance(const ATypeName: string): TObject;
+class function TRttiUtils.TryCreateInstance(const ATypeName: string): TObject;
 var
   LType: TRttiType;
 begin
@@ -318,15 +362,40 @@ begin
   Result := CreateInstanceValue(LType).AsObject;
 end;
 
-class function TRttiUtils.CreateInstance(AClass: TClass; const AValue: string): TObject;
+class function TRttiUtils.CreateInstance(AClass: TClass): TObject;
+begin
+  Result := CreateInstance(FContext.GetType(AClass));
+end;
+
+class function TRttiUtils.CreateInstance(AType: TRttiType): TObject;
+begin
+  CheckType(AType);
+  Result := CreateInstanceValue(AType).AsObject;
+  if not Assigned(Result) then
+    raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [AType.Name]);
+end;
+
+class function TRttiUtils.CreateInstance(const ATypeName: string): TObject;
 var
   LType: TRttiType;
 begin
-  LType := FContext.GetType(AClass);
-  Result := CreateInstance(LType, AValue);
+  LType := Context.FindType(ATypeName);
+  if not Assigned(LType) then
+    raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [ATypeName]);
+  Result := CreateInstance(LType);
 end;
 
-class function TRttiUtils.CreateInstance(AType: TRttiType; const AValue: string): TObject;
+class function TRttiUtils.TryCreateInstance(AClass: TClass; const AValue: string): TObject;
+begin
+  Result := TryCreateInstance(FContext.GetType(AClass), AValue);
+end;
+
+class function TRttiUtils.CreateInstance(AClass: TClass; const AValue: string): TObject;
+begin
+  Result := CreateInstance(FContext.GetType(AClass), AValue);
+end;
+
+class function TRttiUtils.TryCreateInstance(AType: TRttiType; const AValue: string): TObject;
 var
   LMethod: TRttiMethod;
   LMetaClass: TClass;
@@ -351,11 +420,26 @@ begin
   end;
 end;
 
+class function TRttiUtils.CreateInstance(AType: TRttiType; const AValue: string): TObject;
+begin
+  CheckType(AType);
+  Result := TryCreateInstance(AType, AValue);
+  if not Assigned(Result) then
+    raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [AType.Name]);
+end;
+
+class function TRttiUtils.TryCreateInstance(const ATypeName, AValue: string): TObject;
+begin
+  Result := TryCreateInstance(Context.FindType(ATypeName), AValue);
+end;
+
 class function TRttiUtils.CreateInstance(const ATypeName, AValue: string): TObject;
 var
   LType: TRttiType;
 begin
   LType := Context.FindType(ATypeName);
+  if not Assigned(LType) then
+    raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [ATypeName]);
   Result := CreateInstance(LType, AValue);
 end;
 
@@ -668,15 +752,17 @@ begin
   end;
 end;
 
-class function TRttiUtils.CreateInstance(AClass: TClass; const Args: array of TValue): TObject;
-var
-  LType: TRttiType;
+class function TRttiUtils.TryCreateInstance(AClass: TClass; const Args: array of TValue): TObject;
 begin
-  LType := FContext.GetType(AClass);
-  Result := CreateInstance(LType, Args);
+  Result := TryCreateInstance(FContext.GetType(AClass), Args);
 end;
 
-class function TRttiUtils.CreateInstance(AType: TRttiType; const Args: array of TValue): TObject;
+class function TRttiUtils.CreateInstance(AClass: TClass; const Args: array of TValue): TObject;
+begin
+  Result := CreateInstance(FContext.GetType(AClass), Args);
+end;
+
+class function TRttiUtils.TryCreateInstance(AType: TRttiType; const Args: array of TValue): TObject;
 var
   LMethod: TRttiMethod;
   LMetaClass: TClass;
@@ -696,8 +782,19 @@ begin
       end;
     end;
   end;
+end;
+
+class function TRttiUtils.CreateInstance(AType: TRttiType; const Args: array of TValue): TObject;
+begin
+  CheckType(AType);
+  Result := TryCreateInstance(AType, Args);
   if not Assigned(Result) then
-    raise Exception.CreateFmt(SNeonErrorCreateInstanceF1, [AType.Name]);
+    raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [AType.Name]);
+end;
+
+class function TRttiUtils.TryCreateInstance(const ATypeName: string; const Args: array of TValue): TObject;
+begin
+  Result := TryCreateInstance(Context.FindType(ATypeName), Args);
 end;
 
 class function TRttiUtils.CreateInstance(const ATypeName: string; const Args: array of TValue): TObject;
@@ -705,7 +802,14 @@ var
   LType: TRttiType;
 begin
   LType := Context.FindType(ATypeName);
+  if not Assigned(LType) then
+    raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [ATypeName]);
   Result := CreateInstance(LType, Args);
+end;
+
+class function TRttiUtils.TryCreateInstance<T>: TObject;
+begin
+  Result := TryCreateInstance(TRttiUtils.Context.GetType(TClass(T)));
 end;
 
 class function TRttiUtils.CreateInstance<T>: TObject;

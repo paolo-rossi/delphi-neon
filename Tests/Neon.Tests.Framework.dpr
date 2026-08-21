@@ -26,6 +26,7 @@ uses
   Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule},
   Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',
   Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas',
+  Neon.Tests.Utils.Rtti in 'Source\Neon.Tests.Utils.Rtti.pas',
   Neon.Tests.Entities in 'Source\Neon.Tests.Entities.pas',
   Neon.Tests.Serializer in 'Source\Neon.Tests.Serializer.pas',
   Neon.Tests.DynamicTypes in 'Source\Neon.Tests.DynamicTypes.pas',

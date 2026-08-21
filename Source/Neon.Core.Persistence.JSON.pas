@@ -2557,8 +2557,11 @@ begin
     end;
   end;
 
+  // Try, not CreateInstance: a member whose class has no parameterless
+  // constructor (an abstract TStream, say) stays nil and is logged and skipped
+  // by ReadDataMember, which is the documented AutoCreate behavior
   if (FConfig.AutoCreate or AParam.NeonObject.NeonAutoCreate) then
-    Exit(TRttiUtils.CreateInstance(AParam.RttiType));
+    Exit(TRttiUtils.TryCreateInstance(AParam.RttiType));
 end;
 
 function TNeonDeserializerJSON.ReadReference(var AParam: TNeonDeserializerParam; const AData: TValue): TValue;
@@ -2598,9 +2601,9 @@ end;
 
 class function TNeon.JSONToObject(AType: TRttiType; AJSON: TJSONValue; AConfig: INeonConfiguration): TObject;
 begin
+  // CreateInstance raises SNeonErrorCreateInstanceF1 itself when the type has
+  // no parameterless constructor (A11)
   Result := TRttiUtils.CreateInstance(AType);
-  if not Assigned(Result) then
-    raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [AType.Name]);
   JSONToObject(Result, AJSON, AConfig);
 end;
 
@@ -2853,8 +2856,6 @@ begin
   LJSON := TNeon.ParseJSON(AJSON, False, True);
   try
     Result := TRttiUtils.CreateInstance(AType);
-    if not Assigned(Result) then
-      raise ENeonException.CreateFmt(SNeonErrorCreateInstanceF1, [AType.Name]);
     JSONToObject(Result, LJSON, AConfig);
   finally
     LJSON.Free;

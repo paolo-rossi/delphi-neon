@@ -110,6 +110,7 @@
         </DCCReference>
         <DCCReference Include="Source\Neon.Serializers.Tests.pas"/>
         <DCCReference Include="Source\Neon.Tests.Utils.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Utils.Rtti.pas"/>
         <DCCReference Include="Source\Neon.Tests.Entities.pas"/>
         <DCCReference Include="Source\Neon.Tests.Serializer.pas"/>
     <DCCReference Include="Source\Neon.Tests.DynamicTypes.pas"/>
