@@ -155,6 +155,13 @@ type
     /// <remarks>
     ///   Objects must have Keys, Values, GetEnumerator, Clear, Add methods
     /// </remarks>
+    /// <remarks>
+    ///   A JSON name is always a string, so the key type must have an
+    ///   unambiguous text form: strings and chars, integers and floats,
+    ///   booleans and enums, anything with a custom serializer that writes a
+    ///   scalar, and classes exposing both ToString and FromString. Every other
+    ///   key type raises SNeonErrorDictKeyInvalid, in both directions
+    /// </remarks>
     function WriteEnumerableMap(const AValue: TValue; ANeonObject: TNeonRttiObject; AMap: IDynamicMap): TJSONValue;
     function IsEnumerableMap(const AValue: TValue; out AMap: IDynamicMap): Boolean;
 
@@ -320,7 +327,23 @@ type
     /// <remarks>
     ///   Objects must have Keys, Values, GetEnumerator, Clear, Add methods
     /// </remarks>
+    /// <remarks>
+    ///   See WriteEnumerableMap for the key types a map supports: this reader
+    ///   refuses the same ones with the same error
+    /// </remarks>
     function ReadEnumerableMap(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
+
+    /// <summary>
+    ///   Tells whether a map key of this type can be read back from a JSON name
+    /// </summary>
+    function IsSupportedMapKeyType(AType: TRttiType; AMap: IDynamicMap): Boolean;
+
+    /// <summary>
+    ///   Builds the JSON value a key reader expects from the (always string)
+    ///   name of a JSON pair. Returns nil when the name itself is what the
+    ///   reader wants, and a value the caller must free otherwise
+    /// </summary>
+    function MapKeyToJSON(AType: TRttiType; const AName: string): TJSONValue;
 
     /// <summary>
     ///   Reader for "Nullable" records
@@ -1127,26 +1150,35 @@ begin
         LKeyValue := AMap.CurrentKey;
         LValValue := AMap.CurrentValue;
 
+        // A JSON name is always a string, so the key needs an unambiguous text
+        // form: a string key is itself, a number/boolean key is its JSON text
+        // (an Integer-keyed map writes {"1": ...}), a class key goes through
+        // ToString. Anything else has no name to write and is refused here with
+        // the error ReadEnumerableMap raises for the same key types.
+        // The name is resolved before the value is written, so refusing a key
+        // cannot leak the value's JSON, and an empty string key - which is legal
+        // JSON - is no longer mistaken for a failure to build a name
         LJSONName := WriteDataMember(LKeyValue);
         try
-          LJSONValue := WriteDataMember(LValValue);
-          // A nil value (nil object, empty value under NotEmpty/NotDefault)
-          // becomes JSON null so the pair keeps a valid, printable value
-          if not Assigned(LJSONValue) then
-            LJSONValue := TJSONNull.Create;
-
           if LJSONName is TJSONString then
             LName := (LJSONName as TJSONString).Value
+          else if (LJSONName is TJSONNumber) or TJSONUtils.IsBool(LJSONName) then
+            LName := LJSONName.Value
           else if AMap.KeyIsString then
-            LName := AMap.KeyToString(LKeyValue);
-
-          LPairs.Add(TJSONPair.Create(LName, LJSONValue));
-
-          if LName.IsEmpty then
+            LName := AMap.KeyToString(LKeyValue)
+          else
             raise ENeonException.Create(SNeonErrorDictKeyInvalid);
         finally
           LJSONName.Free;
         end;
+
+        LJSONValue := WriteDataMember(LValValue);
+        // A nil value (nil object, empty value under NotEmpty/NotDefault)
+        // becomes JSON null so the pair keeps a valid, printable value
+        if not Assigned(LJSONValue) then
+          LJSONValue := TJSONNull.Create;
+
+        LPairs.Add(TJSONPair.Create(LName, LJSONValue));
       end;
 
       case FConfig.MapSort of
@@ -1675,6 +1707,58 @@ begin
   end;
 end;
 
+function TNeonDeserializerJSON.IsSupportedMapKeyType(AType: TRttiType; AMap: IDynamicMap): Boolean;
+begin
+  // A class key round-trips only through its ToString/FromString pair
+  if AType.TypeKind = tkClass then
+    Exit(AMap.KeyIsString);
+
+  // A custom serializer speaks for its own type (e.g. a TGUID key written as a
+  // string): trust it, the way WriteEnumerableMap trusts what it produced
+  if Assigned(FConfig.Serializers.GetSerializer(AType.Handle)) then
+    Exit(True);
+
+  Result := AType.TypeKind in [tkChar, tkWChar, tkString, tkLString, tkWString,
+    tkUString, tkInteger, tkInt64, tkFloat, tkEnumeration, tkVariant];
+end;
+
+function TNeonDeserializerJSON.MapKeyToJSON(AType: TRttiType; const AName: string): TJSONValue;
+var
+  LInt: Int64;
+begin
+  Result := nil;
+
+  case AType.TypeKind of
+    tkInteger, tkInt64:
+    begin
+      if TryStrToInt64(AName, LInt) then
+        Result := TJSONNumber.Create(LInt);
+    end;
+
+    tkFloat:
+    begin
+      // TDate/TTime/TDateTime are written as strings, so they want the name
+      if (AType.Handle <> System.TypeInfo(TDate)) and
+         (AType.Handle <> System.TypeInfo(TTime)) and
+         (AType.Handle <> System.TypeInfo(TDateTime)) then
+        Result := TJSONNumber.Create(AName);
+    end;
+
+    tkEnumeration:
+    begin
+      if AType.Handle = System.TypeInfo(Boolean) then
+      begin
+        if SameText(AName, 'true') then
+          Result := TJSONTrue.Create
+        else if SameText(AName, 'false') then
+          Result := TJSONFalse.Create;
+      end
+      else if FConfig.EnumAsInt and TryStrToInt64(AName, LInt) then
+        Result := TJSONNumber.Create(LInt);
+    end;
+  end;
+end;
+
 function TNeonDeserializerJSON.ReadEnumerableMap(const AParam: TNeonDeserializerParam; const AData: TValue): Boolean;
 var
   LMap: IDynamicMap;
@@ -1684,6 +1768,7 @@ var
   LEnum: TJSONPairEnumerator;
 {$ENDIF}
   LKey, LValue: TValue;
+  LKeyJSON: TJSONValue;
   LParamKey, LParamValue: TNeonDeserializerParam;
   LStamp: Int64;
 begin
@@ -1708,15 +1793,34 @@ begin
         // Key creation and deserialization
         LParamKey.JSONValue := LEnum.Current.JsonString;
 
-        if LParamKey.RttiType.TypeKind = tkClass then
-          LKey := CreateItem(AParam.NeonObject, LParamKey.JSONValue, LParamKey.RttiType)
-        else
-          LKey := LMap.NewKey;
+        // A key type with no text form cannot come back from a JSON name: fail
+        // with the same error WriteEnumerableMap raises for it, instead of
+        // adding a default-constructed key (a class without FromString) or
+        // failing later with an unrelated message
+        if not IsSupportedMapKeyType(LParamKey.RttiType, LMap) then
+          raise ENeonException.Create(SNeonErrorDictKeyInvalid);
 
         if LParamKey.RttiType.TypeKind = tkClass then
-          LMap.KeyFromString(LKey, LEnum.Current.JsonString.Value)
+        begin
+          LKey := CreateItem(AParam.NeonObject, LParamKey.JSONValue, LParamKey.RttiType);
+          LMap.KeyFromString(LKey, LEnum.Current.JsonString.Value);
+        end
         else
-          LKey := ReadDataMember(LParamKey, LKey, True);
+        begin
+          LKey := LMap.NewKey;
+
+          // The name is a string even when the key is not: give the reader the
+          // JSON shape that matches the key type, so a numeric or boolean key
+          // is not rejected by StrictTypes for being the string JSON requires
+          LKeyJSON := MapKeyToJSON(LParamKey.RttiType, LEnum.Current.JsonString.Value);
+          try
+            if Assigned(LKeyJSON) then
+              LParamKey.JSONValue := LKeyJSON;
+            LKey := ReadDataMember(LParamKey, LKey, True);
+          finally
+            LKeyJSON.Free;
+          end;
+        end;
 
         // Value creation and deserialization
         LParamValue.JSONValue := LEnum.Current.JsonValue;
@@ -1964,7 +2068,11 @@ begin
     LNewParam.NeonObject := AParam.NeonObject;
     LNewParam.RttiType := LValueType;
     LNewData := TValue.Empty.Cast(LValueType.Handle);
-    LValue := ReadDataMember(LNewParam, LNewData, False);
+
+    // A custom serializer registered for the inner type T must be honored here:
+    // WriteNullable recurses with ACustomProcess=True, and reading with False
+    // would bypass it, so a Nullable<T> would not survive its own round trip
+    LValue := ReadDataMember(LNewParam, LNewData, True);
 
     LNullable.SetValue(LValue);
   end;

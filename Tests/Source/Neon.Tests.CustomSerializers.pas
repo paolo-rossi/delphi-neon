@@ -12,10 +12,11 @@ unit Neon.Tests.CustomSerializers;
 interface
 
 uses
-  System.Classes, System.Rtti, DUnitX.TestFramework,
+  System.Classes, System.SysUtils, System.Rtti, DUnitX.TestFramework,
 
   FireDAC.Comp.DataSet, FireDAC.Comp.Client,
 
+  Neon.Core.Nullables,
   Neon.Core.Persistence,
   Neon.Core.Types,
   Neon.Tests.Entities,
@@ -42,6 +43,13 @@ type
     FBoom: TBoom;
   public
     property Boom: TBoom read FBoom write FBoom;
+  end;
+
+  TNullableGUIDHolder = class
+  private
+    FValue: Nullable<TGUID>;
+  public
+    property Value: Nullable<TGUID> read FValue write FValue;
   end;
 
   [TestFixture]
@@ -90,6 +98,9 @@ type
     [Test]
     procedure TestRegisterInvalidatesCache;
 
+    [Test]
+    procedure TestNullableInnerSerializerRoundTrips;
+
   end;
 
 implementation
@@ -126,6 +137,39 @@ procedure TTestCustomSerializers.TearDown;
 begin
   FConfig := nil;
   FData.Free;
+end;
+
+procedure TTestCustomSerializers.TestNullableInnerSerializerRoundTrips;
+const
+  LGUIDText = '{1E2B3C4D-5A6B-7C8D-9E0F-1A2B3C4D5E6F}';
+var
+  LHolder: TNullableGUIDHolder;
+  LConfig: INeonConfiguration;
+  LJSON: string;
+begin
+  // The custom serializer registered for the inner type of a Nullable<T> is used
+  // by WriteNullable, so ReadNullable has to use it too: reading it structurally
+  // rebuilt the TGUID from its D1..D4 fields, which the JSON string does not have
+  LConfig := TNeonConfiguration.Create.SetRaiseExceptions(True);
+  LConfig.GetSerializers.RegisterSerializer(TGUIDSerializer);
+
+  LHolder := TNullableGUIDHolder.Create;
+  try
+    LHolder.Value := StringToGUID(LGUIDText);
+    LJSON := TTestUtils.SerializeObject(LHolder, LConfig);
+    Assert.AreEqual('{"Value":"1e2b3c4d-5a6b-7c8d-9e0f-1a2b3c4d5e6f"}', LJSON);
+  finally
+    LHolder.Free;
+  end;
+
+  LHolder := TNullableGUIDHolder.Create;
+  try
+    TTestUtils.DeserializeObject(LJSON, LHolder, LConfig);
+    Assert.IsTrue(LHolder.Value.HasValue, 'the Nullable must have a value');
+    Assert.AreEqual(LGUIDText, GUIDToString(LHolder.Value.Value));
+  finally
+    LHolder.Free;
+  end;
 end;
 
 procedure TTestCustomSerializers.TestDistanceAlgorithm;

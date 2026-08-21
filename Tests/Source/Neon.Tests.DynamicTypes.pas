@@ -12,7 +12,8 @@ unit Neon.Tests.DynamicTypes;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Rtti, System.JSON, DUnitX.TestFramework,
+  System.SysUtils, System.Classes, System.Rtti, System.JSON,
+  System.Generics.Collections, DUnitX.TestFramework,
 
   Neon.Core.DynamicTypes,
   Neon.Core.Persistence,
@@ -62,6 +63,21 @@ type
     procedure SaveToStream(AStream: TStream);
   end;
 
+  TRecordKey = record
+    Id: Integer;
+  end;
+
+  // Every class has ToString, but without a matching FromString a key cannot be
+  // read back from a JSON name
+  TPlainKey = class
+  end;
+
+  TIntegerKeyMap = TDictionary<Integer, string>;
+  TBooleanKeyMap = TDictionary<Boolean, string>;
+  TStringKeyMap = TDictionary<string, Integer>;
+  TRecordKeyMap = TDictionary<TRecordKey, string>;
+  TPlainKeyMap = TObjectDictionary<TPlainKey, string>;
+
   [TestFixture]
   TTestDynamicTypes = class(TObject)
   public
@@ -82,6 +98,21 @@ type
 
     [Test]
     procedure TestStreamableMissingValueRaises;
+
+    [Test]
+    procedure TestIntegerMapKeyRoundTrips;
+
+    [Test]
+    procedure TestBooleanMapKeyRoundTrips;
+
+    [Test]
+    procedure TestEmptyStringMapKeyRoundTrips;
+
+    [Test]
+    procedure TestRecordMapKeyFailsBothWays;
+
+    [Test]
+    procedure TestClassMapKeyWithoutFromStringFailsBothWays;
   end;
 
 implementation
@@ -324,6 +355,170 @@ begin
     end;
   finally
     LStreamable.Free;
+  end;
+end;
+
+function AlphaConfig: INeonConfiguration;
+begin
+  // Sort the pairs by name so the expected JSON does not depend on the
+  // dictionary's hash order
+  Result := TNeonConfiguration.Default.SetMapSort(TNeonSort.Alpha);
+end;
+
+procedure TTestDynamicTypes.TestIntegerMapKeyRoundTrips;
+var
+  LMap: TIntegerKeyMap;
+  LJSON: string;
+begin
+  // An Integer key has an unambiguous text form, so it is written as the JSON
+  // name and read back from it - both directions used to fail, with two
+  // different errors (A20)
+  LMap := TIntegerKeyMap.Create;
+  try
+    LMap.Add(1, 'one');
+    LMap.Add(2, 'two');
+    LJSON := TNeon.ObjectToJSONString(LMap, AlphaConfig);
+    Assert.AreEqual('{"1":"one","2":"two"}', LJSON);
+  finally
+    LMap.Free;
+  end;
+
+  LMap := TIntegerKeyMap.Create;
+  try
+    TNeon.JSONToObject(LMap, LJSON, AlphaConfig);
+    Assert.AreEqual(2, LMap.Count);
+    Assert.AreEqual('one', LMap[1]);
+    Assert.AreEqual('two', LMap[2]);
+  finally
+    LMap.Free;
+  end;
+end;
+
+procedure TTestDynamicTypes.TestBooleanMapKeyRoundTrips;
+var
+  LMap: TBooleanKeyMap;
+  LJSON: string;
+begin
+  LMap := TBooleanKeyMap.Create;
+  try
+    LMap.Add(True, 'yes');
+    LMap.Add(False, 'no');
+    LJSON := TNeon.ObjectToJSONString(LMap, AlphaConfig);
+    Assert.AreEqual('{"false":"no","true":"yes"}', LJSON);
+  finally
+    LMap.Free;
+  end;
+
+  LMap := TBooleanKeyMap.Create;
+  try
+    TNeon.JSONToObject(LMap, LJSON, AlphaConfig);
+    Assert.AreEqual(2, LMap.Count);
+    Assert.AreEqual('yes', LMap[True]);
+    Assert.AreEqual('no', LMap[False]);
+  finally
+    LMap.Free;
+  end;
+end;
+
+procedure TTestDynamicTypes.TestEmptyStringMapKeyRoundTrips;
+var
+  LMap: TStringKeyMap;
+  LJSON: string;
+begin
+  // An empty name is legal JSON: it used to be read as "the key could not be
+  // built" and raised SNeonErrorDictKeyInvalid
+  LMap := TStringKeyMap.Create;
+  try
+    LMap.Add('', 42);
+    LJSON := TNeon.ObjectToJSONString(LMap, AlphaConfig);
+    Assert.AreEqual('{"":42}', LJSON);
+  finally
+    LMap.Free;
+  end;
+
+  LMap := TStringKeyMap.Create;
+  try
+    TNeon.JSONToObject(LMap, LJSON, AlphaConfig);
+    Assert.AreEqual(1, LMap.Count);
+    Assert.AreEqual(42, LMap['']);
+  finally
+    LMap.Free;
+  end;
+end;
+
+procedure TTestDynamicTypes.TestRecordMapKeyFailsBothWays;
+var
+  LMap: TRecordKeyMap;
+  LKey: TRecordKey;
+  LConfig: INeonConfiguration;
+begin
+  // A record key has no text form: both directions must refuse it, and with the
+  // same error (A20)
+  LConfig := TNeonConfiguration.Default.SetRaiseExceptions(True);
+
+  LMap := TRecordKeyMap.Create;
+  try
+    LKey.Id := 1;
+    LMap.Add(LKey, 'one');
+    try
+      TNeon.ObjectToJSONString(LMap, LConfig);
+      Assert.Fail('Expected ENeonException serializing a record-keyed map');
+    except
+      on E: ENeonException do
+        Assert.AreEqual(SNeonErrorDictKeyInvalid, E.Message);
+    end;
+  finally
+    LMap.Free;
+  end;
+
+  LMap := TRecordKeyMap.Create;
+  try
+    try
+      TNeon.JSONToObject(LMap, '{"1":"one"}', LConfig);
+      Assert.Fail('Expected ENeonException deserializing into a record-keyed map');
+    except
+      on E: ENeonException do
+        Assert.AreEqual(SNeonErrorDictKeyInvalid, E.Message);
+    end;
+  finally
+    LMap.Free;
+  end;
+end;
+
+procedure TTestDynamicTypes.TestClassMapKeyWithoutFromStringFailsBothWays;
+var
+  LMap: TPlainKeyMap;
+  LConfig: INeonConfiguration;
+begin
+  // A class key needs both ToString and FromString: without FromString the read
+  // used to add a default-constructed key instead of failing (A20)
+  LConfig := TNeonConfiguration.Default.SetRaiseExceptions(True);
+
+  LMap := TPlainKeyMap.Create([doOwnsKeys]);
+  try
+    LMap.Add(TPlainKey.Create, 'one');
+    try
+      TNeon.ObjectToJSONString(LMap, LConfig);
+      Assert.Fail('Expected ENeonException serializing a class-keyed map');
+    except
+      on E: ENeonException do
+        Assert.AreEqual(SNeonErrorDictKeyInvalid, E.Message);
+    end;
+  finally
+    LMap.Free;
+  end;
+
+  LMap := TPlainKeyMap.Create([doOwnsKeys]);
+  try
+    try
+      TNeon.JSONToObject(LMap, '{"one":"1"}', LConfig);
+      Assert.Fail('Expected ENeonException deserializing into a class-keyed map');
+    except
+      on E: ENeonException do
+        Assert.AreEqual(SNeonErrorDictKeyInvalid, E.Message);
+    end;
+  finally
+    LMap.Free;
   end;
 end;
 

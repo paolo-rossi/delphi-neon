@@ -1093,9 +1093,10 @@ end;
 
 class procedure TJSONUtils.Prettify(const AJSONString: string; AWriter: TTextWriter);
 var
-  LChar, LPrev: Char;
+  LChar: Char;
   LOffset: Integer;
   LIndex: Integer;
+  LBackslashes: Integer;
   LOutsideString: Boolean;
 
   function Spaces(AOffset: Integer): string; inline;
@@ -1107,13 +1108,21 @@ begin
   LOffset := 0;
   LOutsideString := True;
 
-  LPrev := #0;
+  LBackslashes := 0;
   for LIndex := 0 to Length(AJSONString) - 1 do
   begin
     LChar := AJSONString.Chars[LIndex];
 
-    if (LChar = '"') and not (LPrev = '\') then
+    // A quote ends the string only when it is not escaped, and it is escaped
+    // only after an odd number of backslashes: in "C:\\" the two backslashes
+    // escape each other, so the quote that follows them is the terminator
+    if (LChar = '"') and not Odd(LBackslashes) then
       LOutsideString := not LOutsideString;
+
+    if LChar = '\' then
+      Inc(LBackslashes)
+    else
+      LBackslashes := 0;
 
     if LOutsideString and (LChar = '{') then
     begin
@@ -1156,8 +1165,6 @@ begin
     end
     else
       AWriter.Write(LChar);
-
-    LPrev := LChar;
   end;
 
 end;
