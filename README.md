@@ -53,7 +53,7 @@ Extensive configuration through `INeonConfiguration` interface:
 - Word case (Unchanged, UPPERCASE, lowercase, PascalCase, camelCase, snake_case, kebab-case, SCREAMING_SNAKE_CASE)
 - CuStOM CAse (through anonymous method)
 - Member types (Fields, Properties)
-- Option to ignore the "F" if you choose to serialize the fields
+- Option to ignore the "F" prefix of private/protected fields, if you choose to serialize the fields (see the note below: it removes the first letter of *any* such field starting with an F)
 - Member visibility (private, protected, public, published)
 - Custom serializer registration
 - Use UTC date in serialization
@@ -82,6 +82,20 @@ Extensive configuration through `INeonConfiguration` interface:
 > ```
 >
 > Two more consequences: names that differ only in the capitalization of a run (`ID` and `Id`) converge on the same JSON name, and Neon does not check for collisions; and `TCaseAlgorithm.SnakeToPascal`/`KebabToPascal` are not exact inverses of the conversions above, since the capitalization of a run cannot be recovered (`user_id` comes back as `UserId`, not `UserID`).
+
+> [!NOTE]
+> **`IgnoreFieldPrefix` is a convention, not a heuristic.** With it on, Neon removes the *first character* of every private or protected field whose name starts with an `F` — or an `f` — without checking what follows it, so a field that does not follow the `FSomething` convention loses its first letter:
+>
+> | Field | Visibility | Prefix off | Prefix on |
+> | --- | --- | --- | --- |
+> | `FFirstName` | private | `FFirstName` | `FirstName` |
+> | `firstName` | private | `firstName` | `irstName` |
+> | `Formula` | private | `Formula` | `ormula` |
+> | `Total` | private | `Total` | `Total` |
+> | `FCode` | protected | `FCode` | `Code` |
+> | `FPublicField` | public | `FPublicField` | `FPublicField` |
+>
+> It applies to fields only — a *property* named `FirstName` keeps its name — and only when fields are serialized at all (see the member types setting). It is off by default, but **`TNeonConfiguration.Snake` and `.ScreamingSnake` turn it on**, so `Formula` is published as `ormula` there without anyone asking for it. As always, `[NeonProperty('formula')]` overrides the computed name for a single member.
 
 ### Delphi Types Support
 

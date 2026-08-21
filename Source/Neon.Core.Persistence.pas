@@ -289,6 +289,28 @@ type
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
+
+    /// <summary>
+    ///   Drops the leading letter of every private or protected <b>field</b>
+    ///   whose name starts with an F, so the FFirstName convention produces
+    ///   FirstName (first_name, first-name...) instead of FFirstName
+    /// </summary>
+    /// <remarks>
+    ///   <para>
+    ///     <b>It requires the convention.</b> The first character is removed
+    ///     from any private/protected field name beginning with F or f -
+    ///     nothing checks that what follows looks like a prefixed name - so a
+    ///     field that does not follow it loses its first letter: Formula
+    ///     becomes ormula and firstName becomes irstName. Public and published
+    ///     fields are never touched
+    ///   </para>
+    ///   <para>
+    ///     Applies to fields only (a property named FirstName keeps its name),
+    ///     and only when fields are serialized at all - see SetMembers. It is
+    ///     off by default, but <b>TNeonConfiguration.Snake and .ScreamingSnake
+    ///     turn it on</b>. [NeonProperty] overrides it for a single member
+    ///   </para>
+    /// </remarks>
     function SetIgnoreFieldPrefix(AValue: Boolean): INeonConfiguration;
     function SetIgnoreReadOnlyProps(AValue: Boolean): INeonConfiguration;
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
@@ -458,9 +480,18 @@ type
 
     class function Default: INeonConfiguration; static;
     class function Pretty: INeonConfiguration; static;
+    /// <summary>
+    ///   snake_case names, and IgnoreFieldPrefix <b>on</b> - which requires the
+    ///   F convention from every private/protected field, see
+    ///   SetIgnoreFieldPrefix
+    /// </summary>
     class function Snake: INeonConfiguration; static;
     class function Camel: INeonConfiguration; static;
     class function Kebab: INeonConfiguration; static;
+    /// <summary>
+    ///   SCREAMING_SNAKE_CASE names, and IgnoreFieldPrefix <b>on</b> - same
+    ///   requirement as Snake
+    /// </summary>
     class function ScreamingSnake: INeonConfiguration; static;
 
     function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
@@ -813,6 +844,12 @@ begin
   begin
     if FConfig.IgnoreFieldPrefix and AMember.IsField then
     begin
+      // A convention, not a heuristic: the leading letter goes whether it is F
+      // or f and whatever follows it, so a private field named Formula or
+      // firstName is published as ormula / irstName. Narrowing the match now
+      // would rename members in every document already produced with
+      // IgnoreFieldPrefix (Snake and ScreamingSnake set it), so the behavior
+      // stays documented and [NeonProperty] is the per-member way out
       if AMember.Name.StartsWith('F', True) and
          (AMember.Visibility in [mvPrivate, mvProtected])
       then

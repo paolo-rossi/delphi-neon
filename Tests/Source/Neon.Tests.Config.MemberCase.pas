@@ -12,7 +12,7 @@ unit Neon.Tests.Config.MemberCase;
 interface
 
 uses
-  System.SysUtils, System.Rtti, DUnitX.TestFramework,
+  System.SysUtils, System.Rtti, System.TypInfo, DUnitX.TestFramework,
   {$IFDEF MSWINDOWS}
   Winapi.Windows,
   {$ENDIF}
@@ -23,6 +23,22 @@ uses
   Neon.Core.Types;
 
 type
+  /// <summary>
+  ///   Fields that do and do not follow the F prefix convention
+  /// </summary>
+  TPrefixEntity = class
+  private
+    FFirstName: string;
+    firstName: string;
+    Formula: string;
+    Total: string;
+  protected
+    FCode: string;
+  public
+    FPublicField: string;
+    constructor Create;
+  end;
+
   [TestFixture]
   [Category('membercase')]
   TTestConfigMemberCase = class(TObject)
@@ -65,6 +81,12 @@ type
     /// </summary>
     [Test]
     procedure TestAcronymsAreOneWord;
+
+    /// <summary>
+    ///   Pins the documented behavior of IgnoreFieldPrefix
+    /// </summary>
+    [Test]
+    procedure TestFieldPrefixNeedsTheConvention;
   end;
 
 implementation
@@ -175,6 +197,46 @@ begin
   // The inverse conversions cannot restore the capitalization of a run
   Assert.AreEqual('UserId', TCaseAlgorithm.SnakeToPascal('user_id'), False);
   Assert.AreEqual('Httpresponse', TCaseAlgorithm.SnakeToPascal('httpresponse'), False);
+end;
+
+{ TPrefixEntity }
+
+constructor TPrefixEntity.Create;
+begin
+  FFirstName := 'a';
+  firstName := 'b';
+  Formula := 'c';
+  Total := 'd';
+  FCode := 'e';
+  FPublicField := 'f';
+end;
+
+procedure TTestConfigMemberCase.TestFieldPrefixNeedsTheConvention;
+var
+  LEntity: TPrefixEntity;
+  LConfig: INeonConfiguration;
+begin
+  LConfig := TNeonConfiguration.Default
+    .SetMembers([TNeonMembers.Fields])
+    .SetVisibility([mvPrivate, mvProtected, mvPublic, mvPublished]);
+
+  LEntity := TPrefixEntity.Create;
+  try
+    // Off: every field keeps its Delphi name
+    Assert.AreEqual(
+      '{"FFirstName":"a","firstName":"b","Formula":"c","Total":"d","FCode":"e","FPublicField":"f"}',
+      TTestUtils.SerializeObject(LEntity, LConfig), False);
+
+    // On: the first letter of any private/protected field starting with F or f
+    // goes, convention or not - firstName becomes irstName and Formula ormula.
+    // Documented behavior (see SetIgnoreFieldPrefix and the README), not an
+    // accident: [NeonProperty] is the way out for a member that needs its name
+    Assert.AreEqual(
+      '{"FirstName":"a","irstName":"b","ormula":"c","Total":"d","Code":"e","FPublicField":"f"}',
+      TTestUtils.SerializeObject(LEntity, LConfig.SetIgnoreFieldPrefix(True)), False);
+  finally
+    LEntity.Free;
+  end;
 end;
 
 initialization
