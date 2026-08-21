@@ -13,6 +13,7 @@ interface
 
 uses
   System.SysUtils, System.Classes, System.Rtti, System.SyncObjs,
+  System.TypInfo, System.JSON,
   DUnitX.TestFramework,
 
   Neon.Core.Persistence,
@@ -27,6 +28,40 @@ type
   public
     property FirstName: string read FFirstName write FFirstName;
     property Age: Integer read FAge write FAge;
+  end;
+
+  /// <summary>
+  ///   Serialized by TMutatingSerializer, which changes the configuration in
+  ///   the middle of the traversal
+  /// </summary>
+  TMutatorMember = class
+  end;
+
+  TMutatingSerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue; ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
+  TMutatingEntity = class
+  private
+    FAlpha: string;
+    FMutator: TMutatorMember;
+    FBravo: string;
+    FCharlie: string;
+    FDelta: string;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    property Alpha: string read FAlpha write FAlpha;
+    property Mutator: TMutatorMember read FMutator write FMutator;
+    property Bravo: string read FBravo write FBravo;
+    property Charlie: string read FCharlie write FCharlie;
+    property Delta: string read FDelta write FDelta;
   end;
 
   /// <summary>
@@ -59,6 +94,12 @@ type
 
     [Test]
     procedure TestConcurrentUseOfOneConfig;
+
+    [Test]
+    procedure TestRuleAddedThroughAKeptReference;
+
+    [Test]
+    procedure TestChangingTheConfigMidCall;
   end;
 
 implementation
@@ -210,6 +251,90 @@ begin
     Assert.AreEqual('', LFailures[LIndex], Format('thread %d', [LIndex]));
 end;
 
+
+{ TMutatingEntity }
+
+constructor TMutatingEntity.Create;
+begin
+  FAlpha := 'a';
+  FMutator := TMutatorMember.Create;
+  FBravo := 'b';
+  FCharlie := 'c';
+  FDelta := 'd';
+end;
+
+destructor TMutatingEntity.Destroy;
+begin
+  FMutator.Free;
+  inherited;
+end;
+
+{ TMutatingSerializer }
+
+class function TMutatingSerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := TypeInfoIs(AType);
+end;
+
+class function TMutatingSerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := TMutatorMember.ClassInfo;
+end;
+
+function TMutatingSerializer.Serialize(const AValue: TValue; ANeonObject:
+    TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+begin
+  AContext.GetConfiguration.SetMemberCase(TNeonCase.SnakeCase);
+  Result := TJSONString.Create('mutated');
+end;
+
+function TMutatingSerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
+    ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
+begin
+  Result := AData;
+end;
+
+procedure TTestConfigCache.TestRuleAddedThroughAKeptReference;
+var
+  LConfig: INeonConfiguration;
+  LRules: INeonConfigurationType;
+begin
+  // Reading Rules used to be what dropped the caches, so a rule added through
+  // a kept reference after the first call was silently ignored: the rules
+  // invalidate when they change, not when the configurator is handed out
+  LConfig := TNeonConfiguration.Default;
+  LRules := LConfig.Rules.ForClass<TCacheEntity>;
+  Assert.AreEqual(PASCAL_JSON, TNeon.ObjectToJSONString(FEntity, LConfig));
+
+  LRules.AddIgnoreMembers(['Age']);
+  Assert.AreEqual('{"FirstName":"Paolo"}', TNeon.ObjectToJSONString(FEntity, LConfig),
+    'a rule added through a kept INeonConfigurationType must be honoured');
+end;
+
+procedure TTestConfigCache.TestChangingTheConfigMidCall;
+var
+  LConfig: INeonConfiguration;
+  LEntity: TMutatingEntity;
+begin
+  // A custom serializer that changes the configuration while the traversal is
+  // running: the setter detaches the caches from the configuration, and the
+  // call in flight holds its own reference instead of reading freed member
+  // plans - which used to drop every member after the mutating one
+  LConfig := TNeonConfiguration.Default;
+  LConfig.RegisterSerializer(TMutatingSerializer);
+
+  LEntity := TMutatingEntity.Create;
+  try
+    // The names still to be computed follow the new case - the documented
+    // caveat - and the mutating member's own name is computed after its value
+    Assert.AreEqual(
+      '{"Alpha":"a","mutator":"mutated","bravo":"b","charlie":"c","delta":"d"}',
+      TNeon.ObjectToJSONString(LEntity, LConfig), False,
+      'the members after the mutating one must still be written');
+  finally
+    LEntity.Free;
+  end;
+end;
 
 initialization
   TDUnitX.RegisterTestFixture(TTestConfigCache);

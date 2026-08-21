@@ -36,6 +36,7 @@ type
   TNeonSerializerRegistry = class;
   TNeonRttiObject = class;
   TNeonRttiCache = class;
+  INeonRttiCache = interface;
 
   INeonConfiguration = interface;
   TNeonConfiguration = class;
@@ -425,6 +426,14 @@ type
     FIgnoreMembers: TArray<string>;
 
     function IgnoreMember(const AMember: string): Boolean;
+
+    /// <summary>
+    ///   The rules here are read while the member plans are built, so changing
+    ///   them has to invalidate what the configuration cached - a caller that
+    ///   keeps this interface and adds a rule after a first call would
+    ///   otherwise see it ignored
+    /// </summary>
+    procedure InvalidateGlobalConfig;
   public
     // Interface INeonConfigurationType
     function SetIgnoreMembers(const AMemberList: TArray<string>): INeonConfigurationType; overload;
@@ -438,14 +447,31 @@ type
   ///   Main configuration class for TNeon engine
   /// </summary>
   /// <remarks>
-  ///   Every constructor - Create, Default, Camel, Snake, Kebab, Pretty,
-  ///   ScreamingSnake - starts with an <b>empty serializer registry</b>: the
-  ///   serializers Neon ships with (Neon.Core.Serializers.RTL, .DB, .VCL,
-  ///   .Nullables) are not registered for you, and a type that has one but is
-  ///   not registered falls back to the generic RTTI handling - a TGUID is
-  ///   written as its D1/D2/D3 fields, a TCollection as its own Count and
-  ///   Capacity with the items lost. See RegisterSerializer and the
-  ///   "Custom Serializers" section of the README
+  ///   <para>
+  ///     Every constructor - Create, Default, Camel, Snake, Kebab, Pretty,
+  ///     ScreamingSnake - starts with an <b>empty serializer registry</b>: the
+  ///     serializers Neon ships with (Neon.Core.Serializers.RTL, .DB, .VCL,
+  ///     .Nullables) are not registered for you, and a type that has one but is
+  ///     not registered falls back to the generic RTTI handling - a TGUID is
+  ///     written as its D1/D2/D3 fields, a TCollection as its own Count and
+  ///     Capacity with the items lost. See RegisterSerializer and the
+  ///     "Custom Serializers" section of the README
+  ///   </para>
+  ///   <para>
+  ///     A configuration is mutable, and changing one is safe at any time. The
+  ///     settings read while (de)serializing - UseUTCDate, EnumAsInt,
+  ///     AutoCreate, StrictTypes, MapSort, PrettyPrint, RaiseExceptions,
+  ///     OnError, ClosedSchema - take effect immediately; the ones that feed
+  ///     the member plans - member set, sort, case, visibility, field prefix,
+  ///     read-only properties, the ignore lists and the per-type Rules -
+  ///     invalidate what was cached and take effect from the next top-level
+  ///     call, because a call already in flight keeps the member plans it
+  ///     started with (see ClearRttiCache). Changing a configuration in the
+  ///     middle of a call that uses it is still not something to do - a name
+  ///     not computed yet is computed from the new settings, so one document
+  ///     can come out with two naming conventions - but it can no longer
+  ///     corrupt memory or silently drop the members after it
+  ///   </para>
   /// </remarks>
   TNeonConfiguration = class sealed(TInterfacedObject, INeonConfiguration)
   private
@@ -471,7 +497,7 @@ type
 
     FTypeConfigurator: TTypeConfigurator;
 
-    FRttiCaches: TObjectDictionary<UInt64, TNeonRttiCache>;
+    FRttiCaches: TDictionary<UInt64, INeonRttiCache>;
     FRttiCachesLock: TCriticalSection;
   public
     constructor Create;
@@ -529,13 +555,21 @@ type
     ///   instead of starting empty, so a type is enumerated and its attributes
     ///   parsed once per configuration rather than once per top-level call
     /// </summary>
-    function GetRttiCache(AOperation: TNeonOperation): TNeonRttiCache;
+    function GetRttiCache(AOperation: TNeonOperation): INeonRttiCache;
 
     /// <summary>
-    ///   Drops what was cached from the current settings. Called by every
-    ///   setter that feeds the member plans; a configuration must not be
-    ///   changed while a serialization using it is in flight
+    ///   Detaches what was cached from the current settings, so the next call
+    ///   builds it again
     /// </summary>
+    /// <remarks>
+    ///   Called by every setter that feeds the member plans, and by the
+    ///   type-level rules. The caches are reference counted, so this drops the
+    ///   configuration's reference and nothing else: a serialization already in
+    ///   flight - on this thread, through a custom serializer that touches the
+    ///   configuration, or on another thread entirely - holds its own reference
+    ///   and finishes on the member plans it started with, rather than reading
+    ///   memory this call would otherwise have freed under it
+    /// </remarks>
     procedure ClearRttiCache;
 
     property Members: TNeonMembersSet read FMembers write FMembers;
@@ -724,17 +758,39 @@ type
   ///   lists and the parsed type objects
   /// </summary>
   /// <remarks>
-  ///   Owned by the configuration and handed out per thread and per operation,
-  ///   so repeated top-level calls reuse it instead of rebuilding it. It is
-  ///   deliberately not shared between threads: TNeonRttiMembers carries
-  ///   per-instance state (FilterSerialize writes each member's Serializable)
-  ///   and TNeonRttiMember fills its JSON name lazily, so one thread must never
-  ///   see another's entries
+  ///   <para>
+  ///     Held by the configuration and handed out per thread and per operation,
+  ///     so repeated top-level calls reuse it instead of rebuilding it. It is
+  ///     deliberately not shared between threads: TNeonRttiMembers carries
+  ///     per-instance state (FilterSerialize writes each member's Serializable)
+  ///     and TNeonRttiMember fills its JSON name lazily, so one thread must
+  ///     never see another's entries
+  ///   </para>
+  ///   <para>
+  ///     Reference counted on purpose. A serializer takes its cache once and
+  ///     holds that reference for the whole call, so a setter that invalidates
+  ///     the configuration mid-traversal only detaches the cache from the
+  ///     configuration - the call in flight finishes on the plans it started
+  ///     with instead of reading freed memory, and the next call builds fresh
+  ///     ones
+  ///   </para>
   /// </remarks>
-  TNeonRttiCache = class
+  INeonRttiCache = interface
+  ['{6F1B2C84-9D3E-4A75-8C21-0B7E5A4D9F13}']
+    function GetMembers: TMemberRegistry;
+    function GetObjects: TNeonObjectRegistry;
+
+    property Members: TMemberRegistry read GetMembers;
+    property Objects: TNeonObjectRegistry read GetObjects;
+  end;
+
+  TNeonRttiCache = class(TInterfacedObject, INeonRttiCache)
   private
     FMembers: TMemberRegistry;
     FObjects: TNeonObjectRegistry;
+
+    function GetMembers: TMemberRegistry;
+    function GetObjects: TNeonObjectRegistry;
   public
     constructor Create;
     destructor Destroy; override;
@@ -757,15 +813,18 @@ type
     FConfigIntf: INeonConfiguration;
     FOperation: TNeonOperation;
     FOriginalInstance: TValue;
-    FRttiCache: TNeonRttiCache;
+    FRttiCache: INeonRttiCache;
     FErrors: TStrings;
     function GetTypeMembers(AType: TRttiType): TArray<TRttiMember>;
 
     /// <summary>
     ///   The configuration's cache for this thread and operation, fetched on
     ///   first use (FOperation is only set by the descendant's constructor)
+    ///   and held for the rest of this instance's life, so the call runs with
+    ///   the plans it started with even if the configuration is changed
+    ///   underneath it
     /// </summary>
-    function GetRttiCache: TNeonRttiCache;
+    function GetRttiCache: INeonRttiCache;
     function GetNeonMembers(AType: TRttiType): TNeonRttiMembers;
 
     /// <summary>
@@ -810,12 +869,13 @@ end;
 
 destructor TNeonBase.Destroy;
 begin
-  // FRttiCache belongs to the configuration and outlives this instance
+  // FRttiCache is reference counted: the configuration normally outlives this
+  // instance and keeps it, and a cache detached mid-call dies here instead
   FErrors.Free;
   inherited;
 end;
 
-function TNeonBase.GetRttiCache: TNeonRttiCache;
+function TNeonBase.GetRttiCache: INeonRttiCache;
 begin
   if not Assigned(FRttiCache) then
     FRttiCache := FConfig.GetRttiCache(FOperation);
@@ -1019,12 +1079,22 @@ begin
   inherited;
 end;
 
+function TNeonRttiCache.GetMembers: TMemberRegistry;
+begin
+  Result := FMembers;
+end;
+
+function TNeonRttiCache.GetObjects: TNeonObjectRegistry;
+begin
+  Result := FObjects;
+end;
+
 { TNeonConfiguration }
 
 constructor TNeonConfiguration.Create;
 begin
   // Before the setters below, which invalidate it
-  FRttiCaches := TObjectDictionary<UInt64, TNeonRttiCache>.Create([doOwnsValues]);
+  FRttiCaches := TDictionary<UInt64, INeonRttiCache>.Create;
   FRttiCachesLock := TCriticalSection.Create;
 
   FSerializers := TNeonSerializerRegistry.Create;
@@ -1041,7 +1111,7 @@ begin
   FClosedSchema := False;
 end;
 
-function TNeonConfiguration.GetRttiCache(AOperation: TNeonOperation): TNeonRttiCache;
+function TNeonConfiguration.GetRttiCache(AOperation: TNeonOperation): INeonRttiCache;
 var
   LKey: UInt64;
 begin
@@ -1155,9 +1225,11 @@ end;
 
 function TNeonConfiguration.GetTypeConfigurator: TTypeConfigurator;
 begin
-  // Handed out so the caller can add rules, and those feed the member
-  // plans: whatever was cached from the current rules is dropped now
-  ClearRttiCache;
+  // No invalidation here: the rules invalidate when they are *changed*
+  // (TNeonConfigurationType.Set/AddIgnoreMembers), which also covers the caller
+  // who keeps the INeonConfigurationType and adds a rule later. Clearing on the
+  // way out only worked for rules added on the same expression, and dropped the
+  // caches even when nothing changed
   Result := FTypeConfigurator;
 end;
 
@@ -2249,7 +2321,14 @@ end;
 function TNeonConfigurationType.AddIgnoreMembers(const AMemberList: TArray<string>): INeonConfigurationType;
 begin
   FIgnoreMembers := FIgnoreMembers + AMemberList;
+  InvalidateGlobalConfig;
   Result := Self;
+end;
+
+procedure TNeonConfigurationType.InvalidateGlobalConfig;
+begin
+  if Assigned(FGlobalConfig) then
+    (FGlobalConfig as TNeonConfiguration).ClearRttiCache;
 end;
 
 function TNeonConfigurationType.SetGlobalConfig(AConfig: INeonConfiguration): INeonConfigurationType;
@@ -2261,6 +2340,7 @@ end;
 function TNeonConfigurationType.SetIgnoreMembers(const AMemberList: TArray<string>): INeonConfigurationType;
 begin
   FIgnoreMembers := AMemberList;
+  InvalidateGlobalConfig;
   Result := Self;
 end;
 
