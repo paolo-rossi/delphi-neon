@@ -300,6 +300,7 @@ type
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
+    function SetOnError(AValue: TNeonErrorCallback): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
     function SetClosedSchema(AValue: Boolean): INeonConfiguration;
     function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
@@ -308,6 +309,7 @@ type
     function GetPrettyPrint: Boolean;
     function GetUseUTCDate: Boolean;
     function GetRaiseExceptions: Boolean;
+    function GetOnError: TNeonErrorCallback;
     function GetSerializers: TNeonSerializerRegistry;
     function GetTypeConfigurator: TTypeConfigurator;
 
@@ -364,6 +366,7 @@ type
     FPrettyPrint: Boolean;
     FSerializers: TNeonSerializerRegistry;
     FRaiseExceptions: Boolean;
+    FOnError: TNeonErrorCallback;
     FEnumAsInt: Boolean;
     FAutoCreate: Boolean;
     FStrictTypes: Boolean;
@@ -397,6 +400,7 @@ type
     function SetIgnoreReadOnlyProps(AValue: Boolean): INeonConfiguration;
     function SetUseUTCDate(AValue: Boolean): INeonConfiguration;
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
+    function SetOnError(AValue: TNeonErrorCallback): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
     function SetClosedSchema(AValue: Boolean): INeonConfiguration;
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
@@ -410,6 +414,7 @@ type
     function GetUseUTCDate: Boolean;
     function GetPrettyPrint: Boolean;
     function GetRaiseExceptions: Boolean;
+    function GetOnError: TNeonErrorCallback;
     function GetSerializers: TNeonSerializerRegistry;
     function GetFactoryList: TNeonFactoryRegistry;
     function GetTypeConfigurator: TTypeConfigurator;
@@ -439,6 +444,7 @@ type
     property IgnoreReadOnlyProps: Boolean read FIgnoreReadOnlyProps write FIgnoreReadOnlyProps;
     property UseUTCDate: Boolean read FUseUTCDate write FUseUTCDate;
     property RaiseExceptions: Boolean read FRaiseExceptions write FRaiseExceptions;
+    property OnError: TNeonErrorCallback read FOnError write FOnError;
     property EnumAsInt: Boolean read FEnumAsInt write FEnumAsInt;
     property AutoCreate: Boolean read FAutoCreate write FAutoCreate;
     property StrictTypes: Boolean read FStrictTypes write FStrictTypes;
@@ -880,6 +886,12 @@ end;
 procedure TNeonBase.LogError(const AMessage: string);
 begin
   FErrors.Add(AMessage);
+
+  // Errors are only in FErrors, and the TNeon facade frees this instance - and
+  // FErrors with it - before returning: without a handler a caller running with
+  // RaiseExceptions off cannot tell that a member was dropped
+  if Assigned(FConfig.OnError) then
+    FConfig.OnError(AMessage, FOperation);
 end;
 
 { TNeonRttiCache }
@@ -1021,6 +1033,11 @@ begin
   Result := FRaiseExceptions;
 end;
 
+function TNeonConfiguration.GetOnError: TNeonErrorCallback;
+begin
+  Result := FOnError;
+end;
+
 function TNeonConfiguration.GetSerializers: TNeonSerializerRegistry;
 begin
   Result := FSerializers;
@@ -1092,6 +1109,12 @@ end;
 function TNeonConfiguration.SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
 begin
   FRaiseExceptions := AValue;
+  Result := Self;
+end;
+
+function TNeonConfiguration.SetOnError(AValue: TNeonErrorCallback): INeonConfiguration;
+begin
+  FOnError := AValue;
   Result := Self;
 end;
 

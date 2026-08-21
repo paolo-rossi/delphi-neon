@@ -1006,7 +1006,7 @@ begin
       except
         on E: Exception do
         begin
-          LogError(Format(SNeonErrorConvertNumF3,
+          LogError(Format(SNeonErrorMemberF3,
             [LNeonMember.Name, AType.Name, E.Message]));
           if FConfig.RaiseExceptions then
             raise;
@@ -1067,12 +1067,18 @@ begin
         end;
       end;
     except
-      // Free the partial result, then let the error propagate: without the
-      // re-raise, RaiseExceptions only works for top-level members because
-      // every nested object/record/map swallows the exception
-      FreeAndNil(Result);
-      if FConfig.RaiseExceptions then
-        raise;
+      on E: Exception do
+      begin
+        // Free the partial result, then let the error propagate: without the
+        // re-raise, RaiseExceptions only works for top-level members because
+        // every nested object/record/map swallows the exception
+        FreeAndNil(Result);
+        if FConfig.RaiseExceptions then
+          raise;
+        // Swallowed: this is not a member error (WriteMembers logs and skips
+        // those), the whole object is gone from the document
+        LogError(Format(SNeonErrorSerializeTypeF2, [LType.Name, E.Message]));
+      end;
     end;
   finally
     TNeonLogger.ProfileEnd('Serialize:Object', LStamp);
@@ -1211,12 +1217,15 @@ begin
   except
     on E: Exception do
     begin
-      FErrors.Add(E.Message);
       FreeAndNil(Result);
       // Same reasoning as WriteObject/WriteRecord: free the partial result,
       // then let the error propagate when RaiseExceptions is set
       if FConfig.RaiseExceptions then
         raise;
+      // Swallowed: the whole map is gone from the document, so it goes through
+      // LogError (not FErrors.Add) for the configured handler to see it
+      LogError(Format(SNeonErrorSerializeTypeF2,
+        [TRttiUtils.Context.GetType(AValue.TypeInfo).Name, E.Message]));
     end;
   end;
   finally
@@ -1244,10 +1253,15 @@ begin
       end;
     end;
   except
-    // Free the partial result, then let the error propagate
-    FreeAndNil(Result);
-    if FConfig.RaiseExceptions then
-      raise;
+    on E: Exception do
+    begin
+      // Free the partial result, then let the error propagate
+      FreeAndNil(Result);
+      if FConfig.RaiseExceptions then
+        raise;
+      // Swallowed: same as WriteObject, the whole record is gone
+      LogError(Format(SNeonErrorSerializeTypeF2, [LType.Name, E.Message]));
+    end;
   end;
   finally
     TNeonLogger.ProfileEnd('Serialize:Record', LStamp);
@@ -2111,7 +2125,7 @@ begin
       except
         on E: Exception do
         begin
-          LogError(Format(SNeonErrorConvertNumF3, [LNeonMember.Name, AType.Name, E.Message]));
+          LogError(Format(SNeonErrorMemberF3, [LNeonMember.Name, AType.Name, E.Message]));
           if FConfig.RaiseExceptions then
             raise;
         end;

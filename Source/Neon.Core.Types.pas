@@ -42,6 +42,20 @@ type
   TNeonIgnoreCallback = function(const AContext: TNeonIgnoreIfContext): Boolean of object;
   TCaseFunc = reference to function (const AString: string): string;
 
+  /// <summary>
+  ///   Handler for the messages Neon logs while (de)serializing, set with
+  ///   INeonConfiguration.SetOnError
+  /// </summary>
+  /// <remarks>
+  ///   With RaiseExceptions off (the default) a member that fails is logged and
+  ///   skipped: for a caller of the TNeon facade - which frees the serializer,
+  ///   and its error list with it, before returning - this handler is the only
+  ///   way to learn that it happened. It is called on the thread doing the work
+  ///   and must not raise: it runs inside the except block that handled the
+  ///   original error, and an exception from it would replace that error
+  /// </remarks>
+  TNeonErrorCallback = reference to procedure (const AMessage: string; AOperation: TNeonOperation);
+
 resourcestring
   { Catalog of every message Neon raises or logs, so the whole library can
     be localized (e.g. with a translated resource DLL) without recompiling. }
@@ -63,7 +77,8 @@ resourcestring
   SNeonErrorEmptyType = 'Empty RttiType in JSONToValue';
   SNeonErrorRangeOutF2 = 'The value [%s] is outside the range for the type [%s]';
   SNeonErrorNoMethodF2 = 'NeonInclude Method name [%s] not found in class [%s]';
-  SNeonErrorConvertNumF3 = 'Error converting member [%s] of type [%s]: %s';
+  SNeonErrorMemberF3 = 'Error processing member [%s] of type [%s]: %s';
+  SNeonErrorSerializeTypeF2 = 'Error serializing the type [%s]: %s';
   SNeonErrorTagTargetInvalid = 'You can apply tag values only to records or objects';
   SNeonErrorTagParseF1 = 'Error decoding tag: [%s]';
 

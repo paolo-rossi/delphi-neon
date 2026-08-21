@@ -132,6 +132,7 @@
         <DCCReference Include="Source\Neon.Tests.Config.ReadOnlyProps.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.MapSort.pas"/>
         <DCCReference Include="Source\Neon.Tests.Config.Cache.pas"/>
+        <DCCReference Include="Source\Neon.Tests.Config.Errors.pas"/>
         <DCCReference Include="Source\Neon.Tests.ConfigTypes.pas"/>
         <DCCReference Include="Source\Neon.Tests.Tags.pas"/>
         <DCCReference Include="Source\Neon.Tests.StructTags.pas"/>
