@@ -698,24 +698,17 @@ end;
 function TNeonSerializerJSON.WriteDataMember(const AValue: TValue; ACustomProcess: Boolean): TJSONValue;
 var
   LNeonObject: TNeonRttiObject;
-  LRttiType: TRttiType;
   LStamp: Int64;
 begin
-  // This overload is called per-element for arrays/lists/map keys+values,
-  // so it re-resolves RTTI and re-parses attributes on every single call
-  // instead of once per type - worth profiling separately from the actual
-  // Write<Kind> dispatch below to see how much that costs.
+  // This overload is called per-element for arrays/lists/map keys+values, so it
+  // takes the RTTI type and its parsed attributes from the per-type cache: only
+  // the first element of a given type pays for resolving them, and the cached
+  // object is owned by the registry, not by this call
   LStamp := TNeonLogger.ProfileBegin;
-  LRttiType := TRttiUtils.Context.GetType(AValue.TypeInfo);
-
-  LNeonObject := TNeonRttiObject.Create(LRttiType, FOperation);
-  LNeonObject.ParseAttributes;
+  LNeonObject := GetNeonObject(AValue.TypeInfo);
   TNeonLogger.ProfileEnd('Serialize:RttiResolve', LStamp);
-  try
-    Result := WriteDataMember(AValue, ACustomProcess, LNeonObject);
-  finally
-    LNeonObject.Free;
-  end;
+
+  Result := WriteDataMember(AValue, ACustomProcess, LNeonObject);
 end;
 
 function TNeonSerializerJSON.WriteDataMember(const AValue: TValue; ACustomProcess: Boolean; ANeonObject: TNeonRttiObject): TJSONValue;
@@ -1502,46 +1495,41 @@ begin
       LOldItems[LIndex] := Result.GetArrayElement(LIndex).AsObject;
   end;
 
-  LItemParam.NeonObject := TNeonRttiObject.Create(LItemParam.RttiType, FOperation);
-  try
-    LItemParam.NeonObject.ParseAttributes;
+  LItemParam.NeonObject := GetNeonObject(LItemParam.RttiType.Handle);
 
-    for LIndex := 0 to LJSONArray.Count - 1 do
+  for LIndex := 0 to LJSONArray.Count - 1 do
+  begin
+    LItemParam.JSONValue := LJSONArray.Items[LIndex];
+
+    // A null item has nothing to read into: the slot gets the element type's
+    // default (nil for a class), instead of the empty instance the factory or
+    // the constructor used to build for it
+    if LItemParam.JSONValue is TJSONNull then
     begin
-      LItemParam.JSONValue := LJSONArray.Items[LIndex];
-
-      // A null item has nothing to read into: the slot gets the element type's
-      // default (nil for a class), instead of the empty instance the factory or
-      // the constructor used to build for it
-      if LItemParam.JSONValue is TJSONNull then
-      begin
-        Result.SetArrayElement(LIndex, TValue.Empty.Cast(LItemParam.RttiType.Handle));
-        Continue;
-      end;
-
-      if AParam.RttiType.TypeKind = tkArray then // Static Array
-      begin
-        // Replace the stored element with a fresh one via the item factory
-        // (or the plain constructor), so the factory is consulted for every
-        // JSON item; the previous object is freed after the loop below
-        if LItemParam.RttiType.TypeKind = tkClass then
-          LItemValue := CreateItem(AParam.NeonObject, LItemParam.JSONValue, LItemParam.RttiType)
-        else
-          LItemValue := Result.GetArrayElement(LIndex);
-      end
-      else //tkDynArray (Dynamic Array)
-        LItemValue := CreateItem(AParam.NeonObject, LItemParam.JSONValue, LItemParam.RttiType);
-
-      LItemValue := ReadDataMember(LItemParam, LItemValue, True);
-      Result.SetArrayElement(LIndex, LItemValue);
+      Result.SetArrayElement(LIndex, TValue.Empty.Cast(LItemParam.RttiType.Handle));
+      Continue;
     end;
 
-    // Every element was read successfully: release the previous contents
-    for LIndex := 0 to High(LOldItems) do
-      LOldItems[LIndex].Free;
-  finally
-    LItemParam.NeonObject.Free;
+    if AParam.RttiType.TypeKind = tkArray then // Static Array
+    begin
+      // Replace the stored element with a fresh one via the item factory
+      // (or the plain constructor), so the factory is consulted for every
+      // JSON item; the previous object is freed after the loop below
+      if LItemParam.RttiType.TypeKind = tkClass then
+        LItemValue := CreateItem(AParam.NeonObject, LItemParam.JSONValue, LItemParam.RttiType)
+      else
+        LItemValue := Result.GetArrayElement(LIndex);
+    end
+    else //tkDynArray (Dynamic Array)
+      LItemValue := CreateItem(AParam.NeonObject, LItemParam.JSONValue, LItemParam.RttiType);
+
+    LItemValue := ReadDataMember(LItemParam, LItemValue, True);
+    Result.SetArrayElement(LIndex, LItemValue);
   end;
+
+  // Every element was read successfully: release the previous contents
+  for LIndex := 0 to High(LOldItems) do
+    LOldItems[LIndex].Free;
 end;
 
 function TNeonDeserializerJSON.ReadChar(const AParam: TNeonDeserializerParam): TValue;
@@ -1568,19 +1556,16 @@ var
   LParam: TNeonDeserializerParam;
   LStamp: Int64;
 begin
-  // Mirrors the serializer's per-call RTTI resolve/attribute-parse cost -
-  // see the comment on TNeonSerializerJSON.WriteDataMember (entry overload).
+  // Mirrors the serializer's entry overload, cache included - see the comment
+  // there. Custom serializers recursing through IDeserializerContext land here,
+  // and TCollectionSerializer does it once per item
   LStamp := TNeonLogger.ProfileBegin;
   LParam.JSONValue := AJSONValue;
   LParam.RttiType := AType;
-  LParam.NeonObject := TNeonRttiObject.Create(AType, FOperation);
-  LParam.NeonObject.ParseAttributes;
+  LParam.NeonObject := GetNeonObject(AType.Handle);
   TNeonLogger.ProfileEnd('Deserialize:RttiResolve', LStamp);
-  try
-    Result := ReadDataMember(LParam, AData, ACustomProcess);
-  finally
-    LParam.NeonObject.Free;
-  end;
+
+  Result := ReadDataMember(LParam, AData, ACustomProcess);
 end;
 
 function TNeonDeserializerJSON.ReadDataMember(var AParam: TNeonDeserializerParam;

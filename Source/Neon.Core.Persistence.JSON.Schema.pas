@@ -873,16 +873,10 @@ begin
 end;
 
 function TNeonSchemaGenerator.WriteDataMember(AType: TRttiType): TJSONObject;
-var
-  LNeonObject: TNeonRttiObject;
 begin
-  LNeonObject := TNeonRttiObject.Create(AType, FOperation);
-  LNeonObject.ParseAttributes;
-  try
-    Result := WriteDataMember(AType, LNeonObject);
-  finally
-    LNeonObject.Free;
-  end;
+  // Same per-type cache the serializer entry overload uses: a schema walks the
+  // same type more than once (an item type, a map value type, a $ref target)
+  Result := WriteDataMember(AType, GetNeonObject(AType.Handle));
 end;
 
 function TNeonSchemaGenerator.WriteDataMember(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;

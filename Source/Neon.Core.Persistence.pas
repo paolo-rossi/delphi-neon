@@ -583,6 +583,12 @@ type
   end;
 
   TMemberRegistry = class(TObjectDictionary<PTypeInfo, TNeonRttiMembers>);
+
+  /// <summary>
+  ///   Per-type cache of parsed TNeonRttiObject values, the type-level twin of
+  ///   TMemberRegistry
+  /// </summary>
+  TNeonObjectRegistry = class(TObjectDictionary<PTypeInfo, TNeonRttiObject>);
   
   {$ENDREGION}
 
@@ -599,9 +605,16 @@ type
     FOperation: TNeonOperation;
     FOriginalInstance: TValue;
     FMemberRegistry: TMemberRegistry;
+    FObjectRegistry: TNeonObjectRegistry;
     FErrors: TStrings;
     function GetTypeMembers(AType: TRttiType): TArray<TRttiMember>;
     function GetNeonMembers(AType: TRttiType): TNeonRttiMembers;
+
+    /// <summary>
+    ///   Returns the parsed TNeonRttiObject for a type, building it once and
+    ///   reusing it afterwards
+    /// </summary>
+    function GetNeonObject(ATypeInfo: PTypeInfo): TNeonRttiObject;
     function GetNameFromMember(AMember: TNeonRttiMember): string; virtual;
   public
     constructor Create(const AConfig: INeonConfiguration);
@@ -635,12 +648,14 @@ begin
   FConfigIntf := AConfig;
   FConfig := AConfig as TNeonConfiguration;
   FMemberRegistry := TMemberRegistry.Create([doOwnsValues]);
+  FObjectRegistry := TNeonObjectRegistry.Create([doOwnsValues]);
   FErrors := TStringList.Create;
 end;
 
 destructor TNeonBase.Destroy;
 begin
   FErrors.Free;
+  FObjectRegistry.Free;
   FMemberRegistry.Free;
   inherited;
 end;
@@ -791,6 +806,23 @@ begin
     Exit(False);
 
   Result := NativeInt(AValue.GetReferenceToRawData^) = NativeInt(FOriginalInstance.GetReferenceToRawData^);
+end;
+
+function TNeonBase.GetNeonObject(ATypeInfo: PTypeInfo): TNeonRttiObject;
+begin
+  // The attributes of a type do not change, so the TNeonRttiObject that holds
+  // them is cached per type, the way the member lists are. The entry overloads
+  // of Write/ReadDataMember are called once per array element, list item and
+  // dictionary key/value: without this, each of those resolved the RTTI type
+  // and re-parsed the attributes, then threw the result away.
+  // Nothing writes back into a parsed TNeonRttiObject, so a single instance can
+  // serve every element of its type
+  if FObjectRegistry.TryGetValue(ATypeInfo, Result) then
+    Exit;
+
+  Result := TNeonRttiObject.Create(TRttiUtils.Context.GetType(ATypeInfo), FOperation);
+  Result.ParseAttributes;
+  FObjectRegistry.Add(ATypeInfo, Result);
 end;
 
 procedure TNeonBase.LogError(const AMessage: string);
