@@ -102,7 +102,9 @@ begin
   Assert.AreEqual(PASCAL_JSON, TNeon.ObjectToJSONString(FEntity, LConfig));
 
   LConfig.SetMemberCase(TNeonCase.CamelCase);
-  Assert.AreEqual(CAMEL_JSON, TNeon.ObjectToJSONString(FEntity, LConfig),
+  // Case-sensitive on purpose: the point of the test is the *case* of the names,
+  // and DUnitX compares strings case-insensitively unless told otherwise
+  Assert.AreEqual(CAMEL_JSON, TNeon.ObjectToJSONString(FEntity, LConfig), False,
     'the member case changed after the first call and must be honoured');
 end;
 
@@ -128,10 +130,10 @@ begin
 
   // Alternated, so a cache shared between configurations would show up as the
   // wrong names on the second pass
-  Assert.AreEqual(PASCAL_JSON, TNeon.ObjectToJSONString(FEntity, LPascal));
-  Assert.AreEqual(CAMEL_JSON, TNeon.ObjectToJSONString(FEntity, LCamel));
-  Assert.AreEqual(PASCAL_JSON, TNeon.ObjectToJSONString(FEntity, LPascal));
-  Assert.AreEqual(CAMEL_JSON, TNeon.ObjectToJSONString(FEntity, LCamel));
+  Assert.AreEqual(PASCAL_JSON, TNeon.ObjectToJSONString(FEntity, LPascal), False);
+  Assert.AreEqual(CAMEL_JSON, TNeon.ObjectToJSONString(FEntity, LCamel), False);
+  Assert.AreEqual(PASCAL_JSON, TNeon.ObjectToJSONString(FEntity, LPascal), False);
+  Assert.AreEqual(CAMEL_JSON, TNeon.ObjectToJSONString(FEntity, LCamel), False);
 end;
 
 procedure TTestConfigCache.TestConcurrentUseOfOneConfig;

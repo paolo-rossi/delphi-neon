@@ -989,6 +989,7 @@ end;
 function TNeonConfiguration.AddIgnoreMembers(const AMemberList: TArray<string>): INeonConfiguration;
 begin
   FIgnoreMembers := FIgnoreMembers + AMemberList;
+  ClearRttiCache;
   Result := Self;
 end;
 
@@ -1159,6 +1160,7 @@ end;
 function TNeonConfiguration.SetMemberCase(AValue: TNeonCase): INeonConfiguration;
 begin
   FMemberCase := AValue;
+  ClearRttiCache;
   Result := Self;
 end;
 

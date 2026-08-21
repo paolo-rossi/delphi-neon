@@ -109,9 +109,9 @@ end;
 
 /// <summary>
 ///   One flat object per TNeon call. Every call builds a fresh
-///   TNeonSerializerJSON and therefore a fresh member registry, so the
-///   per-type caches cannot amortize: this measures Neon's fixed per-call
-///   setup cost.
+///   TNeonSerializerJSON, so this measures Neon's fixed per-call setup cost -
+///   and, since the per-type caches moved to the configuration, how much of
+///   that setup the previous calls have already paid for.
 /// </summary>
 procedure ProfileFlatSingle(AConfig: INeonConfiguration);
 var
@@ -126,8 +126,9 @@ begin
 
     RunScenario(
       Format('A. Single flat object, %d separate TNeon calls', [FLAT_CALLS]),
-      'Worst case for the per-type caches: each call rebuilds the member' + sLineBreak +
-      'registry from scratch, so Core:PrepareMembers runs once per call.' + sLineBreak,
+      'The per-type caches live on the configuration, so the member list built' + sLineBreak +
+      'by the first call serves all the others: Core:PrepareMembers and' + sLineBreak +
+      'Core:RttiObjectCreate should not appear at all after it.' + sLineBreak,
       FLAT_CALLS,
       procedure
       var
@@ -241,9 +242,9 @@ begin
     WriteLn('so rows do not sum to the grand total - they show where time is');
     WriteLn('nested, not a flat, mutually-exclusive breakdown.');
     WriteLn;
-    WriteLn('NOTE: TNeon.ObjectToJSON creates a new serializer (and a new member');
-    WriteLn('registry) per call, so every per-type cache is scoped to a single');
-    WriteLn('call. Compare scenario A against B to see what that costs.');
+    WriteLn('NOTE: TNeon.ObjectToJSON creates a new serializer per call, but the');
+    WriteLn('per-type caches belong to the configuration (one per thread), so');
+    WriteLn('they carry over between calls that share it - as these three do.');
 
     LConfig := TNeonConfiguration.Default;
 
