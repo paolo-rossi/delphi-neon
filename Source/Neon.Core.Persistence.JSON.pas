@@ -819,14 +819,25 @@ begin
           Exit(nil);
         end;
       end
-      else if IsEnumerableMap(AValue, LDynamicMap) then
-        Result := WriteEnumerableMap(AValue, ANeonObject, LDynamicMap)
-      else if IsEnumerable(AValue, LDynamicList) then
-        Result := WriteEnumerable(AValue, ANeonObject, LDynamicList)
-      else if IsStreamable(AValue, LDynamicStream) then
-        Result := WriteStreamable(AValue, ANeonObject, LDynamicStream)
       else
-        Result := WriteObject(AValue, ANeonObject);
+        // Which shape this class has is settled once per class, so only the
+        // probe that can match still runs here - the other two used to run,
+        // and fail, for every value
+        case GetDynamicKind(AValue.AsObject) of
+          TNeonDynamicKind.Map:
+            if IsEnumerableMap(AValue, LDynamicMap) then
+              Result := WriteEnumerableMap(AValue, ANeonObject, LDynamicMap);
+
+          TNeonDynamicKind.List:
+            if IsEnumerable(AValue, LDynamicList) then
+              Result := WriteEnumerable(AValue, ANeonObject, LDynamicList);
+
+          TNeonDynamicKind.Stream:
+            if IsStreamable(AValue, LDynamicStream) then
+              Result := WriteStreamable(AValue, ANeonObject, LDynamicStream);
+        else
+          Result := WriteObject(AValue, ANeonObject);
+        end;
     end;
 
     tkArray:
@@ -2570,14 +2581,24 @@ var
 begin
   LValue := ManageInstance(AParam, AData);
 
-  if ReadEnumerableMap(AParam, LValue) then
-    Exit(LValue);
+  // Each of these three starts with the same structural probe the serializer
+  // does, so the cached verdict picks the one that can succeed. A nil instance
+  // (no AutoCreate, no factory) matches none of them and falls through to
+  // ReadObject, which is where it was handled before as well
+  if LValue.AsObject <> nil then
+    case GetDynamicKind(LValue.AsObject) of
+      TNeonDynamicKind.Map:
+        if ReadEnumerableMap(AParam, LValue) then
+          Exit(LValue);
 
-  if ReadEnumerable(AParam, LValue) then
-    Exit(LValue);
+      TNeonDynamicKind.List:
+        if ReadEnumerable(AParam, LValue) then
+          Exit(LValue);
 
-  if ReadStreamable(AParam, LValue) then
-    Exit(LValue);
+      TNeonDynamicKind.Stream:
+        if ReadStreamable(AParam, LValue) then
+          Exit(LValue);
+    end;
 
   Result := ReadObject(AParam, LValue);
 end;

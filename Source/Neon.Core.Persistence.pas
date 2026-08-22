@@ -754,6 +754,13 @@ type
   TNeonObjectRegistry = class(TObjectDictionary<PTypeInfo, TNeonRttiObject>);
 
   /// <summary>
+  ///   Per-class cache of the structural probe: whether a class is a map, a
+  ///   list, a streamable or a plain object. Keyed by TClass, not by PTypeInfo,
+  ///   because the probes read the metaclass of the actual instance
+  /// </summary>
+  TDynamicKindRegistry = class(TDictionary<TClass, TNeonDynamicKind>);
+
+  /// <summary>
   ///   Everything a serializer or deserializer resolves per type: the member
   ///   lists and the parsed type objects
   /// </summary>
@@ -779,24 +786,29 @@ type
   ['{6F1B2C84-9D3E-4A75-8C21-0B7E5A4D9F13}']
     function GetMembers: TMemberRegistry;
     function GetObjects: TNeonObjectRegistry;
+    function GetDynamicKinds: TDynamicKindRegistry;
 
     property Members: TMemberRegistry read GetMembers;
     property Objects: TNeonObjectRegistry read GetObjects;
+    property DynamicKinds: TDynamicKindRegistry read GetDynamicKinds;
   end;
 
   TNeonRttiCache = class(TInterfacedObject, INeonRttiCache)
   private
     FMembers: TMemberRegistry;
     FObjects: TNeonObjectRegistry;
+    FDynamicKinds: TDynamicKindRegistry;
 
     function GetMembers: TMemberRegistry;
     function GetObjects: TNeonObjectRegistry;
+    function GetDynamicKinds: TDynamicKindRegistry;
   public
     constructor Create;
     destructor Destroy; override;
 
     property Members: TMemberRegistry read FMembers;
     property Objects: TNeonObjectRegistry read FObjects;
+    property DynamicKinds: TDynamicKindRegistry read FDynamicKinds;
   end;
   
   {$ENDREGION}
@@ -832,6 +844,12 @@ type
     ///   reusing it afterwards
     /// </summary>
     function GetNeonObject(ATypeInfo: PTypeInfo): TNeonRttiObject;
+
+    /// <summary>
+    ///   Which dynamic shape AInstance's class has, probed once per class and
+    ///   remembered afterwards
+    /// </summary>
+    function GetDynamicKind(AInstance: TObject): TNeonDynamicKind;
     function GetNameFromMember(AMember: TNeonRttiMember): string; virtual;
   public
     constructor Create(const AConfig: INeonConfiguration);
@@ -1053,6 +1071,32 @@ begin
   GetRttiCache.Objects.Add(ATypeInfo, Result);
 end;
 
+function TNeonBase.GetDynamicKind(AInstance: TObject): TNeonDynamicKind;
+begin
+  // Every TDynamic*.GuessType walks the class' RTTI looking up methods and
+  // properties by name, and the answer only ever depends on the class - so it
+  // is worked out once and kept. Without this, each of the three probes ran
+  // again for every single object written or read, which on a document of
+  // nested entities is the largest cost in the engine
+  if GetRttiCache.DynamicKinds.TryGetValue(AInstance.ClassType, Result) then
+    Exit;
+
+  // Probed in the same order the engine dispatches them, so a class that
+  // matches more than one shape is classified as the engine would treat it.
+  // The adapters built here are dropped: this runs once per class, and each
+  // one frees the enumerator it probed with
+  if Assigned(TDynamicMap.GuessType(AInstance)) then
+    Result := TNeonDynamicKind.Map
+  else if Assigned(TDynamicList.GuessType(AInstance)) then
+    Result := TNeonDynamicKind.List
+  else if Assigned(TDynamicStream.GuessType(AInstance)) then
+    Result := TNeonDynamicKind.Stream
+  else
+    Result := TNeonDynamicKind.Plain;
+
+  GetRttiCache.DynamicKinds.Add(AInstance.ClassType, Result);
+end;
+
 procedure TNeonBase.LogError(const AMessage: string);
 begin
   FErrors.Add(AMessage);
@@ -1070,10 +1114,12 @@ constructor TNeonRttiCache.Create;
 begin
   FMembers := TMemberRegistry.Create([doOwnsValues]);
   FObjects := TNeonObjectRegistry.Create([doOwnsValues]);
+  FDynamicKinds := TDynamicKindRegistry.Create;
 end;
 
 destructor TNeonRttiCache.Destroy;
 begin
+  FDynamicKinds.Free;
   FObjects.Free;
   FMembers.Free;
   inherited;
@@ -1087,6 +1133,11 @@ end;
 function TNeonRttiCache.GetObjects: TNeonObjectRegistry;
 begin
   Result := FObjects;
+end;
+
+function TNeonRttiCache.GetDynamicKinds: TDynamicKindRegistry;
+begin
+  Result := FDynamicKinds;
 end;
 
 { TNeonConfiguration }

@@ -32,6 +32,19 @@ type
   TNeonOperation = (Serialize, Deserialize);
   TNeonJSchemaVersion = (None, Draft07, v202012);
 
+  /// <summary>
+  ///   Which of the structural shapes in Neon.Core.DynamicTypes a class matches:
+  ///   the outcome of the IDynamicMap / IDynamicList / IDynamicStream probes,
+  ///   or Plain for a class that is none of them and is written member by
+  ///   member. Undetermined means "not probed yet"
+  /// </summary>
+  /// <remarks>
+  ///   A property of the class, not of the instance - the probes only look at
+  ///   methods and properties - which is what lets the engine resolve it once
+  ///   per class and cache it
+  /// </remarks>
+  TNeonDynamicKind = (Undetermined, Plain, Map, List, Stream);
+
   TNeonIgnoreIfContext = record
   public
     MemberName: string;

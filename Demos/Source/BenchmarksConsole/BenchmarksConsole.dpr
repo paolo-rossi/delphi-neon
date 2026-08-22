@@ -34,8 +34,8 @@ begin
     try
       LRunner.SaveJsonSamples;
 
-      LRunner.RunSimpleUsersBenchmark([100, 1000, 5000]);
-      LRunner.RunCustomersBenchmark([50, 500, 1000]);
+      LRunner.RunSimpleUsersBenchmark([100, 1000, 10000]);
+      LRunner.RunCustomersBenchmark([50, 500, 5000]);
 
       LRunner.PrintReport;
       LRunner.SaveReport;
