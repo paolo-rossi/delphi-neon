@@ -15,7 +15,8 @@ uses
   Benchmarks.Entities in 'Benchmarks.Entities.pas',
   Benchmarks.Form.Source in 'Benchmarks.Form.Source.pas' {frmSource},
   Vcl.Themes,
-  Vcl.Styles;
+  Vcl.Styles,
+  Benchmarks.Form.JSON in 'Benchmarks.Form.JSON.pas' {frmJSON};
 
 {$R *.res}
 
@@ -25,5 +26,6 @@ begin
   Application.MainFormOnTaskbar := True;
   Application.CreateForm(TfrmBenchmarks, frmBenchmarks);
   Application.CreateForm(TfrmSource, frmSource);
+  Application.CreateForm(TfrmJSON, frmJSON);
   Application.Run;
 end.
