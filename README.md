@@ -157,6 +157,158 @@ RegisterNullableSerializers(LConfig.GetSerializers);
 
 A configuration is worth keeping around rather than rebuilding per call — it owns the RTTI caches as well as the registry.
 
+#### Writing a custom serializer
+
+A serializer is a class inheriting from `TCustomSerializer`, with four members to override and two optional hooks:
+
+| Member | Role |
+| --- | --- |
+| `GetTargetInfo` | the `PTypeInfo` of the type the serializer is written for |
+| `CanHandle` | whether this serializer claims a given type — `TypeInfoIs(AType)` claims the target class and its descendants, and the most derived registered serializer wins |
+| `Serialize` | returns the JSON to write for a value, or `nil` to write nothing at all (which is how the `IncludeIf` policies are honoured) |
+| `Deserialize` | returns the value the target must be set to |
+| `NeedsInstance` *(optional)* | whether `Deserialize` needs an instance to read into — see below |
+| `SerializeSchema` *(optional)* | the JSON Schema describing what `Serialize` writes; returning `nil` (the default) lets the schema generator infer the shape from the RTTI of the type instead |
+
+##### Who builds the instance to read into
+
+Serializing is the easy direction: the value exists, and `Serialize` is handed it. Deserializing a **class-typed** member is not, because something has to create the object before the JSON can be read into it. Neon tries, in this order:
+
+1. a `[NeonFactory]` on the member or on its type, if there is one;
+2. `AutoCreate` (`SetAutoCreate(True)`) or `[NeonAutoCreate]` on the member — which builds the instance through the first parameterless constructor RTTI finds for the class;
+3. nothing.
+
+Case 3 is the common one: **`AutoCreate` is off by default**, so a class member that starts out `nil` and carries no attribute simply has no instance. `Deserialize` is then not called at all — the member is skipped and the reason logged:
+
+```
+Deserialization skipped: instance of [TMoney] is nil and could not be created
+```
+
+That is the right default: a serializer written to fill in the object it is given would dereference `nil`. But it is wrong for a serializer that does not need the object in the first place, because it *constructs* the value it returns. Such a serializer says so by overriding `NeedsInstance`:
+
+```delphi
+class function TMoneySerializer.NeedsInstance: Boolean;
+begin
+  Result := False;
+end;
+```
+
+It is then called even with nothing to read into, and whatever `TValue` it returns is assigned to the member.
+
+> [!NOTE]
+> `NeedsInstance` only affects **class-typed** targets. Records, and every simple type, have nothing to construct: their serializers are always called.
+
+##### An example: a class Neon cannot construct meaningfully
+
+`TMoney` below has no parameterless constructor — its two fields are read-only and set at construction. It is exactly the shape that has no useful instance to read into:
+
+```delphi
+uses
+  System.SysUtils, System.Rtti, System.TypInfo, System.JSON,
+  Neon.Core.Types, Neon.Core.Persistence, Neon.Core.Persistence.JSON;
+
+type
+  TMoney = class
+  private
+    FAmount: Currency;
+    FCurrency: string;
+  public
+    constructor Create(AAmount: Currency; const ACurrency: string);
+    property Amount: Currency read FAmount;
+    property Currency: string read FCurrency;
+  end;
+
+  TMoneySerializer = class(TCustomSerializer)
+  protected
+    class function GetTargetInfo: PTypeInfo; override;
+    class function CanHandle(AType: PTypeInfo): Boolean; override;
+  public
+    class function NeedsInstance: Boolean; override;
+    function Serialize(const AValue: TValue; ANeonObject: TNeonRttiObject;
+      AContext: ISerializerContext): TJSONValue; override;
+    function Deserialize(AValue: TJSONValue; const AData: TValue;
+      ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue; override;
+  end;
+
+class function TMoneySerializer.GetTargetInfo: PTypeInfo;
+begin
+  Result := TMoney.ClassInfo;
+end;
+
+class function TMoneySerializer.CanHandle(AType: PTypeInfo): Boolean;
+begin
+  Result := TypeInfoIs(AType);
+end;
+
+// Deserialize builds the TMoney itself, so a member with no instance is not a
+// reason to skip it
+class function TMoneySerializer.NeedsInstance: Boolean;
+begin
+  Result := False;
+end;
+
+function TMoneySerializer.Serialize(const AValue: TValue;
+  ANeonObject: TNeonRttiObject; AContext: ISerializerContext): TJSONValue;
+var
+  LMoney: TMoney;
+begin
+  LMoney := AValue.AsObject as TMoney;
+  Result := TJSONString.Create(Format('%s %s', [LMoney.Currency,
+    CurrToStrF(LMoney.Amount, ffFixed, 2, TFormatSettings.Invariant)]));
+end;
+
+function TMoneySerializer.Deserialize(AValue: TJSONValue; const AData: TValue;
+  ANeonObject: TNeonRttiObject; AContext: IDeserializerContext): TValue;
+var
+  LParts: TArray<string>;
+  LAmount: Currency;
+begin
+  LParts := AValue.Value.Split([' ']);
+  if (Length(LParts) <> 2) or
+     not TryStrToCurr(LParts[1], LAmount, TFormatSettings.Invariant) then
+  begin
+    AContext.LogError(Format('Not a money value [%s]', [AValue.Value]));
+    Exit(AData);
+  end;
+
+  // Replacing a value means disposing of the one it replaces - nothing else
+  // will. Here AData is normally empty, which is the whole point
+  if AData.IsObject and not AContext.IsOriginalInstance(AData) then
+    AData.AsObject.Free;
+
+  Result := TMoney.Create(LAmount, LParts[0]);
+end;
+```
+
+With the serializer registered, a `TMoney` member round-trips with no `AutoCreate` and no attribute on the member:
+
+```delphi
+LConfig := TNeonConfiguration.Default.RegisterSerializer(TMoneySerializer);
+
+LJSON := TNeon.ObjectToJSON(LInvoice, LConfig);
+// {"Number":"INV-1","Price":"EUR 12.50"}
+
+LInvoice := TNeon.JSONToObject<TInvoice>('{"Number":"INV-2","Price":"USD 99.90"}', LConfig);
+// LInvoice.Price is a TMoney of USD 99.90
+```
+
+Without the `NeedsInstance` override, the same code writes the JSON correctly and reads `Price` back as `nil`.
+
+`TJSONValueSerializer` (`Neon.Core.Serializers.RTL`) is the bundled example: its `Deserialize` returns a clone of the JSON it is given, so it never had a use for the instance either, and a `TJSONValue` member works without `AutoCreate`.
+
+##### Ownership rules for `Deserialize`
+
+`AData` is what the target holds right now, and the returned `TValue` is what it will hold. Three rules follow from that:
+
+- **Return `AData`** once it has been filled in place, or a **different value** to replace it.
+- **Replacing means freeing.** The instance being replaced is the serializer's to dispose of — nothing else will do it.
+- **One instance must never be replaced**: the one the caller passed to `JSONToObject`. There is no reference to update, and the entry point discards the result, so a serializer that would otherwise return something new has to read into that one instead. `AContext.IsOriginalInstance(AData)` is how it is recognised.
+
+Two more things `Deserialize` should expect: `AValue` can be a `TJSONNull` — a null reaches the serializer so it can decide what "no value" means for its type — and the returned `TValue` has to fit the target's declared type, since the engine assigns it as it is.
+
+> [!TIP]
+> Turning `AutoCreate` on is not a substitute for `NeedsInstance`. It builds the instance through the first parameterless constructor RTTI finds, which for a class declaring only parameterized ones is the inherited `TObject.Create` — an allocated but *uninitialized* object, which the serializer then has to free before returning its own. `NeedsInstance = False` skips that round trip, and keeps the decision with the serializer instead of with a global setting.
+
 #### Unwrapped members
 - `[NeonUnwrapped]` flattens a class/record member: its own members are written directly into the parent object instead of being nested under the member's name
 
