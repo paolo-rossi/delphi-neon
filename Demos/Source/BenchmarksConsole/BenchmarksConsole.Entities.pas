@@ -69,7 +69,11 @@ type
   TOrderStatus = (osNew, osProcessing, osShipped, osDelivered, osCancelled);
 
   /// <summary>
-  ///   Nested object contained in the TCustomer.Items array
+  ///   Nested object contained in the TCustomer.Items array. PickTime is a
+  ///   TTime, the date/time alias the three libraries disagree about most:
+  ///   Neon writes "08:00:00", TJsonSerializer a full timestamp carrying
+  ///   Delphi's zero date ("1899-12-30T08:00:00.000+01:00") and REST.Json
+  ///   the raw TDateTime float (0.333333333333333).
   /// </summary>
   TOrderItem = class
   private
@@ -77,17 +81,20 @@ type
     FDescription: string;
     FQuantity: Integer;
     FUnitPrice: Currency;
+    FPickTime: TTime;
   public
     property SKU: string read FSKU write FSKU;
     property Description: string read FDescription write FDescription;
     property Quantity: Integer read FQuantity write FQuantity;
     property UnitPrice: Currency read FUnitPrice write FUnitPrice;
+    property PickTime: TTime read FPickTime write FPickTime;
   end;
   TOrderItems = TArray<TOrderItem>;
 
   /// <summary>
   ///   Complex PODO: nested objects (Address), an array of nested objects
-  ///   (Items), an enum (Status) and a string/string map (Metadata)
+  ///   (Items, each carrying a Currency and a TTime), an enum (Status),
+  ///   a TDate (LastContactDate) and a string/string map (Metadata)
   /// </summary>
   TCustomer = class
   private
@@ -96,10 +103,12 @@ type
     FCreditLimit: Double;
     FIsActive: Boolean;
     FStatus: TOrderStatus;
+    FLastContactDate: TDate;
     FBillingAddress: TAddress;
     FShippingAddress: TAddress;
     FItems: TOrderItems;
     FMetadata: TDictionary<string, string>;
+    FTags: TStringList;
   public
     constructor Create;
     destructor Destroy; override;
@@ -111,10 +120,12 @@ type
     property CreditLimit: Double read FCreditLimit write FCreditLimit;
     property IsActive: Boolean read FIsActive write FIsActive;
     property Status: TOrderStatus read FStatus write FStatus;
+    property LastContactDate: TDate read FLastContactDate write FLastContactDate;
     property BillingAddress: TAddress read FBillingAddress write FBillingAddress;
     property ShippingAddress: TAddress read FShippingAddress write FShippingAddress;
     property Items: TOrderItems read FItems write FItems;
     property Metadata: TDictionary<string, string> read FMetadata write FMetadata;
+    property Tags: TStringList read FTags write FTags;
   end;
   TCustomerArray = TArray<TCustomer>;
 
@@ -175,6 +186,7 @@ begin
   FBillingAddress := TAddress.Create;
   FShippingAddress := TAddress.Create;
   FMetadata := TDictionary<string, string>.Create;
+  FTags := TStringList.Create;
 end;
 
 destructor TCustomer.Destroy;
@@ -183,6 +195,7 @@ begin
   FBillingAddress.Free;
   FShippingAddress.Free;
   FMetadata.Free;
+  FTags.Free;
 
   inherited;
 end;
@@ -245,6 +258,7 @@ end;
 class function TEntityFactory.CreateCustomers(ACount: Integer): TCustomersEnvelope;
 const
   STATUSES: array [0..4] of TOrderStatus = (osNew, osProcessing, osShipped, osDelivered, osCancelled);
+  TAGS: array [0..3] of string = ('wholesale', 'retail', 'priority', 'dormant');
   ITEMS_PER_CUSTOMER = 5;
 var
   LCustomer: TCustomer;
@@ -261,6 +275,7 @@ begin
     LCustomer.CreditLimit := 1000 + (LIndex mod 50) * 250.5;
     LCustomer.IsActive := (LIndex mod 4) <> 0;
     LCustomer.Status := STATUSES[LIndex mod Length(STATUSES)];
+    LCustomer.LastContactDate := EncodeDate(2024, 1, 1) + (LIndex mod 365);
 
     LCustomer.BillingAddress.Street := Format('%d Main St', [LIndex + 1]);
     LCustomer.BillingAddress.City := 'Springfield';
@@ -281,12 +296,16 @@ begin
       LOrderItem.Description := Format('Product %d variant %d', [LIndex + 1, LItemIndex]);
       LOrderItem.Quantity := (LItemIndex + 1) * 2;
       LOrderItem.UnitPrice := 9.99 + LItemIndex * 5.5;
+      LOrderItem.PickTime := EncodeTime(8 + (LItemIndex mod 10), (LIndex * 7) mod 60, 0, 0);
 
       LCustomer.Items := LCustomer.Items + [LOrderItem];
     end;
 
     LCustomer.Metadata.Add('accountManager', Format('Manager %d', [(LIndex mod 10) + 1]));
     LCustomer.Metadata.Add('lastReviewDate', FormatDateTime('yyyy-mm-dd', EncodeDate(2025, 1, 1) + (LIndex mod 365)));
+
+    LCustomer.Tags.Add(TAGS[LIndex mod Length(TAGS)]);
+    LCustomer.Tags.Add(Format('region-%d', [(LIndex mod 4) + 1]));
 
     Result.Items := Result.Items + [LCustomer];
   end;

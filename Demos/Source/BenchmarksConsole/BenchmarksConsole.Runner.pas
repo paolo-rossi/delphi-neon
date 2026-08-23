@@ -16,11 +16,50 @@ uses
   System.Classes,
   System.Diagnostics,
   System.Generics.Collections,
+  System.Rtti,
   System.JSON,
+  System.JSON.Types,
+  System.JSON.Readers,
+  System.JSON.Writers,
+  System.JSON.Serializers,
+  System.JSON.Converters,
+  System.TypInfo,
 
   BenchmarksConsole.Entities;
 
 type
+  /// <summary>
+  ///   TJsonEnumNameConverter accepts every tkEnumeration type, and in
+  ///   Delphi Boolean is an enumeration - so the stock converter would
+  ///   write booleans as the strings "True"/"False" instead of JSON
+  ///   true/false. This variant hands booleans back to the default
+  ///   primitive handling and converts only the real enums.
+  /// </summary>
+  TJsonNamedEnumConverter = class(TJsonEnumNameConverter)
+  public
+    function CanConvert(ATypeInf: PTypeInfo): Boolean; override;
+  end;
+
+  /// <summary>
+  ///   System.JSON.Converters has no TStringList converter: TJsonListConverter
+  ///   handles TList&lt;V&gt;, which TStringList is not. Left alone,
+  ///   TJsonSerializer writes TCustomer.Tags as the list's own properties
+  ///   (Sorted, CaseSensitive, CommaText, Capacity, ...) and then raises
+  ///   "Unexpected type while read json array" on the way back, so the whole
+  ///   Customer deserialize column would be FAILED. This one writes a plain
+  ///   JSON array of strings and reads one back, and is modelled directly on
+  ///   the RTL's TJsonListConverter&lt;V&gt;. CanConvert and CreateInstance
+  ///   come from TJsonCustomObjectConverter&lt;TStringList&gt;, so TStringList
+  ///   descendants are matched too.
+  /// </summary>
+  TJsonStringListConverter = class(TJsonCustomObjectConverter<TStringList>)
+  public
+    procedure WriteJson(const AWriter: TJsonWriter; const AValue: TValue;
+      const ASerializer: TJsonSerializer); override;
+    function ReadJson(const AReader: TJsonReader; ATypeInf: PTypeInfo;
+      const AExistingValue: TValue; const ASerializer: TJsonSerializer): TValue; override;
+  end;
+
   TBenchResult = record
     DatasetName: string;
     ItemCount: Integer;
@@ -42,11 +81,22 @@ type
     FOutputPath: string;
     FIterations: Integer;
 
+    /// <summary>
+    ///   Owned by the runner and registered into every TJsonSerializer it
+    ///   creates (Converters is a plain TList<> that does not own its
+    ///   entries), so the converters outlive each short-lived serializer.
+    /// </summary>
+    FEnumConverter: TJsonNamedEnumConverter;
+    FDictionaryConverter: TJsonStringDictionaryConverter<string>;
+    FStringListConverter: TJsonStringListConverter;
+
     procedure Log(const AMsg: string); overload;
     procedure Log(const AFmt: string; const AArgs: array of const); overload;
 
     function MeasureMs(AProc: TProc; AIterations: Integer): Double;
     function FormatMs(AMs: Double): string;
+
+    function NewJsonSerializer: TJsonSerializer;
 
     function RunLibraryBench(const ALibrary, ADataset: string; AItemCount: Integer;
       ASizeBytes: Int64; ASerializeProc, ADeserializeProc: TProc): TBenchResult;
@@ -75,9 +125,7 @@ implementation
 
 uses
   System.IOUtils,
-  System.Rtti,
   REST.Json,
-  System.JSON.Serializers,
 
   Neon.Core.Utils,
   Neon.Core.Attributes,
@@ -85,18 +133,90 @@ uses
   Neon.Core.Persistence.JSON;
 
 /// <summary>
-///   TJsonSerializer defaults to MemberSerialization = Fields, i.e. it
-///   reflects over private fields (FID, FName, ...) instead of public
-///   properties. That's not a fair comparison against Neon/REST.Json (which
-///   both serialize properties), and it makes its timings artificially
-///   cheap since it skips property getters/setters entirely. Every
-///   TJsonSerializer instance in this benchmark must be created through
-///   this function so the three libraries serialize the same members.
+///   Every TJsonSerializer instance in this benchmark must be created
+///   through this method. It fixes four library defaults that would break
+///   the comparison against Neon/REST.Json:
+///   * TJsonSerializer defaults to MemberSerialization = Fields, i.e. it
+///     reflects over private fields (FID, FName, ...) instead of public
+///     properties. That's not a fair comparison against Neon/REST.Json
+///     (which both serialize properties), and it makes its timings
+///     artificially cheap since it skips property getters/setters entirely.
+///   * TJsonSerializer reads and writes enums as their ordinal number by
+///     default, but the documents this benchmark feeds it (written by Neon
+///     and REST.Json) carry the enum *names*. Without a converter the
+///     Deserialize of any document containing an enum fails with
+///     "Could not convert string to integer: osNew". The registered
+///     TJsonNamedEnumConverter (a TJsonEnumNameConverter that leaves
+///     Boolean alone, see its declaration) makes it read the names too -
+///     and write them, so all three libraries emit the same documents.
+///   * TJsonSerializer has no TDictionary support switched on by default:
+///     it writes the hash table's public properties (Capacity, Count,
+///     Collisions, ...) instead of the pairs, and reading that back - or
+///     reading the real key/value object Neon writes - silently leaves the
+///     dictionary empty, with no exception to show for it. Without the
+///     converter the Customer deserialize column would be timing a member
+///     that isn't being populated at all. TJsonStringDictionaryConverter<V>
+///     ships in System.JSON.Converters and costs nothing measurable: with
+///     it registered, TCustomer.Metadata round-trips and the timings stay
+///     inside the run-to-run scatter.
+///   * TJsonSerializer has no TStringList support either, and this time the
+///     RTL ships no converter to register: TJsonListConverter handles
+///     TList<V>, which TStringList is not. TCustomer.Tags goes out as the
+///     list's own properties and the read back raises "Unexpected type while
+///     read json array", which would leave the whole Customer deserialize
+///     column FAILED. TJsonStringListConverter, declared above, is the one
+///     converter here that had to be written rather than registered.
 /// </summary>
-function NewJsonSerializer: TJsonSerializer;
+function TBenchmarkRunner.NewJsonSerializer: TJsonSerializer;
 begin
   Result := TJsonSerializer.Create;
   Result.MemberSerialization := TJsonMemberSerialization.Public;
+  // Converters is a plain TList<>, it does not own what is added to it;
+  // the converters are owned by the runner and outlive this serializer.
+  Result.Converters.Add(FEnumConverter);
+  Result.Converters.Add(FDictionaryConverter);
+  Result.Converters.Add(FStringListConverter);
+end;
+
+function TJsonNamedEnumConverter.CanConvert(ATypeInf: PTypeInfo): Boolean;
+begin
+  Result := (ATypeInf <> TypeInfo(Boolean)) and inherited CanConvert(ATypeInf);
+end;
+
+{ TJsonStringListConverter }
+
+procedure TJsonStringListConverter.WriteJson(const AWriter: TJsonWriter;
+  const AValue: TValue; const ASerializer: TJsonSerializer);
+var
+  LList: TStringList;
+begin
+  if AValue.TryAsType(LList) then
+    ASerializer.Serialize<TArray<string>>(AWriter, LList.ToStringArray)
+  else
+    AWriter.WriteNull;
+end;
+
+function TJsonStringListConverter.ReadJson(const AReader: TJsonReader;
+  ATypeInf: PTypeInfo; const AExistingValue: TValue;
+  const ASerializer: TJsonSerializer): TValue;
+var
+  LList: TStringList;
+  LArray: TArray<string>;
+begin
+  if AReader.TokenType = TJsonToken.Null then
+    Exit(nil);
+
+  ASerializer.Populate<TArray<string>>(AReader, LArray);
+
+  // Reuse the instance the owning object already created in its constructor,
+  // otherwise the one it replaces is leaked.
+  if AExistingValue.IsEmpty then
+    LList := CreateInstance(ATypeInf, ASerializer)
+  else
+    LList := AExistingValue.AsType<TStringList>;
+
+  LList.AddStrings(LArray);
+  Result := TValue.From(LList);
 end;
 
 { TBenchmarkRunner }
@@ -108,12 +228,18 @@ begin
   FLog := TStringList.Create;
   FOutputPath := AOutputPath;
   FIterations := AIterations;
+  FEnumConverter := TJsonNamedEnumConverter.Create;
+  FDictionaryConverter := TJsonStringDictionaryConverter<string>.Create;
+  FStringListConverter := TJsonStringListConverter.Create;
 end;
 
 destructor TBenchmarkRunner.Destroy;
 begin
   FLog.Free;
   FResults.Free;
+  FEnumConverter.Free;
+  FDictionaryConverter.Free;
+  FStringListConverter.Free;
 
   inherited;
 end;
@@ -247,16 +373,23 @@ begin
   Log(Format(' Saving correctness samples (%d items) to %s', [SAMPLE_COUNT, LPath]));
   Log('==============================================================');
   Log('Note: REST.Json lowercases the first letter of property names by');
-  Log('default (its own default naming, e.g. "id" instead of "ID"), and');
-  Log('System.JSON.Serializers writes enum values as their ordinal number');
-  Log('(e.g. 0) rather than the enum name, since it has no built-in string-');
-  Log('enum converter. Both are expected library defaults, not bugs in');
-  Log('this benchmark - keep them in mind while diffing the files below.');
-  Log('Also: for TDictionary<string,string> (Customer.Metadata), only Neon');
-  Log('serializes it as an actual JSON object of key/value pairs. REST.Json');
-  Log('and System.JSON.Serializers both dump TDictionary''s internal fields');
-  Log('(hash buckets, Capacity, Keys.Count, ...) instead - neither has real');
-  Log('TDictionary support out of the box.');
+  Log('default (its own default naming, e.g. "id" instead of "ID"). Neon');
+  Log('and TJsonSerializer write enums as their names - TJsonSerializer is');
+  Log('given a TJsonNamedEnumConverter by NewJsonSerializer (the RTL''s');
+  Log('TJsonEnumNameConverter also matches Boolean, so it is overridden');
+  Log('to leave booleans as real JSON true/false). Without a name');
+  Log('converter TJsonSerializer reads and writes enums as ordinals and');
+  Log('cannot read the documents the other two libraries write. Keep the');
+  Log('naming difference in mind while diffing the files below.');
+  Log('Also: for TDictionary<string,string> (Customer.Metadata), neither RTL');
+  Log('library handles it out of the box. TJsonSerializer writes the hash');
+  Log('table''s public properties (Capacity, Count, Collisions, ...) and reads');
+  Log('nothing back - not even from its own output - without raising a thing,');
+  Log('so NewJsonSerializer registers the RTL''s own');
+  Log('TJsonStringDictionaryConverter<string>: with it the pairs round-trip and');
+  Log('the timings do not move. REST.Json has no equivalent and still dumps the');
+  Log('private fields (hash buckets, empty slots as -1, precomputed hash codes);');
+  Log('it can reload its own output but not the key/value object Neon writes.');
   Log('A library that cannot handle a given member is reported as FAILED');
   Log('below rather than aborting the whole run.');
 
@@ -432,7 +565,7 @@ begin
   Log('');
   Log('==============================================================');
   Log(' Dataset: TCustomer (complex PODO: nested object, object array,');
-  Log('          string array, enum, TDictionary map)');
+  Log('          enum, TDate, TTime, Currency, TDictionary map)');
   Log('==============================================================');
 
   for LCount in ACounts do
