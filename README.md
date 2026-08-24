@@ -27,12 +27,11 @@ Please take a look at the Demos to see **Neon** in action.
 ### Neon Main Demo
 This is the main demo where you can see how you can serialize/deserialize simple types, records, classes, Delphi specific types (TStringList, TDataSet, etc...):
 
-![Neon Mega Demo](https://user-images.githubusercontent.com/4686497/103461978-64c83000-4d22-11eb-85c5-1a829b4ec0c0.png)
-
+![Neon Mega Demo](https://github.com/user-attachments/assets/187c0f69-aeda-43a1-9a84-08c9ed51d828)
 ### Neon Benchmarks Demo
 This new demo tries to compare the standard TJSON serialization engine with the TNeon engine, with a few changes you can compare TNeon with other serialization engines out there:
 
-![Neon Benchmarks Demo](https://user-images.githubusercontent.com/4686497/216270908-0a702077-02fe-4295-bce5-8da78ee46599.png)
+![Neon Benchmarks Demo](https://github.com/user-attachments/assets/d77d79a9-1b9a-4d5f-90a1-1448eaf722a6)
 
 ### Console Demos
 Four console applications (grouped in `Demos/Source/ConsoleDemos.groupproj`), two for measuring **Neon** without a UI in the way and two for the code it generates from (and for) a JSON document:
