@@ -12,7 +12,7 @@ unit Neon.Core.Tags;
 interface
 
 uses
-  System.SysUtils, System.Classes, System.Generics.Collections,
+  System.SysUtils, System.Classes, System.StrUtils, System.Generics.Collections,
   System.Rtti, System.TypInfo, System.JSON,
   Neon.Core.Types;
 
@@ -33,6 +33,7 @@ type
     FValueSeparator: string;
     FQuoteChar: Char;
     function ExtractValue(const AName: string; AType: TRttiType): TValue;
+    procedure ParseInternal(const ATags: string; const ADictionary: TArray<string>);
     function GetCount: Integer;
     function UnquoteValue(const AValue: string): string;
     class function SplitRespectingQuotes(const AStr, ASeparator: string; AQuoteChar: Char): TArray<string>; static;
@@ -66,6 +67,19 @@ type
     ///   key/value map, replacing any tags parsed by a previous call
     /// </summary>
     procedure Parse(const ATags: string);
+
+    /// <summary>
+    ///   Parses ATags (e.g. "description=A name,required") into the internal
+    ///   key/value map, like Parse, but checks every key against ADictionary
+    ///   first: a key that is not one of its entries raises an exception
+    ///   instead of ending up in the map
+    /// </summary>
+    /// <remarks>
+    ///   The comparison is case sensitive, as tag vocabularies usually are
+    ///   (minLength, readOnly, ...). An empty ADictionary means "no vocabulary
+    ///   to check against" and makes this identical to Parse
+    /// </remarks>
+    procedure ParseDict(const ATags: string; const ADictionary: TArray<string>);
 
     /// <summary>
     ///   Applies the parsed tag values to the fields of AEntity (an object
@@ -386,8 +400,18 @@ begin
 end;
 
 procedure TAttributeTags.Parse(const ATags: string);
+begin
+  ParseInternal(ATags, []);
+end;
+
+procedure TAttributeTags.ParseDict(const ATags: string; const ADictionary: TArray<string>);
+begin
+  ParseInternal(ATags, ADictionary);
+end;
+
+procedure TAttributeTags.ParseInternal(const ATags: string; const ADictionary: TArray<string>);
 var
-  LPart, LTrimmedPart: string;
+  LPart, LTrimmedPart, LKey: string;
   LParts, LFrag: TArray<string>;
 begin
   FTagMap.Clear;
@@ -401,12 +425,20 @@ begin
       Continue;
 
     LFrag := SplitRespectingQuotes(LTrimmedPart, FValueSeparator, FQuoteChar);
-    case Length(LFrag) of
-      1: FTagMap.AddOrSetValue(LFrag[0].Trim, '');                          // Named tag without value (bool true)
-      2: FTagMap.AddOrSetValue(LFrag[0].Trim, UnquoteValue(LFrag[1].Trim)); // Named tag with value
-    else
+    if (Length(LFrag) < 1) or (Length(LFrag) > 2) then
       raise ENeonException.CreateFmt(SNeonErrorTagParseF1, [LTrimmedPart]);
-    end;
+
+    LKey := LFrag[0].Trim;
+
+    // An empty dictionary means there is no vocabulary to check the keys
+    // against, which is what Parse asks for
+    if (Length(ADictionary) > 0) and (IndexStr(LKey, ADictionary) < 0) then
+      raise ENeonException.CreateFmt(SNeonErrorTagKeyUnknownF2, [LKey, ClassName]);
+
+    if Length(LFrag) = 1 then
+      FTagMap.AddOrSetValue(LKey, '')                          // Named tag without value (bool true)
+    else
+      FTagMap.AddOrSetValue(LKey, UnquoteValue(LFrag[1].Trim)); // Named tag with value
   end;
 end;
 

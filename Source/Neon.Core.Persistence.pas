@@ -594,7 +594,30 @@ type
   {$ENDREGION}
 
   {$REGION 'Rtti Proxies'}
-  
+
+  /// <summary>
+  ///   Which kind of member a [NeonGetter]/[NeonSetter] redirects to
+  /// </summary>
+  TNeonAccessorKind = (None, Field, Prop, Method);
+
+  /// <summary>
+  ///   The member a [NeonGetter]/[NeonSetter] makes the engine read or write
+  ///   in place of the annotated one. Resolved, and checked to be of the same
+  ///   type as the annotated member, once per member while its attributes are
+  ///   parsed, so that reading and writing stay a plain RTTI call
+  /// </summary>
+  TNeonMemberAccessor = record
+    Kind: TNeonAccessorKind;
+    Field: TRttiField;
+    Prop: TRttiProperty;
+    Method: TRttiMethod;
+
+    /// <summary>
+    ///   True if a NeonGetter/NeonSetter named a member to go through
+    /// </summary>
+    function Assigned: Boolean;
+  end;
+
   TNeonRttiObject = class
   private
     FNeonFactoryClass: TCustomFactoryClass;
@@ -663,9 +686,24 @@ type
     FJSONNameCached: Boolean;
     FMethodIf: TRttiMethod;
     FMethodIfContext: TNeonIgnoreIfContext;
+    FNeonGetter: TNeonMemberAccessor;
+    FNeonSetter: TNeonMemberAccessor;
     function MemberAsProperty: TRttiProperty; inline;
     function MemberAsField: TRttiField; inline;
     function GetName: string;
+
+    /// <summary>
+    ///   Looks up the member a [NeonGetter]/[NeonSetter] names (as a field, a
+    ///   property or a method, whichever carries that name) in the type
+    ///   owning this one, and checks that it can stand in for it: same type,
+    ///   readable (AWriting False) or writable (AWriting True). Every failure
+    ///   is an error in the attribute itself, so it raises rather than leaving
+    ///   the member silently reading/writing itself
+    /// </summary>
+    function ResolveAccessor(AAttribute: NeonGetterAttribute; AWriting: Boolean): TNeonMemberAccessor;
+
+    function AccessorGetValue(const AAccessor: TNeonMemberAccessor; AInstance: Pointer): TValue;
+    procedure AccessorSetValue(const AAccessor: TNeonMemberAccessor; const AValue: TValue; AInstance: Pointer);
 
     // Instance-based methods
     function EvalIncludeIf(AInstance: Pointer): TNeonIncludeOption;
@@ -714,6 +752,16 @@ type
 
     property Name: string read GetName;
     property Serializable: Boolean read FSerializable write FSerializable;
+
+    /// <summary>
+    ///   The member [NeonGetter] reads this one through, if any
+    /// </summary>
+    property NeonGetter: TNeonMemberAccessor read FNeonGetter;
+
+    /// <summary>
+    ///   The member [NeonSetter] writes this one through, if any
+    /// </summary>
+    property NeonSetter: TNeonMemberAccessor read FNeonSetter;
   end;
 
   TNeonRttiMembers = class(TObjectList<TNeonRttiMember>)
@@ -1434,6 +1482,13 @@ begin
   Result := Self;
 end;
 
+{ TNeonMemberAccessor }
+
+function TNeonMemberAccessor.Assigned: Boolean;
+begin
+  Result := Kind <> TNeonAccessorKind.None;
+end;
+
 { TNeonRttiMember }
 
 constructor TNeonRttiMember.Create(AMember: TRttiMember; AParent: TNeonRttiType; AOperation: TNeonOperation);
@@ -1508,11 +1563,44 @@ begin
   FJSONNameCached := True;
 end;
 
+function TNeonRttiMember.AccessorGetValue(const AAccessor: TNeonMemberAccessor; AInstance: Pointer): TValue;
+begin
+  Result := TValue.Empty;
+  case AAccessor.Kind of
+    TNeonAccessorKind.Field : Result := AAccessor.Field.GetValue(AInstance);
+    TNeonAccessorKind.Prop  : Result := AAccessor.Prop.GetValue(AInstance);
+    // ResolveAccessor only accepts a method on a class member, so the instance
+    // is an object and the method takes no parameter
+    TNeonAccessorKind.Method: Result := AAccessor.Method.Invoke(TObject(AInstance), []);
+  end;
+end;
+
+procedure TNeonRttiMember.AccessorSetValue(const AAccessor: TNeonMemberAccessor; const AValue: TValue; AInstance: Pointer);
+begin
+  case AAccessor.Kind of
+    TNeonAccessorKind.Field : AAccessor.Field.SetValue(AInstance, AValue);
+    TNeonAccessorKind.Prop  : AAccessor.Prop.SetValue(AInstance, AValue);
+    TNeonAccessorKind.Method: AAccessor.Method.Invoke(TObject(AInstance), [AValue]);
+  end;
+end;
+
 function TNeonRttiMember.GetValue(AInstance: Pointer): TValue;
 begin
+  if FNeonGetter.Assigned then
+    Exit(AccessorGetValue(FNeonGetter, AInstance));
+
   case FMemberType of
     TNeonMemberType.Unknown: raise ENeonException.Create(SNeonErrorFieldProp);
-    TNeonMemberType.Prop   : Result := MemberAsProperty.GetValue(AInstance);
+    TNeonMemberType.Prop   :
+    begin
+      // A write-only property has no value to read: deserialization asks for
+      // the current one before writing it, and a [NeonSetter] is exactly what
+      // makes such a property reachable, so answer "nothing" instead of
+      // letting the RTTI call raise
+      if not MemberAsProperty.IsReadable then
+        Exit(TValue.Empty);
+      Result := MemberAsProperty.GetValue(AInstance);
+    end;
     TNeonMemberType.Field  : Result := MemberAsField.GetValue(AInstance);
   end;
 end;
@@ -1535,6 +1623,11 @@ end;
 
 function TNeonRttiMember.IsReadable: Boolean;
 begin
+  // The whole point of a [NeonGetter] is to give a member Neon cannot read
+  // (a write-only property) a value to serialize
+  if FNeonGetter.Assigned then
+    Exit(True);
+
   Result := False;
   case FMemberType of
     TNeonMemberType.Unknown: raise ENeonException.Create(SNeonErrorFieldProp);
@@ -1545,6 +1638,10 @@ end;
 
 function TNeonRttiMember.IsWritable: Boolean;
 begin
+  // Same for a [NeonSetter] and a read-only property
+  if FNeonSetter.Assigned then
+    Exit(True);
+
   Result := False;
   case FMemberType of
     TNeonMemberType.Unknown: raise ENeonException.Create(SNeonErrorFieldProp);
@@ -1595,11 +1692,122 @@ begin
 
       FMethodIfContext := TNeonIgnoreIfContext.Create(Self.Name, FOperation);
     end;
+  end
+  // NeonSetter descends from NeonGetter, so it has to be recognized first
+  else if AAttribute is NeonSetterAttribute then
+    FNeonSetter := ResolveAccessor(AAttribute as NeonGetterAttribute, True)
+  else if AAttribute is NeonGetterAttribute then
+    FNeonGetter := ResolveAccessor(AAttribute as NeonGetterAttribute, False);
+end;
+
+function TNeonRttiMember.ResolveAccessor(AAttribute: NeonGetterAttribute; AWriting: Boolean): TNeonMemberAccessor;
+var
+  LLabel, LName: string;
+  LOwner, LAccessorType: TRttiType;
+  LParams: TArray<TRttiParameter>;
+
+  function TypeName(AType: TRttiType): string;
+  begin
+    if Assigned(AType) then
+      Result := AType.Name
+    else
+      Result := '?';
   end;
+
+begin
+  Result := Default(TNeonMemberAccessor);
+
+  if AWriting then
+    LLabel := 'NeonSetter'
+  else
+    LLabel := 'NeonGetter';
+
+  LName := AAttribute.Value;
+  if LName.IsEmpty then
+    raise ENeonException.CreateFmt(SNeonErrorAccessorNoNameF1, [LLabel]);
+
+  LOwner := FParent.AsRttiType;
+
+  // An identifier names at most one member of a Delphi type, so the three
+  // lookups cannot disagree and the attribute has nothing to disambiguate.
+  // They run once per member, while the member proxies are built and cached
+  Result.Field := LOwner.GetField(LName);
+  if Assigned(Result.Field) then
+    Result.Kind := TNeonAccessorKind.Field;
+
+  if Result.Kind = TNeonAccessorKind.None then
+  begin
+    Result.Prop := LOwner.GetProperty(LName);
+    if Assigned(Result.Prop) then
+      Result.Kind := TNeonAccessorKind.Prop;
+  end;
+
+  if Result.Kind = TNeonAccessorKind.None then
+  begin
+    Result.Method := LOwner.GetMethod(LName);
+    if Assigned(Result.Method) then
+      Result.Kind := TNeonAccessorKind.Method;
+  end;
+
+  if Result.Kind = TNeonAccessorKind.None then
+    raise ENeonException.CreateFmt(SNeonErrorAccessorNotFoundF3, [LLabel, LName, LOwner.Name]);
+
+  // The type the accessor reads or writes, and whether it can do so at all
+  LAccessorType := nil;
+  case Result.Kind of
+    TNeonAccessorKind.Field: LAccessorType := Result.Field.FieldType;
+
+    TNeonAccessorKind.Prop:
+    begin
+      if AWriting and not Result.Prop.IsWritable then
+        raise ENeonException.CreateFmt(SNeonErrorAccessorNotWritableF2, [LLabel, LName]);
+      if not AWriting and not Result.Prop.IsReadable then
+        raise ENeonException.CreateFmt(SNeonErrorAccessorNotReadableF2, [LLabel, LName]);
+      LAccessorType := Result.Prop.PropertyType;
+    end;
+
+    TNeonAccessorKind.Method:
+    begin
+      // A method needs an instance to run on, and a record is handed around as
+      // a pointer to a copy that TRttiMethod cannot be given
+      if LOwner.TypeKind <> tkClass then
+        raise ENeonException.CreateFmt(SNeonErrorAccessorMethodClassF2, [LLabel, LName]);
+
+      LParams := Result.Method.GetParameters;
+      if AWriting then
+      begin
+        // The value to write is the method's only parameter
+        if Length(LParams) <> 1 then
+          raise ENeonException.CreateFmt(SNeonErrorAccessorNotWritableF2, [LLabel, LName]);
+        LAccessorType := LParams[0].ParamType;
+      end
+      else
+      begin
+        // The value to read is the method's result
+        if (Length(LParams) > 0) or not Assigned(Result.Method.ReturnType) then
+          raise ENeonException.CreateFmt(SNeonErrorAccessorNotReadableF2, [LLabel, LName]);
+        LAccessorType := Result.Method.ReturnType;
+      end;
+    end;
+  end;
+
+  // Same type on both sides: the value travels between the two members
+  // untouched, so there is no conversion to invent (or to get wrong)
+  if not Assigned(LAccessorType) or
+     not Assigned(FMemberRttiType) or
+     (LAccessorType.Handle <> FMemberRttiType.Handle) then
+    raise ENeonException.CreateFmt(SNeonErrorAccessorTypeF4,
+      [LLabel, LName, TypeName(FMemberRttiType), TypeName(LAccessorType)]);
 end;
 
 procedure TNeonRttiMember.SetValue(const AValue: TValue; AInstance: Pointer);
 begin
+  if FNeonSetter.Assigned then
+  begin
+    AccessorSetValue(FNeonSetter, AValue, AInstance);
+    Exit;
+  end;
+
   case FMemberType of
     TNeonMemberType.Prop :
     begin

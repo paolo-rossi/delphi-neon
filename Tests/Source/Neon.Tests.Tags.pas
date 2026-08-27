@@ -75,6 +75,18 @@ type
     procedure TestMalformedTagRaises;
 
     [Test]
+    procedure TestParseDictAcceptsKnownKeys;
+
+    [Test]
+    procedure TestParseDictRejectsUnknownKey;
+
+    [Test]
+    procedure TestParseDictIsCaseSensitive;
+
+    [Test]
+    procedure TestParseDictWithoutDictionaryAcceptsAll;
+
+    [Test]
     procedure TestApplyToFields;
 
     [Test]
@@ -171,6 +183,42 @@ begin
     procedure begin FTags.Parse('a=1=2') end,
     ENeonException
   );
+end;
+
+procedure TTestAttributeTags.TestParseDictAcceptsKnownKeys;
+begin
+  FTags.ParseDict('minLength=3,required,pattern="^[0-9]{5}$"',
+    ['minLength', 'maxLength', 'required', 'pattern']);
+
+  Assert.AreEqual(3, FTags.Count);
+  Assert.AreEqual(3, FTags.GetValueAs<Integer>('minLength'));
+  Assert.IsTrue(FTags.GetBoolValue('required'));
+  Assert.AreEqual('^[0-9]{5}$', FTags.GetValueAs<string>('pattern'));
+end;
+
+procedure TTestAttributeTags.TestParseDictRejectsUnknownKey;
+begin
+  Assert.WillRaise(
+    procedure begin FTags.ParseDict('minLenght=3', ['minLength']) end,
+    ENeonException
+  );
+end;
+
+procedure TTestAttributeTags.TestParseDictIsCaseSensitive;
+begin
+  Assert.WillRaise(
+    procedure begin FTags.ParseDict('minlength=3', ['minLength']) end,
+    ENeonException
+  );
+end;
+
+procedure TTestAttributeTags.TestParseDictWithoutDictionaryAcceptsAll;
+begin
+  FTags.ParseDict('anything=1,whatever', []);
+
+  Assert.AreEqual(2, FTags.Count);
+  Assert.IsTrue(FTags.Exists('anything'));
+  Assert.IsTrue(FTags.Exists('whatever'));
 end;
 
 procedure TTestAttributeTags.TestApplyToFields;

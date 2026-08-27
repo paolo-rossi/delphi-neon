@@ -90,15 +90,28 @@ resourcestring
   SNeonErrorEmptyType = 'Empty RttiType in JSONToValue';
   SNeonErrorRangeOutF2 = 'The value [%s] is outside the range for the type [%s]';
   SNeonErrorNoMethodF2 = 'NeonInclude Method name [%s] not found in class [%s]';
+  SNeonErrorAccessorNoNameF1 = '%s: no member name, expected name=<member>';
+  SNeonErrorAccessorNotFoundF3 = '%s: member [%s] not found in type [%s]';
+  SNeonErrorAccessorTypeF4 = '%s: member [%s] must be of type [%s], but it is [%s]';
+  SNeonErrorAccessorNotReadableF2 = '%s: member [%s] cannot be read';
+  SNeonErrorAccessorNotWritableF2 = '%s: member [%s] cannot be written';
+  SNeonErrorAccessorMethodClassF2 = '%s: method [%s] can only be used on a member of a class';
   SNeonErrorMemberF3 = 'Error processing member [%s] of type [%s]: %s';
   SNeonErrorSerializeTypeF2 = 'Error serializing the type [%s]: %s';
   SNeonErrorTagTargetInvalid = 'You can apply tag values only to records or objects';
   SNeonErrorTagParseF1 = 'Error decoding tag: [%s]';
+  SNeonErrorTagKeyUnknownF2 = 'Unknown tag key: [%s] for attribute [%s]';
 
   SNeonErrorPropertyNotFoundF1 = 'Property [%s] not found';
   SNeonErrorMethodNotFoundF1 = 'Method [%s] not found';
   SNeonErrorNullableNoRtti = 'Nullable contains type with no RTTI';
   SNeonErrorNullableNoValue = 'Nullable type has no value';
+  SNeonErrorAnyOfWrongTypeF1 = 'TAnyOf does not currently hold a value of type [%s]';
+  SNeonErrorAnyOfTypeMismatchF3 = 'TAnyOf: a value of type [%s] matches neither of the declared types [%s] and [%s]';
+  SNeonErrorAnyOfValidateF4 = 'TAnyOf<%s, %s>: attempting to get [%s] when [%s] is set';
+  SNeonErrorAnyOfNotAnAnyOfF1 = 'TAnyOf: the type [%s] is not a TAnyOf';
+  SNeonErrorAnyOfNoTarget = 'TAnyOf: no target value to read into, so which TAnyOf is being read cannot be told';
+  SNeonErrorAnyOfNoBranchF3 = 'TAnyOf: a JSON %s fits neither of the declared types [%s] and [%s]';
   SNeonErrorUnknownGenericType = 'TTypeConfigurator: Unknown type T';
   SNeonErrorDeserializeIncompatible = '.Deserialize: incompatible types';
   SNeonErrorDeserializeNilF1 = 'Deserialization skipped: instance of [%s] is nil and could not be created';

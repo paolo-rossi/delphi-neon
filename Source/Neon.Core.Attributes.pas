@@ -17,10 +17,18 @@ interface
 
 uses
   System.Classes, System.SysUtils, System.Rtti,
-  Neon.Core.Types;
+  Neon.Core.Types, Neon.Core.Tags;
 
 type
   NeonAttribute = class(TCustomAttribute)
+  protected
+    FTagStr: string;
+    FTags: TAttributeTags;
+  public
+    constructor Create;
+    destructor Destroy; override;
+
+    property Tags: TAttributeTags read FTags write FTags;
   end;
 
   NeonNamedAttribute = class(NeonAttribute)
@@ -294,14 +302,66 @@ type
   /// </summary>
   NeonAutoCreateAttribute = class(NeonAttribute);
 
+  /// <summary>
+  ///   The NeonGetter uses another member to read the value The member can be a
+  ///   field, a property or a method.
+  /// </summary>
+  /// <remarks>
+  ///   <para>
+  ///     The member must be of the same type as the annotated one; a getter
+  ///     method must take no parameter and return that type.
+  ///   </para>
+  ///   <para>
+  ///     A method must be public or published, and must belong to a class:
+  ///     Delphi emits no RTTI for a private or protected method (it does for a
+  ///     field of any visibility, which is why FInitialDate above works), and a
+  ///     record is handed to the engine as a pointer that TRttiMethod cannot be
+  ///     given an instance from.
+  ///   </para>
+  /// </remarks>
+  /// <example>
+  ///   <para>
+  ///     NeonGetter('FInitialDate')
+  ///   </para>
+  ///   <para>
+  ///     NeonGetter('GetSomeValue')
+  ///   </para>
+  /// </example>
+  NeonGetterAttribute = class(NeonNamedAttribute);
+
+  /// <summary>
+  ///   The NeonSetter uses another member to write the value.
+  ///   The member can be a field, a property or a method.
+  /// </summary>
+  /// <remarks>
+  ///   <para>
+  ///     The member must be of the same type as the annotated one; a getter
+  ///     method must take no parameter and return that type.
+  ///   </para>
+  ///   <para>
+  ///     A method must be public or published, and must belong to a class:
+  ///     Delphi emits no RTTI for a private or protected method (it does for a
+  ///     field of any visibility, which is why FInitialDate above works), and a
+  ///     record is handed to the engine as a pointer that TRttiMethod cannot be
+  ///     given an instance from.
+  ///   </para>
+  /// </remarks>
+  /// <example>
+  ///   <para>
+  ///     NeonSetter('FInitialDate')
+  ///   </para>
+  ///   <para>
+  ///     NeonSetter('SetSomeValue')
+  ///   </para>
+  /// </example>
+  NeonSetterAttribute = class(NeonGetterAttribute);
+
   {
   //Read Annotations
-  NeonSetterAttribute = class(NeonAttribute);
   NeonAnySetterAttribute = class(NeonAttribute);
   NeonCreatorAttribute = class(NeonAttribute);
   NeonInjectAttribute = class(NeonAttribute);
   //Write Annotations
-  NeonGetterAttribute = class(NeonAttribute);
   NeonAnyGetterAttribute = class(NeonAttribute);
   }
 
@@ -314,6 +374,7 @@ uses
 
 constructor NeonNamedAttribute.Create(const AValue: string);
 begin
+  inherited Create;
   FValue := AValue;
 end;
 
@@ -321,6 +382,7 @@ end;
 
 constructor NeonMembersSetAttribute.Create(const AValue: TNeonMembersSet);
 begin
+  inherited Create;
   FValue := AValue;
 end;
 
@@ -328,16 +390,19 @@ end;
 
 constructor NeonVisibilityAttribute.Create(const AValue: TNeonVisibility);
 begin
+  inherited Create;
   FValue := AValue;
 end;
 
 constructor NeonSerializeAttribute.Create(const AClass: TClass);
 begin
+  inherited Create;
   FClazz := AClass;
 end;
 
 constructor NeonSerializeAttribute.Create(const AName: string);
 begin
+  inherited Create;
   FName := AName;
 end;
 
@@ -361,12 +426,14 @@ end;
 
 constructor NeonFormatAttribute.Create(AOutputValue: NeonFormat);
 begin
+  inherited Create('');
   FFormatValue := AOutputValue;
   FValue := LowerCase(GetEnumName(TypeInfo(NeonFormat), Integer(AOutputValue)));
 end;
 
 constructor NeonFormatAttribute.Create(AOutputValue: string);
 begin
+  inherited Create('');
   FValue := AOutputValue;
 end;
 
@@ -379,6 +446,7 @@ end;
 
 constructor NeonItemFactoryAttribute.Create(const AItemFactory: TClass);
 begin
+  inherited Create;
   FFactoryClass := AItemFactory;
 end;
 
@@ -386,7 +454,21 @@ end;
 
 constructor NeonFactoryAttribute.Create(const AFactory: TClass);
 begin
+  inherited Create;
   FFactoryClass := AFactory;
+end;
+
+{ NeonAttribute }
+
+constructor NeonAttribute.Create;
+begin
+  FTags := TAttributeTags.Create;
+end;
+
+destructor NeonAttribute.Destroy;
+begin
+  FTags.Free;
+  inherited;
 end;
 
 end.

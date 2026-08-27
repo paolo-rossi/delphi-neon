@@ -118,6 +118,8 @@
         </DelphiCompile>
         <DCCReference Include="rtl.dcp"/>
         <DCCReference Include="dbrtl.dcp"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Types.AnyOf.pas"/>
+        <DCCReference Include="..\..\Source\Neon.Core.Types.Schema.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Attributes.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.DynamicTypes.pas"/>
         <DCCReference Include="..\..\Source\Neon.Core.Generator.pas"/>
