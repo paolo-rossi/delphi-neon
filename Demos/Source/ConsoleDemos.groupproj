@@ -15,6 +15,9 @@
         <Projects Include="SchemaConsole\SchemaConsole.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="Playground\Playground.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -59,14 +62,23 @@
     <Target Name="SchemaConsole:Make">
         <MSBuild Projects="SchemaConsole\SchemaConsole.dproj" Targets="Make"/>
     </Target>
+    <Target Name="Playground">
+        <MSBuild Projects="Playground\Playground.dproj"/>
+    </Target>
+    <Target Name="Playground:Clean">
+        <MSBuild Projects="Playground\Playground.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Playground:Make">
+        <MSBuild Projects="Playground\Playground.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="ProfilingConsole;BenchmarksConsole;Classify;SchemaConsole"/>
+        <CallTarget Targets="ProfilingConsole;BenchmarksConsole;Classify;SchemaConsole;Playground"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="ProfilingConsole:Clean;BenchmarksConsole:Clean;Classify:Clean;SchemaConsole:Clean"/>
+        <CallTarget Targets="ProfilingConsole:Clean;BenchmarksConsole:Clean;Classify:Clean;SchemaConsole:Clean;Playground:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="ProfilingConsole:Make;BenchmarksConsole:Make;Classify:Make;SchemaConsole:Make"/>
+        <CallTarget Targets="ProfilingConsole:Make;BenchmarksConsole:Make;Classify:Make;SchemaConsole:Make;Playground:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
