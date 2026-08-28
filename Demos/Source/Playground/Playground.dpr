@@ -18,8 +18,10 @@ uses
   System.JSON,
 
   Neon.Core.Types,
+  Neon.Core.Types.Schema,
   Neon.Core.Persistence,
   Neon.Core.Persistence.JSON,
+  Neon.Core.Serializers.RTL,
 
   Playground.Entities in 'Playground.Entities.pas';
 
@@ -28,7 +30,7 @@ const
   ///   The documents the deserialization half reads: edit them and run again
   /// </summary>
   ADDRESS_JSON =
-    '{"Street":"Piazza Duomo 1","City":"Milano","zip":"20121","Country":"IT"}';
+    '{"Id":1969,"Street":"Piazza Duomo 1","City":"Milano","zip":"20121","Country":"IT"}';
 
   CUSTOMER_JSON =
     '{' +
@@ -47,17 +49,26 @@ var
   LAddress: TAddress;
   LCustomer: TCustomer;
   LJSON: TJSONValue;
+  LConfig: INeonConfiguration;
 begin
   ReportMemoryLeaksOnShutdown := True;
 
+
+  LConfig := TNeonConfiguration
+    .Default
+    .RegisterSerializer(TAnyOfSerializer2)
+    .RegisterSerializer(TTValueSerializer);
+
+
   try
     // -------------------------------------------------------------- record --
+    LAddress.Id := 123;
     LAddress.Street := 'Via Emilia 1';
-    LAddress.City := 'Parma';
-    LAddress.ZipCode := '43100';
+    LAddress.City := 'Piacenza';
+    LAddress.ZipCode := '29122';
     LAddress.Country := 'IT';
 
-    LJSON := TNeon.ValueToJSON(TValue.From<TAddress>(LAddress));
+    LJSON := TNeon.ValueToJSON(TValue.From<TAddress>(LAddress), LConfig);
     try
       Writeln('TAddress -> JSON');
       Writeln(TNeon.Print(LJSON, True));
@@ -66,9 +77,9 @@ begin
     end;
     Writeln;
 
-    LAddress := TNeon.JSONToValue<TAddress>(ADDRESS_JSON);
+    LAddress := TNeon.JSONToValue<TAddress>(ADDRESS_JSON, LConfig);
     Writeln('JSON -> TAddress');
-    Writeln(Format('  City: %s, ZipCode: %s', [LAddress.City, LAddress.ZipCode]));
+    Writeln(Format('  Id: %s, City: %s, ZipCode: %s', [LAddress.Id.First.ToString, LAddress.City, LAddress.ZipCode]));
     Writeln;
 
     // --------------------------------------------------------------- class --
@@ -84,7 +95,7 @@ begin
       LCustomer.Tags := ['premium', 'eu'];
       LCustomer.PasswordHash := 'never serialized';
 
-      LJSON := TNeon.ObjectToJSON(LCustomer);
+      LJSON := TNeon.ObjectToJSON(LCustomer, LConfig);
       try
         Writeln('TCustomer -> JSON');
         Writeln(TNeon.Print(LJSON, True));
@@ -96,10 +107,10 @@ begin
     end;
     Writeln;
 
-    LCustomer := TNeon.JSONToObject<TCustomer>(CUSTOMER_JSON);
+    LCustomer := TNeon.JSONToObject<TCustomer>(CUSTOMER_JSON, LConfig);
     try
       Writeln('JSON -> TCustomer');
-      Writeln(Format('  ID: %d, Name: %s, Level: %s', [LCustomer.ID, LCustomer.Name,
+      Writeln(Format('  ID: %d, Name: %s, Level: %s', [LCustomer.ID.Second, LCustomer.Name,
         GetEnumName(TypeInfo(TCustomerLevel), Ord(LCustomer.Level))]));
       Writeln(Format('  Address.City: %s, Tags: %d, PasswordHash: "%s"',
         [LCustomer.Address.City, Length(LCustomer.Tags), LCustomer.PasswordHash]));

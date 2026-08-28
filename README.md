@@ -34,12 +34,13 @@ This new demo tries to compare the standard TJSON serialization engine with the 
 ![Neon Benchmarks Demo](https://github.com/user-attachments/assets/d77d79a9-1b9a-4d5f-90a1-1448eaf722a6)
 
 ### Console Demos
-Four console applications (grouped in `Demos/Source/ConsoleDemos.groupproj`), two for measuring **Neon** without a UI in the way and two for the code it generates from (and for) a JSON document:
+Console applications grouped in `Demos/Source/ConsoleDemos.groupproj`: two for measuring **Neon** without a UI in the way, two for the code it generates from (and for) a JSON document, and one for a corner of the configuration that a form makes harder, not easier, to see:
 
 - **BenchmarksConsole** compares **Neon** against `REST.Json` and `System.JSON.Serializers` (`TJsonSerializer`) on the same datasets, with a separate source object per library. It prints a summary table, writes the report to disk and saves one pretty-printed JSON sample per library so the output can be diffed for correctness, not just timed
 - **ProfilingConsole** breaks **Neon**'s own work down by internal stage (RTTI resolve, member preparation, object/enumerable/map/record writing, the dynamic-type probes...) using the `TNeonLogger` profiler. It runs three scenarios — one flat object per call, many flat objects per call and many composite objects per call — to show what the per-type caches do and do not amortize
 - **Classify** turns a JSON document into the Delphi entities that hold it, from the command line (see the [Entity Generator](#entity-generator) below, and the demo's own [README](Demos/Source/Classify/README.md))
 - **SchemaConsole** generates a **JSON Schema Draft 2020-12** document from a Delphi type and then validates JSON against it: a serialized object, a document from elsewhere (every violation reported with a JSON Pointer and the keyword that rejected it), a self-referencing type resolved through `$defs`/`$ref`, and a schema written by hand using keywords no Delphi type can express (see the demo's own [README](Demos/Source/SchemaConsole/README.md))
+- **ReadOnlyConsole** serializes one object with `SetIgnoreReadOnlyProps` off and on, reads a document back into it both ways, and then does the same for the attributes that overrule the option and for a class of plain fields — six steps, each printing the JSON or the resulting object next to the rule that produced it (see [Read-only and write-only members](#read-only-and-write-only-members) below)
 
 ### A Neon Introduction by Holger Flick (Video)
 [![Modern Delphi web development #7](https://img.youtube.com/vi/djzfeS9k4KU/0.jpg)](https://www.youtube.com/watch?v=djzfeS9k4KU)
@@ -54,6 +55,7 @@ Extensive configuration through `INeonConfiguration` interface:
 - Member types (Fields, Properties)
 - Option to ignore the "F" prefix of private/protected fields, if you choose to serialize the fields (see the note below: it removes the first letter of *any* such field starting with an F)
 - Member visibility (private, protected, public, published)
+- Option to leave read-only properties out of the serialized JSON (see [Read-only and write-only members](#read-only-and-write-only-members) below)
 - Custom serializer registration
 - Use UTC date in serialization
 - Auto creation of nil (object) members
@@ -95,6 +97,101 @@ Extensive configuration through `INeonConfiguration` interface:
 > | `FPublicField` | public | `FPublicField` | `FPublicField` |
 >
 > It applies to fields only — a *property* named `FirstName` keeps its name — and only when fields are serialized at all (see the member types setting). It is off by default, but **`TNeonConfiguration.Snake` and `.ScreamingSnake` turn it on**, so `Formula` is published as `ormula` there without anyone asking for it. As always, `[NeonProperty('formula')]` overrides the computed name for a single member.
+
+### Read-only and write-only members
+
+Neon never asks whether a member is "read-only". It asks one question per direction, and a property answers with its `read` and `write` clauses:
+
+- serializing — *can I read this member?*
+- deserializing — *can I write this member?*
+
+So the two directions are decided separately, and a member can take part in one without taking part in the other:
+
+| Member | Serialized | Deserialized |
+| --- | --- | --- |
+| `property Total: Currency read FTotal write FTotal;` | yes | yes |
+| `property Total: Currency read FTotal;` | yes | **no** |
+| `property Token: string write SetToken;` | **no** | yes |
+| `FTotal: Currency;` (a field, any visibility) | yes | yes |
+
+The last row is the one worth reading twice: RTTI reports **every field as both readable and writable**, whatever its visibility and whether or not anything else can reach it, so no field can look read-only to the engine. Everything below is about properties — which is what the option is named after.
+
+#### IgnoreReadOnlyProps
+
+By default a read-only property is still written out. `SetIgnoreReadOnlyProps(True)` leaves it out instead:
+
+```delphi
+LConfig := TNeonConfiguration.Default.SetIgnoreReadOnlyProps(True);
+```
+
+```delphi
+type
+  TOrder = class
+  private
+    FId: Integer;
+    FTotal: Currency;
+    FSize: TSize;
+    FLines: TObjectList<TOrderLine>;
+    function GetDisplay: string;
+    procedure SetToken(const AValue: string);
+  public
+    property Id: Integer read FId write FId;
+    property Display: string read GetDisplay;              // read-only, computed
+    property Total: Currency read FTotal;                  // read-only, field-backed
+    property Size: TSize read FSize;                       // read-only, record
+    property Lines: TObjectList<TOrderLine> read FLines;   // read-only, class
+    property Token: string write SetToken;                 // write-only
+  end;
+```
+
+```jsonc
+// SetIgnoreReadOnlyProps(False) — the default
+{"Id":7,"Display":"#7","Total":42.5,"Size":{"Width":320,"Height":200},"Lines":[]}
+
+// SetIgnoreReadOnlyProps(True)
+{"Id":7,"Lines":[]}
+```
+
+`Token` is in neither: it is write-only, so there is nothing to read. `Lines` is in both, because the rule has one exemption — **a read-only property of a class or interface type is kept**. Creating a sub-object or a collection in the constructor and publishing it read-only is how most composite entities are written, and dropping those would empty out most documents. A read-only *record* property gets no such exemption and goes the way of `Total`.
+
+> [!IMPORTANT]
+> **The option applies to serialization only.** Deserialization filters on "can I write it" and never consults `IgnoreReadOnlyProps`, so turning it on or off changes nothing about reading. A read-only property is skipped either way, and a document that names one leaves it as it was.
+
+> [!WARNING]
+> **A read-only class-typed property is written but not read back.** The exemption above is a serialization rule, so `Lines` is in the JSON that `ObjectToJSON` produces and is *not* filled by `JSONToObject`: deserialization sees a property it cannot write and moves on, without descending into the instance the property already holds.
+>
+> ```delphi
+> LOrder := TOrder.Create;            // Lines is empty
+> TNeon.JSONToObject(LOrder, '{"Id":7,"Lines":[{"Sku":"A"}]}', LConfig);
+> // LOrder.Id    = 7
+> // LOrder.Lines = still empty
+> ```
+>
+> Give the property a setter — or a `[NeonSetter]`, below — if the document has to be able to fill it. The same is true of every other read-only member: the JSON that `IgnoreReadOnlyProps(False)` produces is a *report* of an object, not a document one can be restored from. Turning the option on is what makes the document honest about the simple members.
+
+#### Overriding the rule
+
+Three ways out:
+
+- `[NeonInclude(IncludeIf.Always)]` is evaluated before every other test — the read-only one and `[NeonIgnore]` included — so an annotated property is serialized whatever the option says. It does not conjure a setter, though: the property is still not filled when reading
+- `[NeonIgnore]`, and `SetIgnoreMembers`/`AddIgnoreMembers`, go the other way and drop the member. The ignore list is applied *before* the read-only check, and is the only way to get rid of the class-typed properties the exemption keeps
+- `[NeonSetter]` removes the premise instead of the conclusion. It gives Neon another member to write through, so the property counts as writable — which both saves it from `IgnoreReadOnlyProps` and lets a document fill it
+
+```delphi
+type
+  TEntity = class
+  private
+    FVersion: string;
+  public
+    // Public: Delphi emits no RTTI for a private method
+    procedure SetVersionValue(const AValue: string);
+
+    [NeonSetter('SetVersionValue')]
+    property Version: string read FVersion;
+  end;
+```
+
+The [ReadOnlyConsole](Demos/Source/ReadOnlyConsole) demo runs all of this and prints the result of every step, and [Neon.Tests.Config.ReadOnlyProps.pas](Tests/Source/Neon.Tests.Config.ReadOnlyProps.pas) pins it down.
 
 ### Delphi Types Support
 

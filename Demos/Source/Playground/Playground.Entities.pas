@@ -22,6 +22,7 @@ uses
   System.SysUtils, System.Classes,
 
   Neon.Core.Types,
+  Neon.Core.Types.Schema,
   Neon.Core.Attributes;
 
 type
@@ -30,11 +31,14 @@ type
   /// </summary>
   TCustomerLevel = (Bronze, Silver, Gold);
 
+  TTestId = TAnyOf<Int64, string>;
+
   /// <summary>
   ///   The record entity: with the default configuration Neon reads the
   ///   *fields* of a record, so there is nothing to declare beyond them
   /// </summary>
   TAddress = record
+    Id: TTestId;
     Street: string;
     City: string;
 
@@ -50,7 +54,7 @@ type
   /// </summary>
   TCustomer = class
   private
-    FID: Integer;
+    FId: TTestId;
     FName: string;
     FLevel: TCustomerLevel;
     FActive: Boolean;
@@ -63,7 +67,7 @@ type
   public
     procedure SetMultipleField(AValue: TDateTime);
 
-    property ID: Integer read FID write FID;
+    property Id: TTestId read FId write FId;
 
     /// <summary>
     ///   Renames the member on both sides of the round trip
@@ -99,6 +103,10 @@ type
     [NeonIgnore]
     property PasswordHash: string read FPasswordHash write FPasswordHash;
   end;
+
+
+
+
 
 implementation
 
