@@ -630,6 +630,15 @@ begin
 end;
 ```
 
+The case setting shapes member names and enum names alike. With
+`TNeonCase.CamelCase` a `TUserType = (Admin, Guest)` value is written as
+`"admin"` / `"guest"`, and `TNeonCase.SnakeCase` turns `VeryHighSpeed` into
+`"very_high_speed"`. An explicit `[NeonEnumNames(...)]` value is used verbatim
+and wins over the case setting, the way `[NeonProperty]` wins for a member
+name. On the way in, Neon accepts the name it wrote, the raw RTTI spelling
+(case-insensitively) and, for an enum with `[NeonEnumNames(...)]`, the explicit
+spelling.
+
 
 <hr />
 <div style="text-align:right">Paolo Rossi</div>

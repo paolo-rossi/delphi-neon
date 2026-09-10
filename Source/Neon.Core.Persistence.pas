@@ -287,6 +287,21 @@ type
     function SetMembers(AValue: TNeonMembersSet): INeonConfiguration;
     function SetMemberSort(AValue: TNeonSort): INeonConfiguration;
     function SetMapSort(AValue: TNeonSort): INeonConfiguration;
+
+    /// <summary>
+    ///   How a JSON name is shaped from a Delphi name: PascalCase (unchanged),
+    ///   LowerCase, UpperCase, CamelCase, SnakeCase, KebabCase or
+    ///   ScreamingSnakeCase
+    /// </summary>
+    /// <remarks>
+    ///   It shapes the JSON name of a member and the text of an enum value
+    ///   alike, so (Admin, Guest) is written "admin"/"guest" under LowerCase or
+    ///   CamelCase and VeryHighSpeed splits under SnakeCase. An explicit
+    ///   [NeonEnumNames] name is used verbatim and wins over the case, the way
+    ///   [NeonProperty] wins for a member name. Like the other settings that
+    ///   feed the name plans, a change takes effect from the next top-level
+    ///   call
+    /// </remarks>
     function SetMemberCase(AValue: TNeonCase): INeonConfiguration;
     function SetMemberCustomCase(AValue: TCaseFunc): INeonConfiguration;
     function SetVisibility(AValue: TNeonVisibility): INeonConfiguration;
@@ -913,6 +928,18 @@ type
 
   TTypeInfoUtils = class
     class function EnumToString(ATypeInfo: PTypeInfo; AValue: Integer): string; static;
+
+    /// <summary>
+    ///   The JSON name of an enum value: an explicit [NeonEnumNames] entry
+    ///   verbatim, or the RTTI name shaped by the configured TNeonCase
+    /// </summary>
+    /// <remarks>
+    ///   The serializer, the deserializer and the schema generator all go
+    ///   through here, so the name written, the name read back and the names a
+    ///   schema advertises cannot drift apart
+    /// </remarks>
+    class function EnumToJSONName(ATypeInfo: PTypeInfo; AValue: Integer;
+      ACase: TNeonCase; ACaseFunc: TCaseFunc): string; static;
   end;
 
   {$ENDREGION}
@@ -2653,6 +2680,25 @@ begin
   end
   else
     raise ENeonException.CreateFmt(SNeonErrorEnumValueF1, [AValue]);
+end;
+
+class function TTypeInfoUtils.EnumToJSONName(ATypeInfo: PTypeInfo; AValue:
+    Integer; ACase: TNeonCase; ACaseFunc: TCaseFunc): string;
+var
+  LEnumType: TRttiType;
+  LAttribute: NeonEnumNamesAttribute;
+begin
+  // An explicit [NeonEnumNames] entry is the JSON name the user chose: it is
+  // used verbatim and wins over the case conversion, the way [NeonProperty]
+  // wins for a member name. Every other member follows the configured case.
+  // One place decides the name, so the writer, the reader and the schema
+  // generator cannot drift apart
+  LEnumType := TRttiUtils.Context.GetType(ATypeInfo);
+  LAttribute := TRttiUtils.FindAttribute<NeonEnumNamesAttribute>(LEnumType);
+  if Assigned(LAttribute) and (AValue >= 0) and (AValue < Length(LAttribute.Names)) then
+    Exit(LAttribute.Names[AValue]);
+
+  Result := TCaseAlgorithm.ConvertCase(EnumToString(ATypeInfo, AValue), ACase, ACaseFunc);
 end;
 
 end.

@@ -1087,8 +1087,11 @@ begin
   end
   else
   begin
+    // Same names the serializer writes: the case setting shapes the schema's
+    // enum list too, or a schema would not validate the document Neon produces
     for LIndex := LTypeData.MinValue to LTypeData.MaxValue do
-      LEnumArray.Add(TTypeInfoUtils.EnumToString(AType.Handle, LIndex));
+      LEnumArray.Add(TTypeInfoUtils.EnumToJSONName(AType.Handle, LIndex,
+        FConfig.MemberCase, FConfig.MemberCustomCase));
 
     Result := TJSONObject.Create
       .AddPair('type', 'string')

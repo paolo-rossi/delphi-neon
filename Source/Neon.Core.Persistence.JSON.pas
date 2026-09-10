@@ -929,7 +929,12 @@ begin
   end
   else
   begin
-    LName := TTypeInfoUtils.EnumToString(AValue.TypeInfo, AValue.AsOrdinal);
+    // The enum's JSON name follows the configured member case the way a
+    // member's name does: (Admin, Guest) is written "admin"/"guest" under
+    // LowerCase or CamelCase, and a multi-word member splits under SnakeCase.
+    // An explicit [NeonEnumNames] name wins over the case and is used verbatim
+    LName := TTypeInfoUtils.EnumToJSONName(AValue.TypeInfo, AValue.AsOrdinal,
+      FConfig.MemberCase, FConfig.MemberCustomCase);
     Result := TJSONString.Create(LName);
   end;
 end;
@@ -1752,14 +1757,37 @@ begin
     else
     begin
       LOrdinal := -1;
+
+      // An explicit [NeonEnumNames] spelling is what the writer produces, so
+      // it is accepted verbatim
       if Length(AParam.NeonObject.NeonEnumNames) > 0 then
       begin
         for LIndex := Low(AParam.NeonObject.NeonEnumNames) to High(AParam.NeonObject.NeonEnumNames) do
           if AParam.JSONValue.Value = AParam.NeonObject.NeonEnumNames[LIndex] then
             LOrdinal := LIndex;
       end;
+
+      // GetEnumValue knows the RTTI spelling and is case-insensitive, which
+      // reads back the settings that only change capitalization (lower, upper,
+      // camel, pascal) and the documents written before the case was applied
       if LOrdinal = -1 then
         LOrdinal := GetEnumValue(AParam.RttiType.Handle, AParam.JSONValue.Value);
+
+      // A separator introduced by snake, kebab or screaming snake, or a name
+      // rewritten by a custom function, is not something GetEnumValue can
+      // resolve: regenerate the name the writer produces for each member and
+      // compare against it
+      if LOrdinal = -1 then
+      begin
+        LTypeData := GetTypeData(AParam.RttiType.Handle);
+        for LIndex := LTypeData.MinValue to LTypeData.MaxValue do
+          if AParam.JSONValue.Value = TTypeInfoUtils.EnumToJSONName(
+            AParam.RttiType.Handle, LIndex, FConfig.MemberCase, FConfig.MemberCustomCase) then
+          begin
+            LOrdinal := LIndex;
+            Break;
+          end;
+      end;
 
       LTypeData := GetTypeData(AParam.RttiType.Handle);
 
