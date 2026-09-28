@@ -9,20 +9,24 @@
 {******************************************************************************}
 program Neon.Tests.Framework;
 
+{$IFNDEF DEBUG}
 {$IFNDEF TESTINSIGHT}
-  {$APPTYPE CONSOLE}
+{$APPTYPE CONSOLE}
 {$ENDIF}
-
+{$ENDIF}
 {$STRONGLINKTYPES ON}
 uses
   System.SysUtils,
   {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX,
-  {$ELSE}
+  {$ENDIF }
+  {$IFDEF DEBUG}
+  DUnitX.Loggers.GUI.VCL,
+  {$ENDIF }
   DUnitX.Loggers.Console,
   DUnitX.Loggers.Xml.NUnit,
-  {$ENDIF }
   DUnitX.TestFramework,
+  DUnitX.CommandLine.Options,
   Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule},
   Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',
   Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas',
@@ -65,8 +69,13 @@ var
   LLogger : ITestLogger;
   LNUnitLogger : ITestLogger;
 begin
+  ReportMemoryLeaksOnShutdown := True;
 {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX.RunRegisteredTests;
+  Exit;
+{$ENDIF}
+{$IFDEF DEBUG}
+  DUnitX.Loggers.GUI.VCL.Run;
   Exit;
 {$ENDIF}
   try

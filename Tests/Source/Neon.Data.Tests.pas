@@ -51,7 +51,7 @@ uses
 
 procedure TDataTests.DataModuleCreate(Sender: TObject);
 begin
-  FDataPath := TDirectory.GetCurrentDirectory;
+  FDataPath := TPath.GetAppPath;
   FDataPath := TDirectory.GetParent(FDataPath);
   FDataPath := TPath.Combine(FDataPath, 'Data');
 end;

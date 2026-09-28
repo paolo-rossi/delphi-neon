@@ -35,8 +35,8 @@ type
     procedure TestSerialize(const AValue: TDuplicates; _Result: string);
 
     [Test]
-    [TestCase('TestTDuplicates', '3,dupAccept')]
-    [TestCase('TestTDuplicates', '-1,dupError')]
+    [TestCase('TestTDuplicatesOverflow', '3,dupAccept')]
+    [TestCase('TestTDuplicatesUnderflow', '-1,dupError')]
     procedure TestReadOutOfBounds(const AValue: String; _Result: TDuplicates);
 
   end;

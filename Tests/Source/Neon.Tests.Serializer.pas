@@ -28,8 +28,9 @@ type
     procedure TearDown;
 
     [Test]
-    //[TestCase('TestBoolTrue', 'True,True')]
-    procedure TestSerializer(const AValue: Boolean);
+    [TestCase('TestBoolTrue', 'True,True')]
+    [TestCase('TestBoolFalse', 'False,False')]
+    procedure TestSerializer(const AValue: Boolean; const _Result: string);
 
   end;
 
@@ -44,9 +45,16 @@ procedure TTestSerializer.TearDown;
 begin
 end;
 
-procedure TTestSerializer.TestSerializer(const AValue: Boolean);
+procedure TTestSerializer.TestSerializer(const AValue: Boolean; const _Result: string);
+var
+  LJSON: string;
 begin
-  //Assert.AreEqual(_Result, TTestUtils.SerializeValue(AValue));
+  // The value keeps its JSON text ...
+  LJSON := TTestUtils.SerializeValue(AValue);
+  Assert.AreEqual(_Result, LJSON);
+
+  // ... and that text reads back as the value it came from
+  Assert.AreEqual(AValue, TTestUtils.DeserializeValueTo<Boolean>(LJSON));
 end;
 
 initialization

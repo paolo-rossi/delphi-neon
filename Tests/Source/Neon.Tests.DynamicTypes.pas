@@ -275,13 +275,10 @@ begin
   try
     // A JSON array longer than the static bounds must raise a Neon error,
     // not a raw range exception from SetArrayElement
-    try
-      LDes.JSONToTValue(LJSON, LCtx.GetType(TypeInfo(TIntArray3)));
-      Assert.Fail('Expected ENeonException for an over-long static array');
-    except
-      on E: ENeonException do
-        ;
-    end;
+    Assert.WillRaise(
+      procedure begin LDes.JSONToTValue(LJSON, LCtx.GetType(TypeInfo(TIntArray3))) end,
+      ENeonException
+    );
   finally
     LDes.Free;
     LJSON.Free;
@@ -342,13 +339,10 @@ begin
     try
       // The original streamable instance expects {"$value": ...}; an object
       // without it must raise a Neon error instead of dereferencing nil
-      try
-        LDes.JSONToObject(LStreamable, LJSON);
-        Assert.Fail('Expected ENeonException for a streamable object without $value');
-      except
-        on E: ENeonException do
-          ;
-      end;
+      Assert.WillRaise(
+        procedure begin LDes.JSONToObject(LStreamable, LJSON) end,
+        ENeonException
+      );
     finally
       LDes.Free;
       LJSON.Free;

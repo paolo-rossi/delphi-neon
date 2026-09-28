@@ -91,7 +91,7 @@ type
     [TestCase('TestNumExponentLowerMinus', '1.1232e-2,0.011232')]
     [TestCase('TestNumExponentUpper', '1.1232E2,112.32')]
     [TestCase('TestNumExponentUpperPlus', '1.1232E+2,112.32')]
-    [TestCase('TestNumExponentUpperPlus', '1.1232E-2,0.011232')]
+    [TestCase('TestNumExponentUpperMinus', '1.1232E-2,0.011232')]
     procedure TestNumExponent(const AValue: Double; _Result: string);
 
     [Test]
@@ -207,7 +207,7 @@ type
     [TestCase('TestNumExponentLowerMinus', '1.1232e-2,1.1232e-2')]
     [TestCase('TestNumExponentUpper', '1.1232E2,1.1232E2')]
     [TestCase('TestNumExponentUpperPlus', '1.1232E+2,1.1232E+2')]
-    [TestCase('TestNumExponentUpperPlus', '1.1232E-2,1.1232E-2')]
+    [TestCase('TestNumExponentUpperMinus', '1.1232E-2,1.1232E-2')]
     procedure TestNumExponent(const AValue: string; _Result: Double);
 
     [Test]

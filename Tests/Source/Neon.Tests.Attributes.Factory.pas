@@ -78,6 +78,8 @@ type
   private
     FTestObj: TObject;
   public
+    destructor Destroy; override;
+
     [NeonFactory(TObjFactory)]
     property Obj: TObject read FTestObj write FTestObj;
   end;
@@ -149,6 +151,12 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+
+    [Setup]
+    procedure Setup;
+    [TearDown]
+    procedure TearDown;
+
   public
     [TestCase('TestObj', '{"Obj":{"Breed":"Bulldog"}}|Bulldog', '|')]
     procedure TestObjType(const AInput, ABreed: string);
@@ -192,6 +200,15 @@ begin
     .RegisterFactory(TPetFactory)
     .RegisterFactory(TObjFactory)
   ;
+end;
+
+destructor TTestItemFactory.Destroy;
+begin
+  inherited;
+end;
+
+procedure TTestItemFactory.Setup;
+begin
   FTestObj := TFactoryTestObj.Create;
   FItemsArray := TFactoryTestArray.Create;
   FItemsStatic := TFactoryTestStatic.Create;
@@ -199,14 +216,13 @@ begin
   FItemsDict := TFactoryTestDict.Create;
 end;
 
-destructor TTestItemFactory.Destroy;
+procedure TTestItemFactory.TearDown;
 begin
   FTestObj.Free;
   FItemsArray.Free;
   FItemsStatic.Free;
   FItemsList.Free;
   FItemsDict.Free;
-  inherited;
 end;
 
 procedure TTestItemFactory.TestArrayItemType(const AInput: string);
@@ -395,6 +411,8 @@ var
 begin
   for LPet in Pets do
     LPet.Free;
+  for LPet in OtherPets do
+    LPet.Free;
   inherited;
 end;
 
@@ -429,6 +447,14 @@ begin
       Exit(True);
 
   Result := False;
+end;
+
+{ TFactoryTestObj }
+
+destructor TFactoryTestObj.Destroy;
+begin
+  FTestObj.Free;
+  inherited;
 end;
 
 initialization
