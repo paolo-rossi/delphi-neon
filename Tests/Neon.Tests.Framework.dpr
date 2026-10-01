@@ -43,6 +43,7 @@ uses
   Neon.Tests.Types.Records in 'Source\Neon.Tests.Types.Records.pas',
   Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas',
   Neon.Tests.Types.Interfaces in 'Source\Neon.Tests.Types.Interfaces.pas',
+  Neon.Tests.Types.Exceptions in 'Source\Neon.Tests.Types.Exceptions.pas',
   Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas',
   Neon.Tests.Config.EnumAsInt in 'Source\Neon.Tests.Config.EnumAsInt.pas',
   Neon.Tests.Config.AutoCreate in 'Source\Neon.Tests.Config.AutoCreate.pas',
