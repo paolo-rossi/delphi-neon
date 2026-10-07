@@ -65,7 +65,7 @@ uses
 
 constructor TTestIgnoreMembers.Create;
 begin
-  FDataPath := TDirectory.GetCurrentDirectory;
+  FDataPath := TPath.GetAppPath;
   FDataPath := TDirectory.GetParent(FDataPath);
   FDataPath := TPath.Combine(FDataPath, 'Data');
 

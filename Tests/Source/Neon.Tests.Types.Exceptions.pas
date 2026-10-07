@@ -7,57 +7,45 @@
 {  Licensed under the MIT license                                              }
 {                                                                              }
 {******************************************************************************}
-unit Neon.Tests.Serializer;
+unit Neon.Tests.Types.Exceptions;
 
 interface
 
 uses
-  System.Rtti, DUnitX.TestFramework,
+  System.SysUtils, System.Rtti, DUnitX.TestFramework,
 
-  Neon.Tests.Entities,
+  Neon.Core.Persistence,
   Neon.Tests.Utils;
 
 type
-
   [TestFixture]
-  TTestSerializer = class(TObject)
+  [Category('exceptions')]
+  TTestExceptionTypes = class(TObject)
   public
-    [Setup]
-    procedure Setup;
-    [TearDown]
-    procedure TearDown;
-
     [Test]
-    [TestCase('TestBoolTrue', 'True,True')]
-    [TestCase('TestBoolFalse', 'False,False')]
-    procedure TestSerializer(const AValue: Boolean; const _Result: string);
-
+    procedure TestExceptionSerializes;
   end;
 
 implementation
 
-procedure TTestSerializer.Setup;
-begin
+{ TTestExceptionTypes }
 
-end;
-
-procedure TTestSerializer.TearDown;
-begin
-end;
-
-procedure TTestSerializer.TestSerializer(const AValue: Boolean; const _Result: string);
+procedure TTestExceptionTypes.TestExceptionSerializes;
 var
-  LJSON: string;
+  LException: Exception;
 begin
-  // The value keeps its JSON text ...
-  LJSON := TTestUtils.SerializeValue(AValue);
-  Assert.AreEqual(_Result, LJSON);
-
-  // ... and that text reads back as the value it came from
-  Assert.AreEqual(AValue, TTestUtils.DeserializeValueTo<Boolean>(LJSON));
+  // BaseException reads back the instance it belongs to: the guard must omit it
+  // instead of recursing, leaving the other members in the document
+  LException := Exception.CreateHelp('boom', 42);
+  try
+    Assert.AreEqual('{"HelpContext":42,"Message":"boom","StackTrace":""}',
+      TTestUtils.SerializeObject(LException));
+  finally
+    LException.Free;
+  end;
 end;
 
 initialization
-  TDUnitX.RegisterTestFixture(TTestSerializer);
+  TDUnitX.RegisterTestFixture(TTestExceptionTypes);
 
 end.

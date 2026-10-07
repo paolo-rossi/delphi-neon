@@ -9,20 +9,24 @@
 {******************************************************************************}
 program Neon.Tests.Framework;
 
+{$IFNDEF DEBUG}
 {$IFNDEF TESTINSIGHT}
-  {$APPTYPE CONSOLE}
+{$APPTYPE CONSOLE}
 {$ENDIF}
-
+{$ENDIF}
 {$STRONGLINKTYPES ON}
 uses
   System.SysUtils,
   {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX,
-  {$ELSE}
+  {$ENDIF }
+  {$IFDEF DEBUG}
+  DUnitX.Loggers.GUI.VCL,
+  {$ENDIF }
   DUnitX.Loggers.Console,
   DUnitX.Loggers.Xml.NUnit,
-  {$ENDIF }
   DUnitX.TestFramework,
+  DUnitX.CommandLine.Options,
   Neon.Data.Tests in 'Source\Neon.Data.Tests.pas' {DataTests: TDataModule},
   Neon.Serializers.Tests in 'Source\Neon.Serializers.Tests.pas',
   Neon.Tests.Utils in 'Source\Neon.Tests.Utils.pas',
@@ -39,6 +43,7 @@ uses
   Neon.Tests.Types.Records in 'Source\Neon.Tests.Types.Records.pas',
   Neon.Tests.Types.Reference in 'Source\Neon.Tests.Types.Reference.pas',
   Neon.Tests.Types.Interfaces in 'Source\Neon.Tests.Types.Interfaces.pas',
+  Neon.Tests.Types.Exceptions in 'Source\Neon.Tests.Types.Exceptions.pas',
   Neon.Tests.Config.MemberCase in 'Source\Neon.Tests.Config.MemberCase.pas',
   Neon.Tests.Config.EnumAsInt in 'Source\Neon.Tests.Config.EnumAsInt.pas',
   Neon.Tests.Config.AutoCreate in 'Source\Neon.Tests.Config.AutoCreate.pas',
@@ -67,8 +72,13 @@ var
   LLogger : ITestLogger;
   LNUnitLogger : ITestLogger;
 begin
+  ReportMemoryLeaksOnShutdown := True;
 {$IFDEF TESTINSIGHT}
   TestInsight.DUnitX.RunRegisteredTests;
+  Exit;
+{$ENDIF}
+{$IFDEF DEBUG}
+  DUnitX.Loggers.GUI.VCL.Run;
   Exit;
 {$ENDIF}
   try

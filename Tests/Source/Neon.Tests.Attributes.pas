@@ -30,6 +30,30 @@ type
   end;
 
   /// <summary>
+  ///   [NeonInclude(IncludeIf.Always)] is checked before every other rule, so
+  ///   an annotated member stays in the document even when it is read-only
+  ///   under IgnoreReadOnlyProps or marked [NeonIgnore]. It cannot make a
+  ///   read-only member writable, though: a document cannot fill it back
+  /// </summary>
+  TIncludeAlwaysHolder = class
+  private
+    FNormal: string;
+    FReadOnly: string;
+    FIgnored: string;
+  public
+    constructor Create(const AReadOnly: string = 'read-only');
+
+    property Normal: string read FNormal write FNormal;
+
+    [NeonInclude(IncludeIf.Always)]
+    property ReadOnly: string read FReadOnly;
+
+    [NeonIgnore]
+    [NeonInclude(IncludeIf.Always)]
+    property Ignored: string read FIgnored write FIgnored;
+  end;
+
+  /// <summary>
   ///   [NeonRawValue] makes the member carry JSON text rather than a value, in
   ///   both directions: what is read back can be written again unchanged, and a
   ///   member that does not hold JSON is an error
@@ -77,7 +101,7 @@ type
     procedure TearDown;
 
     [Test]
-    procedure TestIncludeIfAlways(const AMethod: string);
+    procedure TestIncludeIfAlways;
   end;
 
 implementation
@@ -169,6 +193,13 @@ begin
   );
 end;
 
+{ TIncludeAlwaysHolder }
+
+constructor TIncludeAlwaysHolder.Create(const AReadOnly: string);
+begin
+  FReadOnly := AReadOnly;
+end;
+
 { TTestAttributesInclude }
 
 constructor TTestAttributesInclude.Create;
@@ -190,9 +221,36 @@ procedure TTestAttributesInclude.TearDown;
 begin
 end;
 
-procedure TTestAttributesInclude.TestIncludeIfAlways(const AMethod: string);
+procedure TTestAttributesInclude.TestIncludeIfAlways;
+var
+  LConfig: INeonConfiguration;
+  LHolder: TIncludeAlwaysHolder;
 begin
+  LConfig := TNeonConfiguration.Default;
+  LConfig.SetIgnoreReadOnlyProps(True);
 
+  LHolder := TIncludeAlwaysHolder.Create;
+  try
+    LHolder.Normal := 'normal';
+    LHolder.Ignored := 'ignored';
+
+    // Always beats both IgnoreReadOnlyProps and [NeonIgnore]: the read-only
+    // member and the ignored one are written out, the plain member is kept too
+    Assert.AreEqual(
+      '{"Normal":"normal","ReadOnly":"read-only","Ignored":"ignored"}',
+      TNeon.ObjectToJSONString(LHolder, LConfig));
+
+    // ... but it does not conjure a setter: reading a document back fills the
+    // writable members only, leaving the read-only one as it was
+    TNeon.JSONToObject(LHolder,
+      '{"Normal":"from-json","ReadOnly":"from-json","Ignored":"from-json"}',
+      LConfig);
+    Assert.AreEqual('from-json', LHolder.Normal);
+    Assert.AreEqual('read-only', LHolder.ReadOnly);
+    Assert.AreEqual('from-json', LHolder.Ignored);
+  finally
+    LHolder.Free;
+  end;
 end;
 
 initialization

@@ -353,6 +353,20 @@ type
     function SetClosedSchema(AValue: Boolean): INeonConfiguration;
 
     /// <summary>
+    ///   Omits, when serializing, a member that points back to an instance
+    ///   still being written: a self reference (Exception.BaseException), a
+    ///   child's back reference to its parent, any cycle in the graph
+    /// </summary>
+    /// <remarks>
+    ///   On by default. The check follows the serialization path, not every
+    ///   instance already written, so the same instance reached twice on
+    ///   sibling members is still written twice. Turned off, a cycle recurses
+    ///   until the stack gives out: do it only for graphs known to be acyclic,
+    ///   to save the (small) cost of the check
+    /// </remarks>
+    function SetIgnoreCircularRefs(AValue: Boolean): INeonConfiguration;
+
+    /// <summary>
     ///   Registers a custom serializer for this configuration, whose registry
     ///   starts empty - the serializers bundled with Neon included
     /// </summary>
@@ -486,7 +500,7 @@ type
   ///     A configuration is mutable, and changing one is safe at any time. The
   ///     settings read while (de)serializing - UseUTCDate, EnumAsInt,
   ///     AutoCreate, StrictTypes, MapSort, PrettyPrint, RaiseExceptions,
-  ///     OnError, ClosedSchema - take effect immediately; the ones that feed
+  ///     OnError, ClosedSchema, IgnoreCircularRefs - take effect immediately; the ones that feed
   ///     the member plans - member set, sort, case, visibility, field prefix,
   ///     read-only properties, the ignore lists and the per-type Rules -
   ///     invalidate what was cached and take effect from the next top-level
@@ -517,6 +531,7 @@ type
     FAutoCreate: Boolean;
     FStrictTypes: Boolean;
     FClosedSchema: Boolean;
+    FIgnoreCircularRefs: Boolean;
     FFactoryList: TNeonFactoryRegistry;
     FIgnoreMembers: TArray<string>;
 
@@ -561,6 +576,7 @@ type
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
+    function SetIgnoreCircularRefs(AValue: Boolean): INeonConfiguration;
     function SetIgnoreMembers(const AMemberList: TArray<string>): INeonConfiguration;
     function AddIgnoreMembers(const AMemberList: TArray<string>): INeonConfiguration; overload;
     function RegisterSerializer(AClass: TCustomSerializerClass): INeonConfiguration;
@@ -612,6 +628,7 @@ type
     property AutoCreate: Boolean read FAutoCreate write FAutoCreate;
     property StrictTypes: Boolean read FStrictTypes write FStrictTypes;
     property ClosedSchema: Boolean read FClosedSchema write FClosedSchema;
+    property IgnoreCircularRefs: Boolean read FIgnoreCircularRefs write FIgnoreCircularRefs;
 
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
     property FactoryList: TNeonFactoryRegistry read FFactoryList write FFactoryList;
@@ -1076,32 +1093,36 @@ begin
   TNeonLogger.ProfileEnd('Core:GetNeonMembers', LStamp);
 
   Result := TNeonRttiMembers.Create(FConfig, AType, FOperation);
+  try
+    SetLength(LFields, 0);
+    SetLength(LProps, 0);
 
-  SetLength(LFields, 0);
-  SetLength(LProps, 0);
+    if AType.IsRecord then
+    begin
+      LFields := TArray<TRttiMember>(AType.AsRecord.GetFields);
+      LProps  := TArray<TRttiMember>(AType.AsRecord.GetProperties);
+      // GetIndexedProperties
+    end
+    else if AType.IsInstance then
+    begin
+      LFields := TArray<TRttiMember>(AType.AsInstance.GetFields);
+      LProps  := TArray<TRttiMember>(AType.AsInstance.GetProperties);
+      // GetIndexedProperties
+    end;
 
-  if AType.IsRecord then
-  begin
-    LFields := TArray<TRttiMember>(AType.AsRecord.GetFields);
-    LProps  := TArray<TRttiMember>(AType.AsRecord.GetProperties);
-    // GetIndexedProperties
-  end
-  else if AType.IsInstance then
-  begin
-    LFields := TArray<TRttiMember>(AType.AsInstance.GetFields);
-    LProps  := TArray<TRttiMember>(AType.AsInstance.GetProperties);
-    // GetIndexedProperties
-  end;
-
-  for LMember in LFields do
-  begin
-    LNeonMember := Result.NewMember(LMember);
-    Result.Add(LNeonMember);
-  end;
-  for LMember in LProps do
-  begin
-    LNeonMember := Result.NewMember(LMember);
-    Result.Add(LNeonMember);
+    for LMember in LFields do
+    begin
+      LNeonMember := Result.NewMember(LMember);
+      Result.Add(LNeonMember);
+    end;
+    for LMember in LProps do
+    begin
+      LNeonMember := Result.NewMember(LMember);
+      Result.Add(LNeonMember);
+    end;
+  except
+    Result.Free;
+    raise;
   end;
   GetRttiCache.Members.Add(AType.Handle, Result);
 
@@ -1266,6 +1287,7 @@ begin
   SetUseUTCDate(True);
   SetPrettyPrint(False);
   SetStrictTypes(True);
+  SetIgnoreCircularRefs(True);
   FClosedSchema := False;
 end;
 
@@ -1517,6 +1539,12 @@ end;
 function TNeonConfiguration.SetStrictTypes(AValue: Boolean): INeonConfiguration;
 begin
   FStrictTypes := AValue;
+  Result := Self;
+end;
+
+function TNeonConfiguration.SetIgnoreCircularRefs(AValue: Boolean): INeonConfiguration;
+begin
+  FIgnoreCircularRefs := AValue;
   Result := Self;
 end;
 

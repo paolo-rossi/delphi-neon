@@ -73,3 +73,4 @@ Tests/Bin/
 
 # Third-party sources fetched locally to run the tests (not vendored)
 Libs/
+/Tests/Neon.Tests.Framework.res

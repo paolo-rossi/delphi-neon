@@ -31,6 +31,22 @@ type
   TNeonSerializerJSON = class(TNeonBase, ISerializerContext)
   private
     /// <summary>
+    ///   The class instances currently being written, one per level of the
+    ///   serialization path. A member pointing back to one of them - a self
+    ///   reference such as Exception.BaseException, which reads the instance it
+    ///   belongs to, or any cycle in the graph - would otherwise recurse
+    ///   forever, so the member is omitted instead. Kept only while
+    ///   IgnoreCircularRefs is on
+    /// </summary>
+    /// <remarks>
+    ///   A stack, not a set: siblings are pushed and popped in turn, so it is
+    ///   as deep as the graph, not as large, and a linear scan beats hashing
+    /// </remarks>
+    FPath: TList<Pointer>;
+
+    function IsOnPath(AInstance: Pointer): Boolean;
+
+    /// <summary>
     ///   Writer for members of objects and records
     /// </summary>
     procedure WriteMembers(AType: TRttiType; AInstance: Pointer; AResult: TJSONValue);
@@ -199,6 +215,7 @@ type
     function WriteDataMember(const AValue: TValue; ACustomProcess: Boolean; ANeonObject: TNeonRttiObject): TJSONValue; overload;
   public
     constructor Create(const AConfig: INeonConfiguration);
+    destructor Destroy; override;
 
     /// <summary>
     ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TValue
@@ -626,6 +643,23 @@ constructor TNeonSerializerJSON.Create(const AConfig: INeonConfiguration);
 begin
   inherited Create(AConfig);
   FOperation := TNeonOperation.Serialize;
+  FPath := TList<Pointer>.Create;
+end;
+
+destructor TNeonSerializerJSON.Destroy;
+begin
+  FPath.Free;
+  inherited;
+end;
+
+function TNeonSerializerJSON.IsOnPath(AInstance: Pointer): Boolean;
+var
+  LIndex: Integer;
+begin
+  for LIndex := FPath.Count - 1 downto 0 do
+    if FPath[LIndex] = AInstance then
+      Exit(True);
+  Result := False;
 end;
 
 function TNeonSerializerJSON.IsEnumerable(const AValue: TValue; out AList: IDynamicList): Boolean;
@@ -743,6 +777,7 @@ var
   LDynamicList: IDynamicList absolute LDynamicType;
   LDynamicStream: IDynamicStream absolute LDynamicType;
   LDynamicNullable: IDynamicNullable absolute LDynamicType;
+  LGuarded: Boolean;
 begin
   Result := nil;
 
@@ -825,25 +860,42 @@ begin
           Exit(nil);
         end;
       end
+      // An instance already on the path is a cycle: writing it again would
+      // recurse forever, so it is omitted - the same treatment the nil case
+      // above gives a member that must not be written
+      else if FConfig.IgnoreCircularRefs and IsOnPath(AValue.AsObject) then
+        Exit(nil)
       else
-        // Which shape this class has is settled once per class, so only the
-        // probe that can match still runs here - the other two used to run,
-        // and fail, for every value
-        case GetDynamicKind(AValue.AsObject) of
-          TNeonDynamicKind.Map:
-            if IsEnumerableMap(AValue, LDynamicMap) then
-              Result := WriteEnumerableMap(AValue, ANeonObject, LDynamicMap);
+      begin
+        // Read once: the configuration can change while the instance is being
+        // written, and the pop has to match the push
+        LGuarded := FConfig.IgnoreCircularRefs;
+        if LGuarded then
+          FPath.Add(AValue.AsObject);
+        try
+          // Which shape this class has is settled once per class, so only the
+          // probe that can match still runs here - the other two used to run,
+          // and fail, for every value
+          case GetDynamicKind(AValue.AsObject) of
+            TNeonDynamicKind.Map:
+              if IsEnumerableMap(AValue, LDynamicMap) then
+                Result := WriteEnumerableMap(AValue, ANeonObject, LDynamicMap);
 
-          TNeonDynamicKind.List:
-            if IsEnumerable(AValue, LDynamicList) then
-              Result := WriteEnumerable(AValue, ANeonObject, LDynamicList);
+            TNeonDynamicKind.List:
+              if IsEnumerable(AValue, LDynamicList) then
+                Result := WriteEnumerable(AValue, ANeonObject, LDynamicList);
 
-          TNeonDynamicKind.Stream:
-            if IsStreamable(AValue, LDynamicStream) then
-              Result := WriteStreamable(AValue, ANeonObject, LDynamicStream);
-        else
-          Result := WriteObject(AValue, ANeonObject);
+            TNeonDynamicKind.Stream:
+              if IsStreamable(AValue, LDynamicStream) then
+                Result := WriteStreamable(AValue, ANeonObject, LDynamicStream);
+          else
+            Result := WriteObject(AValue, ANeonObject);
+          end;
+        finally
+          if LGuarded then
+            FPath.Delete(FPath.Count - 1);
         end;
+      end;
     end;
 
     tkArray:
@@ -1013,7 +1065,20 @@ begin
     end;
   end;
 
-  Result := WriteObject(LObject, ANeonObject);
+  if not FConfig.IgnoreCircularRefs then
+    Exit(WriteObject(LObject, ANeonObject));
+
+  // Written as the instance implementing the interface, so the cycle check
+  // uses the instance's identity, the same as for a class member
+  if IsOnPath(LObject) then
+    Exit(nil);
+
+  FPath.Add(LObject);
+  try
+    Result := WriteObject(LObject, ANeonObject);
+  finally
+    FPath.Delete(FPath.Count - 1);
+  end;
 end;
 
 procedure TNeonSerializerJSON.WriteMembers(AType: TRttiType; AInstance: Pointer; AResult: TJSONValue);

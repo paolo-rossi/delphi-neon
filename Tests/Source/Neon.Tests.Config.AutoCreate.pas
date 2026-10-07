@@ -41,18 +41,18 @@ type
     procedure TearDown;
 
     [Test]
-    [TestCase('TestNotCreated', 'False,False')]
-    [TestCase('TestNotCreated', 'False,True')]
-    [TestCase('TestNotCreated', 'True,False')]
-    [TestCase('TestNotCreated', 'True,True')]
+    [TestCase('TestNotCreated_False_False', 'False,False')]
+    [TestCase('TestNotCreated_False_True', 'False,True')]
+    [TestCase('TestNotCreated_True_False', 'True,False')]
+    [TestCase('TestNotCreated_True_True', 'True,True')]
     procedure TestNotCreated(ASubObject, AAutoCreate: Boolean);
 
     //[Test]
     //[TestCase('TestAlreadyCreated', 'TestAlreadyCreated')]
-    [TestCase('TestAlreadyCreated', 'False,False')]
-    [TestCase('TestAlreadyCreated', 'False,True')]
-    [TestCase('TestAlreadyCreated', 'True,False')]
-    [TestCase('TestAlreadyCreated', 'True,True')]
+    [TestCase('TestAlreadyCreated_False_False', 'False,False')]
+    [TestCase('TestAlreadyCreated_False_True', 'False,True')]
+    [TestCase('TestAlreadyCreated_True_False', 'True,False')]
+    [TestCase('TestAlreadyCreated_True_True', 'True,True')]
     procedure TestAlreadyCreated(ASubObject, AAutoCreate: Boolean);
 
   end;
@@ -64,7 +64,7 @@ uses
 
 constructor TTestAutoCreate.Create;
 begin
-  FDataPath := TDirectory.GetCurrentDirectory;
+  FDataPath := TPath.GetAppPath;
   FDataPath := TDirectory.GetParent(FDataPath);
   FDataPath := TPath.Combine(FDataPath, 'Data');
 
