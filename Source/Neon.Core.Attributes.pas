@@ -194,9 +194,34 @@ type
   end;
 
   /// <summary>
-  ///   The NeonSerialize Neon annotation is used to specify a custom serializer for a
-  ///   field in a Delphi object.
+  ///   The NeonSerialize attribute names the custom serializer (a
+  ///   TCustomSerializer descendant) that writes a member, or every value of a
+  ///   type when it is placed on the type
   /// </summary>
+  /// <remarks>
+  ///   <para>
+  ///     It applies to writing only (and to the JSON Schema, which describes
+  ///     what is written): use NeonDeserialize for reading, with the same
+  ///     class to have the serializer handle both directions.
+  ///   </para>
+  ///   <para>
+  ///     The class does not need to be registered in the configuration, and
+  ///     wins over a serializer registered there for the same type. Its
+  ///     CanHandle is not consulted and its ChangeConfig is not run.
+  ///   </para>
+  ///   <para>
+  ///     On a list or array member it applies to the member itself, not to
+  ///     its items. A class that is not a TCustomSerializer raises an
+  ///     ENeonException.
+  ///   </para>
+  ///   <para>
+  ///     The overload taking a name is not supported yet: the name is stored
+  ///     but not used.
+  ///   </para>
+  /// </remarks>
+  /// <example>
+  ///   [NeonSerialize(TMySerializer)] [NeonDeserialize(TMySerializer)]
+  /// </example>
   NeonSerializeAttribute = class(NeonAttribute)
   private
     FClazz: TClass;
@@ -209,8 +234,9 @@ type
   end;
 
   /// <summary>
-  ///   The Neon annotation NeonDeserialize is used to specify a custom de-serializer
-  ///   class for a given field in a Delphi object.
+  ///   The NeonDeserialize attribute names the custom serializer that reads a
+  ///   member, or every value of a type when it is placed on the type. It is
+  ///   the reading counterpart of NeonSerialize, with the same rules.
   /// </summary>
   NeonDeserializeAttribute = class(NeonSerializeAttribute);
 
@@ -301,6 +327,34 @@ type
   ///   class must have at least one parameterless Create constructor.
   /// </summary>
   NeonAutoCreateAttribute = class(NeonAttribute);
+
+  /// <summary>
+  ///   The NeonSingleOrArray attribute lets a list or array member be read
+  ///   from a single JSON value as well as from a JSON array: a value that is
+  ///   not an array is read as the only item of the list/array.
+  /// </summary>
+  /// <remarks>
+  ///   <para>
+  ///     Applies to dynamic and static arrays and to every type the engine
+  ///     reads as a list (TList&lt;T&gt;, TObjectList&lt;T&gt;, ...). It can
+  ///     be placed on the member or on the list type itself, where it covers
+  ///     every member declared with it.
+  ///   </para>
+  ///   <para>
+  ///     It affects deserialization only: the member is always written as a
+  ///     JSON array, which reads back the same. A JSON null is still a null,
+  ///     not a list holding a nil item.
+  ///   </para>
+  /// </remarks>
+  /// <example>
+  ///   <para>
+  ///     [NeonSingleOrArray] Items: TObjectList&lt;TItem&gt;
+  ///   </para>
+  ///   <para>
+  ///     reads both {"Items": {...}} and {"Items": [{...}, {...}]}
+  ///   </para>
+  /// </example>
+  NeonSingleOrArrayAttribute = class(NeonAttribute);
 
   /// <summary>
   ///   The NeonGetter uses another member to read the value The member can be a

@@ -253,6 +253,12 @@ type
     ///   since it means the member was simply not configured for reading
     /// </remarks>
     function CreateInterface(const AParam: TNeonDeserializerParam; out AObject: TObject): TValue;
+
+    /// <summary>
+    ///   True if the JSON value of a list/array member is not an array but
+    ///   [NeonSingleOrArray] lets it be read as the only item
+    /// </summary>
+    function IsSingleItem(const AParam: TNeonDeserializerParam): Boolean;
   private
     /// <summary>
     ///   reader for string types
@@ -742,7 +748,7 @@ begin
 
   if ACustomProcess then
   begin
-    LCustomSer := FConfig.Serializers.GetSerializer(AValue.TypeInfo);
+    LCustomSer := GetCustomSerializer(AValue.TypeInfo, ANeonObject);
     if Assigned(LCustomSer) then
     begin
       // A nil object is governed by the member's IncludeIf semantics and must
@@ -1518,13 +1524,25 @@ var
   LItemValue: TValue;
   LItemParam: TNeonDeserializerParam;
   LOldItems: TArray<TObject>;
+  LSingle: Boolean;
 begin
   if AParam.JSONValue is TJSONNull then
     Exit(TValue.Empty);
 
   Result := AData;
-  LJSONArray := AParam.JSONValue as TJSONArray;
-  LArrayLength := LJSONArray.Count;
+
+  // Under [NeonSingleOrArray] a value that is not an array is the only item
+  LSingle := IsSingleItem(AParam);
+  if LSingle then
+  begin
+    LJSONArray := nil;
+    LArrayLength := 1;
+  end
+  else
+  begin
+    LJSONArray := AParam.JSONValue as TJSONArray;
+    LArrayLength := LJSONArray.Count;
+  end;
 
   if AParam.RttiType.TypeKind = tkArray then
   begin
@@ -1532,9 +1550,9 @@ begin
 
     // A static array has a fixed size: refuse JSON that is longer instead
     // of letting SetArrayElement raise a raw range exception
-    if LJSONArray.Count > Result.GetArrayLength then
+    if LArrayLength > Result.GetArrayLength then
       raise ENeonException.CreateFmt(SNeonErrorRangeOutF2,
-        [LJSONArray.Count.ToString, AParam.RttiType.Name]);
+        [LArrayLength.ToString, AParam.RttiType.Name]);
   end
   else //tkDynArray
   begin
@@ -1557,9 +1575,12 @@ begin
 
   LItemParam.NeonObject := GetNeonObject(LItemParam.RttiType.Handle);
 
-  for LIndex := 0 to LJSONArray.Count - 1 do
+  for LIndex := 0 to LArrayLength - 1 do
   begin
-    LItemParam.JSONValue := LJSONArray.Items[LIndex];
+    if LSingle then
+      LItemParam.JSONValue := AParam.JSONValue
+    else
+      LItemParam.JSONValue := LJSONArray.Items[LIndex];
 
     // A null item has nothing to read into: the slot gets the element type's
     // default (nil for a class), instead of the empty instance the factory or
@@ -1639,7 +1660,7 @@ begin
   if ACustomProcess then
   begin
     // if there is a custom serializer
-    LCustom := FConfig.Serializers.GetSerializer(AParam.RttiType.Handle);
+    LCustom := GetCustomSerializer(AParam.RttiType.Handle, AParam.NeonObject);
     if Assigned(LCustom) then
     begin
       LValue := ManageInstance(AParam, AData);
@@ -1807,23 +1828,43 @@ var
   LIndex: Integer;
   LParam: TNeonDeserializerParam;
   LStamp: Int64;
+  LSingle: Boolean;
+  LCount: Integer;
 begin
   LStamp := TNeonLogger.ProfileBegin;
   try
   Result := False;
-  LParam.NeonObject := AParam.NeonObject;
   LList := TDynamicList.GuessType(AData.AsObject);
   if Assigned(LList) then
   begin
     Result := True;
     LParam.RttiType := LList.GetItemType;
+    // The items are read with their own type's attributes, as ReadArray and
+    // the writer do: the member's ones ([NeonDeserialize], [NeonSingleOrArray],
+    // ...) are about the list, not its items. The item factory still comes
+    // from the member, through CreateItem(AParam.NeonObject, ...)
+    LParam.NeonObject := GetNeonObject(LParam.RttiType.Handle);
     LList.Clear;
 
-    LJSONArray := AParam.JSONValue as TJSONArray;
-
-    for LIndex := 0 to LJSONArray.Count - 1 do
+    // Under [NeonSingleOrArray] a value that is not an array is the only item
+    LSingle := IsSingleItem(AParam);
+    if LSingle then
     begin
-      LParam.JSONValue := LJSONArray.Items[LIndex];
+      LJSONArray := nil;
+      LCount := 1;
+    end
+    else
+    begin
+      LJSONArray := AParam.JSONValue as TJSONArray;
+      LCount := LJSONArray.Count;
+    end;
+
+    for LIndex := 0 to LCount - 1 do
+    begin
+      if LSingle then
+        LParam.JSONValue := AParam.JSONValue
+      else
+        LParam.JSONValue := LJSONArray.Items[LIndex];
 
       // A null item has nothing to read into: the list gets the item type's
       // default (nil for a class), instead of the empty instance the factory or
@@ -1847,6 +1888,12 @@ begin
   finally
     TNeonLogger.ProfileEnd('Deserialize:Enumerable', LStamp);
   end;
+end;
+
+function TNeonDeserializerJSON.IsSingleItem(const AParam: TNeonDeserializerParam): Boolean;
+begin
+  Result := not (AParam.JSONValue is TJSONArray) and
+    Assigned(AParam.NeonObject) and AParam.NeonObject.NeonSingleOrArray;
 end;
 
 function TNeonDeserializerJSON.IsSupportedMapKeyType(AType: TRttiType; AMap: IDynamicMap): Boolean;

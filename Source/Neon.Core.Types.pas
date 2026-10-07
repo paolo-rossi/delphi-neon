@@ -96,7 +96,8 @@ resourcestring
   SNeonErrorAccessorNotReadableF2 = '%s: member [%s] cannot be read';
   SNeonErrorAccessorNotWritableF2 = '%s: member [%s] cannot be written';
   SNeonErrorAccessorMethodClassF2 = '%s: method [%s] can only be used on a member of a class';
-  SNeonErrorMemberF3 = 'Error processing member [%s] of type [%s]: %s';
+  SNeonErrorSerializerClassF2 = '%s: [%s] is not a custom serializer (a TCustomSerializer descendant)';
+  SNeonErrorMemberF3 ='Error processing member [%s] of type [%s]: %s';
   SNeonErrorSerializeTypeF2 = 'Error serializing the type [%s]: %s';
   SNeonErrorTagTargetInvalid = 'You can apply tag values only to records or objects';
   SNeonErrorTagParseF1 = 'Error decoding tag: [%s]';

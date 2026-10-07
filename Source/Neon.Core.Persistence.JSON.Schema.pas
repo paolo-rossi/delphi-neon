@@ -199,6 +199,19 @@ type
     function WriteDynArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 
     /// <summary>
+    ///   Schema of a [NeonSingleOrArray] array/list member: the reader accepts
+    ///   one item as well as an array, so the result is the "anyOf" of the
+    ///   item schema and of AArraySchema, which the result takes ownership of
+    /// </summary>
+    /// <remarks>
+    ///   "anyOf", not "oneOf": an item schema can match an array as well (a
+    ///   Variant item, a list of lists), and the reader takes such a value as
+    ///   the array, which is what "anyOf" allows without failing on the
+    ///   double match
+    /// </remarks>
+    function WriteSingleOrArray(AArraySchema: TJSONObject): TJSONObject;
+
+    /// <summary>
     ///   Writer for the set type
     /// </summary>
     /// <remarks>
@@ -888,14 +901,16 @@ var
   LNeonStream: INeonTypeInfoStream absolute LNeonTypeInfo;
   LNeonNullable: INeonTypeInfoNullable absolute LNeonTypeInfo;
   LCustomSer: TCustomSerializer;
+  LIsList: Boolean;
 begin
   Result := nil;
+  LIsList := False;
 
   // A registered custom serializer may describe the JSON it writes. The
   // runtime engine consults the same registry first, so a serializer that
   // overrides SerializeSchema wins over the structural inference below; one that
   // does not returns nil and the type-based writers apply, exactly as before
-  LCustomSer := FConfig.Serializers.GetSerializer(AType.Handle);
+  LCustomSer := GetCustomSerializer(AType.Handle, ANeonObject);
   if Assigned(LCustomSer) then
     Result := LCustomSer.SerializeSchema(AType, ANeonObject);
 
@@ -955,7 +970,10 @@ begin
       else if IsEnumerableMap(AType, LNeonMap) then
         Result := WriteEnumerableMap(AType, ANeonObject, LNeonMap)
       else if IsEnumerable(AType, LNeonList) then
-        Result := WriteEnumerable(AType, ANeonObject, LNeonList)
+      begin
+        LIsList := True;
+        Result := WriteEnumerable(AType, ANeonObject, LNeonList);
+      end
       else if IsStreamable(AType, LNeonStream) then
         Result := WriteStreamable(AType, ANeonObject, LNeonStream)
       else
@@ -964,11 +982,13 @@ begin
 
     tkArray:
     begin
+      LIsList := True;
       Result := WriteArray(AType, ANeonObject);
     end;
 
     tkDynArray:
     begin
+      LIsList := True;
       Result := WriteDynArray(AType, ANeonObject);
     end;
 
@@ -998,6 +1018,13 @@ begin
     end;
 
   end;
+
+  // [NeonSingleOrArray] is honoured by the engine's own array and list
+  // readers only: a type with a custom serializer is read by the serializer,
+  // which never sees the attribute. The schema tags go on the "anyOf" itself,
+  // where the array constraints (minItems, ...) still apply to arrays only
+  if LIsList and not Assigned(LCustomSer) and Assigned(Result) and ANeonObject.NeonSingleOrArray then
+    Result := WriteSingleOrArray(Result);
 
   SetSchemaProperties(Result, ANeonObject);
 end;
@@ -1055,6 +1082,23 @@ begin
   Result := TJSONObject.Create
     .AddPair('type', 'array')
     .AddPair('items', LItems)
+end;
+
+function TNeonSchemaGenerator.WriteSingleOrArray(AArraySchema: TJSONObject): TJSONObject;
+var
+  LItems: TJSONValue;
+  LAnyOf: TJSONArray;
+begin
+  LItems := AArraySchema.GetValue('items');
+  // Every array writer adds "items"; without it there is no single form
+  // to describe, and the array schema stays as it is
+  if not Assigned(LItems) then
+    Exit(AArraySchema);
+
+  LAnyOf := TJSONArray.Create;
+  LAnyOf.AddElement(LItems.Clone as TJSONValue);
+  LAnyOf.AddElement(AArraySchema);
+  Result := TJSONObject.Create.AddPair('anyOf', LAnyOf);
 end;
 
 function TNeonSchemaGenerator.WriteEnum(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;

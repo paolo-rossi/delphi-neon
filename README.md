@@ -405,6 +405,26 @@ Two more things `Deserialize` should expect: `AValue` can be a `TJSONNull` — a
 > [!TIP]
 > Turning `AutoCreate` on is not a substitute for `NeedsInstance`. It builds the instance through the first parameterless constructor RTTI finds, which for a class declaring only parameterized ones is the inherited `TObject.Create` — an allocated but *uninitialized* object, which the serializer then has to free before returning its own. `NeedsInstance = False` skips that round trip, and keeps the decision with the serializer instead of with a global setting.
 
+##### A serializer for a single member
+
+`[NeonSerialize(TMySerializer)]` and `[NeonDeserialize(TMySerializer)]` name the serializer for one member instead of registering it for every value of a type. Each attribute covers its own direction: `NeonSerialize` writing (and the JSON Schema, which describes what is written), `NeonDeserialize` reading. Put both on the member to have the serializer handle the round trip:
+
+```delphi
+type
+  TInvoice = class
+  public
+    [NeonSerialize(TCentsSerializer)]
+    [NeonDeserialize(TCentsSerializer)]
+    property Total: Currency read FTotal write FTotal;
+  end;
+```
+
+- The class does not need to be registered in the configuration, and wins over a serializer registered there for the same type. Its `CanHandle` is not consulted and its `ChangeConfig` is not run
+- On a type, the attributes cover every value of that type: members, list and array items
+- On a list or array member, they apply to the member itself, not to its items
+- A class that is not a `TCustomSerializer` descendant raises an `ENeonException`
+- The overload taking a name (`[NeonSerialize('name')]`) is not supported yet
+
 #### Unwrapped members
 - `[NeonUnwrapped]` flattens a class/record member: its own members are written directly into the parent object instead of being nested under the member's name
 
@@ -423,6 +443,25 @@ Two more things `Deserialize` should expect: `AValue` can be a `TJSONNull` — a
 > ```
 >
 > Give the two members distinct JSON names, using `[NeonProperty]` if the Delphi names have to stay as they are.
+
+#### Single value or array
+- `[NeonSingleOrArray]` lets a list or array member be read from a single JSON value as well as from a JSON array: a value that is not an array becomes the only item. It works on dynamic and static arrays and on every type Neon reads as a list (`TList<T>`, `TObjectList<T>`, ...), and it can be placed on the member or on the list type itself
+
+```delphi
+type
+  TOrder = class
+  private
+    FLines: TObjectList<TOrderLine>;
+  public
+    // Reads both {"Lines": {...}} and {"Lines": [{...}, {...}]}
+    [NeonSingleOrArray]
+    property Lines: TObjectList<TOrderLine> read FLines write FLines;
+  end;
+```
+
+Only reading is affected: the member is always written as a JSON array, which reads back the same, and a JSON `null` is still a null, not a list with one nil item.
+
+The generated JSON Schema describes the member as `{"anyOf": [<item schema>, <array schema>]}`, so it validates both forms. A type with a registered custom serializer is read by the serializer, which ignores the attribute, and its schema is left as it is.
 
 ### JSON Schema
 

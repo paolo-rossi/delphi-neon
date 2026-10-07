@@ -45,6 +45,8 @@ uses
   Neon.Tests.Attributes in 'Source\Neon.Tests.Attributes.pas',
   Neon.Tests.Attributes.Factory in 'Source\Neon.Tests.Attributes.Factory.pas',
   Neon.Tests.Attributes.GetterSetter in 'Source\Neon.Tests.Attributes.GetterSetter.pas',
+  Neon.Tests.Attributes.SingleOrArray in 'Source\Neon.Tests.Attributes.SingleOrArray.pas',
+  Neon.Tests.Attributes.Serialize in 'Source\Neon.Tests.Attributes.Serialize.pas',
   Neon.Tests.CustomSerializers in 'Source\Neon.Tests.CustomSerializers.pas',
   Neon.Tests.Config.IgnoreMembers in 'Source\Neon.Tests.Config.IgnoreMembers.pas',
   Neon.Tests.Config.IncludeIf in 'Source\Neon.Tests.Config.IncludeIf.pas',

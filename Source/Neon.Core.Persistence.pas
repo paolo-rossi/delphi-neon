@@ -211,10 +211,12 @@ type
   private type
     SerializerCacheRegistry = class(TObjectDictionary<PTypeInfo, TCustomSerializer>);
     SerializerClassRegistry = class(TList<TSerializerInfo>);
+    SerializerInstanceRegistry = class(TObjectDictionary<TClass, TCustomSerializer>);
   private
     FRegistryClass: SerializerClassRegistry;
     FRegistryCache: SerializerCacheRegistry;
     FRegistryCacheLock: TCriticalSection;
+    FInstanceCache: SerializerInstanceRegistry;
     function GetCount: Integer;
 
     function InternalGetSerializer(ATypeInfo: PTypeInfo): TCustomSerializer;
@@ -233,6 +235,14 @@ type
     function GetSerializer(AValue: TValue): TCustomSerializer; overload;
     function GetSerializer(ATargetClass: TClass): TCustomSerializer; overload;
     function GetSerializer(ATargetInfo: PTypeInfo): TCustomSerializer; overload;
+
+    /// <summary>
+    ///   The instance of a serializer named explicitly ([NeonSerialize]/
+    ///   [NeonDeserialize]) rather than resolved by type: the class need not be
+    ///   registered, and one instance per class is created and kept by the
+    ///   registry
+    /// </summary>
+    function GetSerializerInstance(ASerializerClass: TCustomSerializerClass): TCustomSerializer;
   public
     property Count: Integer read GetCount;
   end;
@@ -650,9 +660,10 @@ type
     FNeonProperty: string;
     FNeonEnumNames: TArray<string>;
     FNeonSerializerName: string;
-    FNeonSerializerClass: TClass;
+    FNeonSerializerClass: TCustomSerializerClass;
     FNeonRawValue: Boolean;
     FNeonUnwrapped: Boolean;
+    FNeonSingleOrArray: Boolean;
   protected
     procedure InternalParseAttributes(const AAttr: TArray<TCustomAttribute>); virtual;
     procedure ProcessAttribute(AAttribute: TCustomAttribute); virtual;
@@ -671,12 +682,13 @@ type
     property NeonRawValue: Boolean read FNeonRawValue write FNeonRawValue;
     property NeonInclude: TIncludeValue read FNeonInclude write FNeonInclude;
     property NeonSerializerName: string read FNeonSerializerName write FNeonSerializerName;
-    property NeonSerializerClass: TClass read FNeonSerializerClass write FNeonSerializerClass;
+    property NeonSerializerClass: TCustomSerializerClass read FNeonSerializerClass write FNeonSerializerClass;
     property NeonProperty: string read FNeonProperty write FNeonProperty;
     property NeonEnumNames: TArray<string> read FNeonEnumNames write FNeonEnumNames;
     property NeonMembers: TNeonMembersSet read FNeonMembers write FNeonMembers;
     property NeonVisibility: TNeonVisibility read FNeonVisibility write FNeonVisibility;
     property NeonUnwrapped: Boolean read FNeonUnwrapped write FNeonUnwrapped;
+    property NeonSingleOrArray: Boolean read FNeonSingleOrArray write FNeonSingleOrArray;
     property NeonAutoCreate: Boolean read FNeonAutoCreate write FNeonAutoCreate;
     property NeonFactoryClass: TCustomFactoryClass read FNeonFactoryClass write FNeonFactoryClass;
     property NeonItemFactoryClass: TCustomFactoryClass read FNeonItemFactoryClass write FNeonItemFactoryClass;
@@ -909,6 +921,18 @@ type
     function GetNeonObject(ATypeInfo: PTypeInfo): TNeonRttiObject;
 
     /// <summary>
+    ///   The custom serializer for a value: the one ANeonObject names through
+    ///   [NeonSerialize]/[NeonDeserialize] if any, otherwise the one the
+    ///   configuration registers for the type, otherwise nil
+    /// </summary>
+    /// <remarks>
+    ///   A serializer named by the attribute is used as it is: its CanHandle is
+    ///   not consulted, and its ChangeConfig is not run, since it is not
+    ///   registered in the configuration
+    /// </remarks>
+    function GetCustomSerializer(ATypeInfo: PTypeInfo; ANeonObject: TNeonRttiObject): TCustomSerializer;
+
+    /// <summary>
     ///   Which dynamic shape AInstance's class has, probed once per class and
     ///   remembered afterwards
     /// </summary>
@@ -1127,6 +1151,14 @@ begin
     Exit(False);
 
   Result := NativeInt(AValue.GetReferenceToRawData^) = NativeInt(FOriginalInstance.GetReferenceToRawData^);
+end;
+
+function TNeonBase.GetCustomSerializer(ATypeInfo: PTypeInfo; ANeonObject: TNeonRttiObject): TCustomSerializer;
+begin
+  if Assigned(ANeonObject) and Assigned(ANeonObject.NeonSerializerClass) then
+    Result := FConfig.Serializers.GetSerializerInstance(ANeonObject.NeonSerializerClass)
+  else
+    Result := FConfig.Serializers.GetSerializer(ATypeInfo);
 end;
 
 function TNeonBase.GetNeonObject(ATypeInfo: PTypeInfo): TNeonRttiObject;
@@ -2219,8 +2251,21 @@ begin
       FNeonInclude := (LAttribute as NeonIncludeAttribute).IncludeValue
     else if LAttribute is NeonSerializeAttribute then
     begin
-      FNeonSerializerName := (LAttribute as NeonSerializeAttribute).Name;
-      FNeonSerializerClass := (LAttribute as NeonSerializeAttribute).Clazz;
+      // NeonDeserialize descends from NeonSerialize: each one names the
+      // serializer for its own direction only, and this object serves one
+      // operation, so the other direction's attribute is not stored at all
+      if (LAttribute is NeonDeserializeAttribute) = (FOperation = TNeonOperation.Deserialize) then
+      begin
+        FNeonSerializerName := (LAttribute as NeonSerializeAttribute).Name;
+        LClass := (LAttribute as NeonSerializeAttribute).Clazz;
+        if Assigned(LClass) then
+        begin
+          if not LClass.InheritsFrom(TCustomSerializer) then
+            raise ENeonException.CreateFmt(SNeonErrorSerializerClassF2,
+              [LAttribute.ClassName, LClass.ClassName]);
+          FNeonSerializerClass := TCustomSerializerClass(LClass);
+        end;
+      end;
     end
     else if LAttribute is NeonFactoryAttribute then
     begin
@@ -2249,7 +2294,9 @@ begin
     else if LAttribute is NeonUnwrappedAttribute then
       FNeonUnwrapped := True  //Only applicable to complex types (classes, records, interfaces)
     else if LAttribute is NeonAutoCreateAttribute then
-      FNeonAutoCreate := True;  //Only applicable to class types
+      FNeonAutoCreate := True  //Only applicable to class types
+    else if LAttribute is NeonSingleOrArrayAttribute then
+      FNeonSingleOrArray := True;  //Only applicable to arrays and lists
 
     // Further attribute processing
     ProcessAttribute(LAttribute);
@@ -2306,6 +2353,7 @@ begin
   FRegistryCacheLock.Enter;
   try
     FRegistryCache.Clear;
+    FInstanceCache.Clear;
   finally
     FRegistryCacheLock.Leave
   end;
@@ -2325,6 +2373,7 @@ constructor TNeonSerializerRegistry.Create;
 begin
   FRegistryClass := SerializerClassRegistry.Create();
   FRegistryCache := SerializerCacheRegistry.Create([doOwnsValues]);
+  FInstanceCache := SerializerInstanceRegistry.Create([doOwnsValues]);
   FRegistryCacheLock := TCriticalSection.Create;
 end;
 
@@ -2332,6 +2381,7 @@ destructor TNeonSerializerRegistry.Destroy;
 begin
   FRegistryClass.Free;
   FRegistryCache.Free;
+  FInstanceCache.Free;
   FRegistryCacheLock.Free;
   inherited;
 end;
@@ -2354,6 +2404,22 @@ end;
 function TNeonSerializerRegistry.GetSerializer(ATargetInfo: PTypeInfo): TCustomSerializer;
 begin
   Result := InternalGetSerializer(ATargetInfo);
+end;
+
+function TNeonSerializerRegistry.GetSerializerInstance(ASerializerClass: TCustomSerializerClass): TCustomSerializer;
+begin
+  // Not part of the type cache: ClearCache drops resolutions by type, which
+  // registering a class can change, while the class named here never changes
+  FRegistryCacheLock.Enter;
+  try
+    if not FInstanceCache.TryGetValue(ASerializerClass, Result) then
+    begin
+      Result := ASerializerClass.Create;
+      FInstanceCache.Add(ASerializerClass, Result);
+    end;
+  finally
+    FRegistryCacheLock.Leave
+  end;
 end;
 
 function TNeonSerializerRegistry.GetSerializer(ATargetClass: TClass): TCustomSerializer;
