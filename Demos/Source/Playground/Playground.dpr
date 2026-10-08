@@ -18,7 +18,6 @@ uses
   System.JSON,
 
   Neon.Core.Types,
-  Neon.Core.Types.Schema,
   Neon.Core.Persistence,
   Neon.Core.Persistence.JSON,
   Neon.Core.Serializers.RTL,
@@ -56,7 +55,6 @@ begin
 
   LConfig := TNeonConfiguration
     .Default
-    .RegisterSerializer(TAnyOfSerializer2)
     .RegisterSerializer(TTValueSerializer);
 
 
@@ -79,7 +77,7 @@ begin
 
     LAddress := TNeon.JSONToValue<TAddress>(ADDRESS_JSON, LConfig);
     Writeln('JSON -> TAddress');
-    Writeln(Format('  Id: %s, City: %s, ZipCode: %s', [LAddress.Id.First.ToString, LAddress.City, LAddress.ZipCode]));
+    Writeln(Format('  Id: %s, City: %s, ZipCode: %s', [LAddress.Id.ToString, LAddress.City, LAddress.ZipCode]));
     Writeln;
 
     // --------------------------------------------------------------- class --
@@ -110,7 +108,7 @@ begin
     LCustomer := TNeon.JSONToObject<TCustomer>(CUSTOMER_JSON, LConfig);
     try
       Writeln('JSON -> TCustomer');
-      Writeln(Format('  ID: %d, Name: %s, Level: %s', [LCustomer.ID.Second, LCustomer.Name,
+      Writeln(Format('  ID: %d, Name: %s, Level: %s', [LCustomer.ID, LCustomer.Name,
         GetEnumName(TypeInfo(TCustomerLevel), Ord(LCustomer.Level))]));
       Writeln(Format('  Address.City: %s, Tags: %d, PasswordHash: "%s"',
         [LCustomer.Address.City, Length(LCustomer.Tags), LCustomer.PasswordHash]));

@@ -44,8 +44,6 @@ requires
   dbrtl;
 
 contains
-  Neon.Core.Types.AnyOf in '..\..\Source\Neon.Core.Types.AnyOf.pas',
-  Neon.Core.Types.Schema in '..\..\Source\Neon.Core.Types.Schema.pas',
   Neon.Core.Attributes in '..\..\Source\Neon.Core.Attributes.pas',
   Neon.Core.DynamicTypes in '..\..\Source\Neon.Core.DynamicTypes.pas',
   Neon.Core.Generator in '..\..\Source\Neon.Core.Generator.pas',

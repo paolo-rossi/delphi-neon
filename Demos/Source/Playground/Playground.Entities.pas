@@ -22,7 +22,6 @@ uses
   System.SysUtils, System.Classes,
 
   Neon.Core.Types,
-  Neon.Core.Types.Schema,
   Neon.Core.Attributes;
 
 type
@@ -31,7 +30,7 @@ type
   /// </summary>
   TCustomerLevel = (Bronze, Silver, Gold);
 
-  TTestId = TAnyOf<Int64, string>;
+  TTestId = Int64;
 
   /// <summary>
   ///   The record entity: with the default configuration Neon reads the
