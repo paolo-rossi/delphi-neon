@@ -142,6 +142,7 @@
         <DCCReference Include="Source\Neon.Tests.StructTags.pas"/>
         <DCCReference Include="Source\Neon.Tests.JsonSchema.pas"/>
         <DCCReference Include="Source\Neon.Tests.JsonSchemaValidator.pas"/>
+        <DCCReference Include="Source\Neon.Tests.JsonSchema.Methods.pas"/>
         <DCCReference Include="Source\Neon.Tests.Generator.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

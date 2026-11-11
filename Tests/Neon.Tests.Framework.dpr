@@ -64,6 +64,7 @@ uses
   Neon.Tests.StructTags in 'Source\Neon.Tests.StructTags.pas',
   Neon.Tests.JsonSchema in 'Source\Neon.Tests.JsonSchema.pas',
   Neon.Tests.JsonSchemaValidator in 'Source\Neon.Tests.JsonSchemaValidator.pas',
+  Neon.Tests.JsonSchema.Methods in 'Source\Neon.Tests.JsonSchema.Methods.pas',
   Neon.Tests.Generator in 'Source\Neon.Tests.Generator.pas';
 
 var

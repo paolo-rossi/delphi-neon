@@ -103,6 +103,29 @@ type
     ///   The "$schema" meta-schema URI for the given draft
     /// </summary>
     class function SchemaURIFor(AVersion: TNeonJSchemaVersion): string; static;
+
+    /// <summary>
+    ///   Completes a generated document: attaches the definitions collected
+    ///   while generating it and, unless FVersion is None, the "$schema" URI.
+    ///   Shared by every public entry point, so that a document built from
+    ///   several types (a method's parameters) still gets a single root-level
+    ///   definitions container
+    /// </summary>
+    procedure FinishDocument(ARoot: TJSONObject);
+
+    /// <summary>
+    ///   Builds the TNeonRttiObject for a method parameter or a method result:
+    ///   the attributes of ARttiObject (the parameter or the method) plus those
+    ///   of its type, parsed. The caller owns the result
+    /// </summary>
+    function CreateNeonObject(ARttiObject: TRttiObject; AType: TRttiType): TNeonRttiObject;
+
+    /// <summary>
+    ///   The property name a method parameter is published under: the "name"
+    ///   tag of its [JsonSchema] attribute, else its [NeonProperty], else the
+    ///   name it is declared with
+    /// </summary>
+    function ParamName(AParam: TRttiParameter; ANeonObject: TNeonRttiObject): string;
   protected
     /// <summary>
     ///   Returns the schema's own scalar JSON type ('string'/'number'/'integer'/
@@ -329,6 +352,32 @@ type
     /// </summary>
     class function ClassToJSONSchema(AClass: TClass; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
     class function ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+
+    /// <summary>
+    ///   Describes the parameters of a method as a JSON object schema: one
+    ///   property per parameter, with the parameter's [JsonSchema] tags
+    ///   applied to its schema. The property is named by the "name" tag
+    ///   (e.g. [JsonSchema('name=customer_id,required')]), else by
+    ///   [NeonProperty], else as the parameter is declared. A parameter
+    ///   tagged "required" is listed in the object's "required" array.
+    ///   Pure "out" parameters carry no input and are left out, as are those
+    ///   marked [NeonIgnore]. Types referenced recursively are collected in a
+    ///   single definitions container at the root.
+    ///   If AVersion is None the function produces a JSON-Schema Fragment.
+    /// </summary>
+    class function MethodParamsToSchema(AMethod: TRttiMethod; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+    class function MethodParamsToSchema(AMethod: TRttiMethod; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+
+    /// <summary>
+    ///   Describes the value a method returns. Delphi has no syntax to put an
+    ///   attribute on a result, so the [JsonSchema] tags (and the other Neon
+    ///   attributes, e.g. [NeonSerialize]) are read from the method itself.
+    ///   Returns nil for a procedure, or for a result type that has no JSON
+    ///   form (a method pointer, say).
+    ///   If AVersion is None the function produces a JSON-Schema Fragment.
+    /// </summary>
+    class function MethodResultToSchema(AMethod: TRttiMethod; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+    class function MethodResultToSchema(AMethod: TRttiMethod; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
   end;
 
   /// <summary>
@@ -684,6 +733,213 @@ begin
   Result := Assigned(AStream);
 end;
 
+class function TNeonSchemaGenerator.MethodParamsToSchema(AMethod: TRttiMethod;
+  AVersion: TNeonJSchemaVersion): TJSONObject;
+begin
+  Result := MethodParamsToSchema(AMethod, TNeonConfiguration.Default, AVersion);
+end;
+
+class function TNeonSchemaGenerator.MethodParamsToSchema(AMethod: TRttiMethod;
+  AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
+var
+  LGenerator: TNeonSchemaGenerator;
+  LProps, LParamSchema: TJSONObject;
+  LRequired: TJSONArray;
+  LParam: TRttiParameter;
+  LNeonObject: TNeonRttiObject;
+  LName: string;
+begin
+  LGenerator := TNeonSchemaGenerator.Create(AConfig);
+  try
+    // One generator for all the parameters, so that a type referenced by more
+    // than one of them gets a single definition
+    LGenerator.FVersion := AVersion;
+
+    Result := TJSONObject.Create;
+    try
+      LProps := TJSONObject.Create;
+      Result
+        .AddPair('type', 'object')
+        .AddPair('properties', LProps);
+
+      LRequired := TJSONArray.Create;
+      try
+        for LParam in AMethod.GetParameters do
+        begin
+          // A pure out parameter is written by the method, never supplied by
+          // the caller, so it is not part of the input
+          if pfOut in LParam.Flags then
+            Continue;
+
+          LNeonObject := LGenerator.CreateNeonObject(LParam, LParam.ParamType);
+          try
+            if LNeonObject.NeonIgnore then
+              Continue;
+
+            LName := LGenerator.ParamName(LParam, LNeonObject);
+
+            // An untyped parameter (const/var X) has no type to describe
+            LParamSchema := nil;
+            if Assigned(LParam.ParamType) then
+              LParamSchema := LGenerator.WriteDataMember(LParam.ParamType, LNeonObject);
+
+            // Unlike a class member, a parameter cannot be left out just because
+            // its type has no schema (a method pointer, say): the caller still has
+            // to pass it, so it is described as unconstrained, keeping the tags
+            if not Assigned(LParamSchema) then
+            begin
+              LParamSchema := TJSONObject.Create;
+              LGenerator.SetSchemaProperties(LParamSchema, LNeonObject);
+            end;
+
+            LProps.AddPair(LName, LParamSchema);
+
+            if LGenerator.IsMemberRequired(LNeonObject) then
+              LRequired.Add(LName);
+          finally
+            LNeonObject.Free;
+          end;
+        end;
+
+        if LRequired.Count > 0 then
+        begin
+          Result.AddPair('required', LRequired);
+          LRequired := nil; // ownership passed to the document
+        end;
+      finally
+        LRequired.Free;
+      end;
+
+      LGenerator.FinishDocument(Result);
+    except
+      Result.Free;
+      raise;
+    end;
+  finally
+    LGenerator.Free;
+  end;
+end;
+
+class function TNeonSchemaGenerator.MethodResultToSchema(AMethod: TRttiMethod;
+  AVersion: TNeonJSchemaVersion): TJSONObject;
+begin
+  Result := MethodResultToSchema(AMethod, TNeonConfiguration.Default, AVersion);
+end;
+
+class function TNeonSchemaGenerator.MethodResultToSchema(AMethod: TRttiMethod;
+  AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
+var
+  LGenerator: TNeonSchemaGenerator;
+  LNeonObject: TNeonRttiObject;
+begin
+  Result := nil;
+
+  // A procedure (or a constructor/destructor) returns nothing to describe
+  if not Assigned(AMethod.ReturnType) then
+    Exit;
+
+  LGenerator := TNeonSchemaGenerator.Create(AConfig);
+  try
+    LGenerator.FVersion := AVersion;
+
+    // The method's own attributes stand in for the result's, which Delphi
+    // cannot express
+    LNeonObject := LGenerator.CreateNeonObject(AMethod, AMethod.ReturnType);
+    try
+      Result := LGenerator.WriteDataMember(AMethod.ReturnType, LNeonObject);
+    finally
+      LNeonObject.Free;
+    end;
+
+    if Assigned(Result) then
+    try
+      LGenerator.FinishDocument(Result);
+    except
+      Result.Free;
+      raise;
+    end;
+  finally
+    LGenerator.Free;
+  end;
+end;
+
+function TNeonSchemaGenerator.CreateNeonObject(ARttiObject: TRttiObject; AType: TRttiType): TNeonRttiObject;
+begin
+  Result := TNeonRttiObject.Create(ARttiObject, FOperation);
+  try
+    // Same layering as a class member: the type's attributes first, then the
+    // ones on the parameter/method, which win where both say something
+    if Assigned(AType) then
+      Result.TypeAttributes := AType.GetAttributes;
+    Result.ParseAttributes;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
+function TNeonSchemaGenerator.ParamName(AParam: TRttiParameter; ANeonObject: TNeonRttiObject): string;
+var
+  LSchema: JsonSchemaAttribute;
+begin
+  Result := '';
+
+  // A parameter is described by its schema alone (no serializer ever writes
+  // it), so the "name" tag lets a single [JsonSchema] specify it completely.
+  // It is honoured for parameters only: on a field or property it would rename
+  // the schema's property but not the JSON the serializer writes
+  LSchema := TRttiUtils.FindAttribute<JsonSchemaAttribute>(ANeonObject.Attributes);
+  if Assigned(LSchema) then
+  begin
+    LSchema.ParseTags;
+    if LSchema.Tags.Exists('name') then
+      Result := LSchema.Tags.GetValueAs<string>('name');
+  end;
+
+  if Result.IsEmpty then
+    Result := ANeonObject.NeonProperty;
+
+  // Otherwise the declared name: the member case of the configuration is meant
+  // for fields and properties, not parameters
+  if Result.IsEmpty then
+    Result := AParam.Name;
+end;
+
+procedure TNeonSchemaGenerator.FinishDocument(ARoot: TJSONObject);
+var
+  LRefPair: TJSONPair;
+  LAllOf: TJSONArray;
+begin
+  // Definitions are collected as generation proceeds and belong at the root
+  // of the document, whatever depth the reference to them was made at
+  if FDefs.Count > 0 then
+  begin
+    ARoot.AddPair(DefsKeyword, FDefs);
+    FDefs := nil; // ownership passed to the document
+  end;
+
+  if (FVersion <> TNeonJSchemaVersion.None) then
+    ARoot.AddPair('$schema', SchemaURIFor(FVersion));
+
+  // Draft-07 nuance: "$ref" replaces its sibling keywords in the same
+  // schema object, so a recursive root that is nothing but
+  // {"$ref": ..., "definitions": {...}} would be mis-read by a strict
+  // Draft-07 validator (the definitions sibling is ignored). Wrapping the
+  // reference in "allOf" keeps the definitions visible:
+  // {"definitions": ..., "allOf": [{"$ref": ...}]}. (2020-12 applies
+  // siblings of "$ref", so the restructure is Draft-07-only.)
+  if (FVersion = TNeonJSchemaVersion.Draft07)
+    and Assigned(ARoot.GetValue('$ref'))
+    and Assigned(ARoot.GetValue(DefsKeyword)) then
+  begin
+    LRefPair := ARoot.RemovePair('$ref');
+    LAllOf := TJSONArray.Create;
+    LAllOf.AddElement(TJSONObject.Create.AddPair('$ref', LRefPair.JsonValue.Clone as TJSONValue));
+    ARoot.AddPair('allOf', LAllOf);
+    LRefPair.Free;
+  end;
+end;
+
 procedure TNeonSchemaGenerator.SetSchemaProperties(AJSON: TJSONObject; ANeonObject: TNeonRttiObject);
 var
   LSchema: JsonSchemaAttribute;
@@ -807,8 +1063,6 @@ end;
 class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
 var
   LGenerator: TNeonSchemaGenerator;
-  LRefPair: TJSONPair;
-  LAllOf: TJSONArray;
 begin
   LGenerator := TNeonSchemaGenerator.Create(AConfig);
   try
@@ -818,36 +1072,7 @@ begin
 
     Result := LGenerator.WriteDataMember(AType);
     if Assigned(Result) then
-    begin
-      // Definitions are collected as generation proceeds and belong at the root
-      // of the document, whatever depth the reference to them was made at
-      if LGenerator.FDefs.Count > 0 then
-      begin
-        Result.AddPair(LGenerator.DefsKeyword, LGenerator.FDefs);
-        LGenerator.FDefs := nil; // ownership passed to the document
-      end;
-
-      if (AVersion <> TNeonJSchemaVersion.None) then
-        Result.AddPair('$schema', SchemaURIFor(AVersion));
-
-      // Draft-07 nuance: "$ref" replaces its sibling keywords in the same
-      // schema object, so a recursive root that is nothing but
-      // {"$ref": ..., "definitions": {...}} would be mis-read by a strict
-      // Draft-07 validator (the definitions sibling is ignored). Wrapping the
-      // reference in "allOf" keeps the definitions visible:
-      // {"definitions": ..., "allOf": [{"$ref": ...}]}. (2020-12 applies
-      // siblings of "$ref", so the restructure is Draft-07-only.)
-      if (AVersion = TNeonJSchemaVersion.Draft07)
-        and Assigned(Result.GetValue('$ref'))
-        and Assigned(Result.GetValue(LGenerator.DefsKeyword)) then
-      begin
-        LRefPair := Result.RemovePair('$ref');
-        LAllOf := TJSONArray.Create;
-        LAllOf.AddElement(TJSONObject.Create.AddPair('$ref', LRefPair.JsonValue.Clone as TJSONValue));
-        Result.AddPair('allOf', LAllOf);
-        LRefPair.Free;
-      end;
-    end;
+      LGenerator.FinishDocument(Result);
   finally
     LGenerator.Free;
   end;
