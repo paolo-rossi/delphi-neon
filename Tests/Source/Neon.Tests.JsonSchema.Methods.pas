@@ -108,6 +108,15 @@ type
     procedure TestNoParamsGivesEmptyProperties;
 
     [Test]
+    procedure TestParamsAreOpenByDefault;
+
+    [Test]
+    procedure TestClosedSchemaClosesParams;
+
+    [Test]
+    procedure TestClosedSchemaRefusesExtraArgument;
+
+    [Test]
     procedure TestNeonPropertyRenamesParam;
 
     [Test]
@@ -403,6 +412,31 @@ begin
   Assert.AreEqual('object', FSchema.GetValue('type').Value);
   Assert.AreEqual(0, Properties.Count);
   Assert.IsNull(FSchema.GetValue('required'));
+end;
+
+procedure TTestJsonSchemaMethodParams.TestParamsAreOpenByDefault;
+begin
+  // Open, as a class is: the deserializer ignores what it does not know
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'));
+  Assert.IsNull(FSchema.GetValue('additionalProperties'));
+end;
+
+procedure TTestJsonSchemaMethodParams.TestClosedSchemaClosesParams;
+begin
+  // The parameters object is no Delphi type, so it does not go through the
+  // writer that applies the option to classes and records
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'),
+    TNeonConfiguration.Default.SetClosedSchema(True));
+  Assert.IsFalse((FSchema.GetValue('additionalProperties') as TJSONBool).AsBoolean,
+    'SetClosedSchema(True) must close the parameters object too');
+end;
+
+procedure TTestJsonSchemaMethodParams.TestClosedSchemaRefusesExtraArgument;
+begin
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'),
+    TNeonConfiguration.Default.SetClosedSchema(True));
+  Assert.IsTrue(Validates('{"A":1,"B":2.5}'));
+  Assert.IsFalse(Validates('{"A":1,"B":2.5,"C":3}'));
 end;
 
 procedure TTestJsonSchemaMethodParams.TestNeonPropertyRenamesParam;

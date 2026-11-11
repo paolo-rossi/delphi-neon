@@ -401,7 +401,8 @@ type
     ///   Pure "out" parameters carry no input and are left out, as are those
     ///   marked [NeonIgnore]. Types referenced recursively are collected in a
     ///   single definitions container at the root. Two parameters described
-    ///   under the same name raise ENeonException.
+    ///   under the same name raise ENeonException. With SetClosedSchema(True)
+    ///   the object carries "additionalProperties": false, as a class does.
     ///   If AVersion is None the function produces a JSON-Schema Fragment.
     /// </summary>
     class function MethodParamsToSchema(AMethod: TRttiMethod; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
@@ -903,6 +904,13 @@ begin
       finally
         LRequired.Free;
       end;
+
+      // The parameters object is not a Delphi type, so WriteObjectOrRecord
+      // never sees it: [SetClosedSchema(True)] is applied here the same way.
+      // A parameter cannot be [NeonUnwrapped], so no map value schema can
+      // claim "additionalProperties" first
+      if LGenerator.FConfig.ClosedSchema then
+        Result.AddPair('additionalProperties', TJSONBool.Create(False));
 
       LGenerator.FinishDocument(Result);
     except
