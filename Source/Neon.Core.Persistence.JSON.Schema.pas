@@ -43,6 +43,44 @@ type
   end;
 
   /// <summary>
+  ///   How MethodParamsToSchema describes one method parameter. The generator
+  ///   fills it with what it would do by itself and hands it to the caller's
+  ///   resolver, which may change any of it
+  /// </summary>
+  TNeonParamSchemaInfo = record
+    /// <summary>
+    ///   The property the parameter is described under. Preset to the "name"
+    ///   tag of its [JsonSchema], else its [NeonProperty], else the name it is
+    ///   declared with
+    /// </summary>
+    Name: string;
+
+    /// <summary>
+    ///   When not empty, replaces the "description" the [JsonSchema] tags
+    ///   wrote (if any). Preset to empty, which leaves the tags alone
+    /// </summary>
+    Description: string;
+
+    /// <summary>
+    ///   Whether the name is listed in the object's "required" array. Preset
+    ///   from the "required" tag of its [JsonSchema]
+    /// </summary>
+    Required: Boolean;
+
+    /// <summary>
+    ///   Leaves the parameter out of the schema. Preset for a pure "out"
+    ///   parameter and for one marked [NeonIgnore]
+    /// </summary>
+    Skip: Boolean;
+  end;
+
+  /// <summary>
+  ///   Called by MethodParamsToSchema once per parameter, before its schema is
+  ///   written. An exception raised here aborts the generation
+  /// </summary>
+  TNeonParamSchemaResolver = reference to procedure(AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo);
+
+  /// <summary>
   ///   JSON Schema generator
   ///   JSON Schema version supported: Draft 2020-12
   /// </summary>
@@ -362,11 +400,24 @@ type
     ///   tagged "required" is listed in the object's "required" array.
     ///   Pure "out" parameters carry no input and are left out, as are those
     ///   marked [NeonIgnore]. Types referenced recursively are collected in a
-    ///   single definitions container at the root.
+    ///   single definitions container at the root. Two parameters described
+    ///   under the same name raise ENeonException.
     ///   If AVersion is None the function produces a JSON-Schema Fragment.
     /// </summary>
     class function MethodParamsToSchema(AMethod: TRttiMethod; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
     class function MethodParamsToSchema(AMethod: TRttiMethod; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+
+    /// <summary>
+    ///   As MethodParamsToSchema, with AResolver deciding how each parameter is
+    ///   described: its name, description, whether it is required and whether
+    ///   it is described at all. For a caller that keeps that information
+    ///   somewhere other than Neon's attributes (a protocol's own parameter
+    ///   attribute, say), and still wants the parameter's [JsonSchema] tags and
+    ///   one document-wide definitions container. A nil resolver is the same
+    ///   as the overload without one.
+    /// </summary>
+    class function MethodParamsToSchema(AMethod: TRttiMethod; AConfig: INeonConfiguration;
+      const AResolver: TNeonParamSchemaResolver; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
 
     /// <summary>
     ///   Describes the value a method returns. Delphi has no syntax to put an
@@ -378,6 +429,16 @@ type
     /// </summary>
     class function MethodResultToSchema(AMethod: TRttiMethod; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
     class function MethodResultToSchema(AMethod: TRttiMethod; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+
+    /// <summary>
+    ///   As MethodResultToSchema, describing AResultType in place of the type
+    ///   the method declares, still with the method's attributes. For a method
+    ///   whose declared result is a carrier of the value it actually answers
+    ///   with (a box the caller opens, say). Returns nil when AResultType is
+    ///   nil or has no JSON form.
+    /// </summary>
+    class function MethodResultToSchema(AMethod: TRttiMethod; AResultType: TRttiType;
+      AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
   end;
 
   /// <summary>
@@ -741,15 +802,27 @@ end;
 
 class function TNeonSchemaGenerator.MethodParamsToSchema(AMethod: TRttiMethod;
   AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
+begin
+  Result := MethodParamsToSchema(AMethod, AConfig, nil, AVersion);
+end;
+
+class function TNeonSchemaGenerator.MethodParamsToSchema(AMethod: TRttiMethod;
+  AConfig: INeonConfiguration; const AResolver: TNeonParamSchemaResolver;
+  AVersion: TNeonJSchemaVersion): TJSONObject;
 var
   LGenerator: TNeonSchemaGenerator;
   LProps, LParamSchema: TJSONObject;
   LRequired: TJSONArray;
   LParam: TRttiParameter;
   LNeonObject: TNeonRttiObject;
-  LName: string;
+  LInfo: TNeonParamSchemaInfo;
+  LNames: TDictionary<string, string>;
+  LOwner: string;
 begin
   LGenerator := TNeonSchemaGenerator.Create(AConfig);
+  // Property name -> the parameter described under it, so that a collision
+  // can name both sides
+  LNames := TDictionary<string, string>.Create;
   try
     // One generator for all the parameters, so that a type referenced by more
     // than one of them gets a single definition
@@ -766,17 +839,30 @@ begin
       try
         for LParam in AMethod.GetParameters do
         begin
-          // A pure out parameter is written by the method, never supplied by
-          // the caller, so it is not part of the input
-          if pfOut in LParam.Flags then
-            Continue;
-
           LNeonObject := LGenerator.CreateNeonObject(LParam, LParam.ParamType);
           try
-            if LNeonObject.NeonIgnore then
+            LInfo.Name := LGenerator.ParamName(LParam, LNeonObject);
+            LInfo.Description := '';
+            LInfo.Required := LGenerator.IsMemberRequired(LNeonObject);
+            // A pure out parameter is written by the method, never supplied by
+            // the caller, so it is not part of the input
+            LInfo.Skip := (pfOut in LParam.Flags) or LNeonObject.NeonIgnore;
+
+            if Assigned(AResolver) then
+              AResolver(LParam, LInfo);
+
+            if LInfo.Skip then
               Continue;
 
-            LName := LGenerator.ParamName(LParam, LNeonObject);
+            if LInfo.Name.IsEmpty then
+              raise ENeonException.CreateFmt(SNeonErrorSchemaParamNoNameF1, [LParam.Name]);
+
+            // A JSON object with the same key twice is not one most readers
+            // accept, and the second parameter could never be told apart
+            if LNames.TryGetValue(LInfo.Name, LOwner) then
+              raise ENeonException.CreateFmt(SNeonErrorSchemaParamDuplicateF3,
+                [LOwner, LParam.Name, LInfo.Name]);
+            LNames.Add(LInfo.Name, LParam.Name);
 
             // An untyped parameter (const/var X) has no type to describe
             LParamSchema := nil;
@@ -792,10 +878,18 @@ begin
               LGenerator.SetSchemaProperties(LParamSchema, LNeonObject);
             end;
 
-            LProps.AddPair(LName, LParamSchema);
+            LProps.AddPair(LInfo.Name, LParamSchema);
 
-            if LGenerator.IsMemberRequired(LNeonObject) then
-              LRequired.Add(LName);
+            // Replaced rather than added, since the tags (of the parameter or
+            // of its type) may already have written one
+            if not LInfo.Description.IsEmpty then
+            begin
+              LParamSchema.RemovePair('description').Free;
+              LParamSchema.AddPair('description', LInfo.Description);
+            end;
+
+            if LInfo.Required then
+              LRequired.Add(LInfo.Name);
           finally
             LNeonObject.Free;
           end;
@@ -816,6 +910,7 @@ begin
       raise;
     end;
   finally
+    LNames.Free;
     LGenerator.Free;
   end;
 end;
@@ -828,14 +923,21 @@ end;
 
 class function TNeonSchemaGenerator.MethodResultToSchema(AMethod: TRttiMethod;
   AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
+begin
+  // A procedure (or a constructor/destructor) has a nil ReturnType: nothing
+  // to describe
+  Result := MethodResultToSchema(AMethod, AMethod.ReturnType, AConfig, AVersion);
+end;
+
+class function TNeonSchemaGenerator.MethodResultToSchema(AMethod: TRttiMethod;
+  AResultType: TRttiType; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
 var
   LGenerator: TNeonSchemaGenerator;
   LNeonObject: TNeonRttiObject;
 begin
   Result := nil;
 
-  // A procedure (or a constructor/destructor) returns nothing to describe
-  if not Assigned(AMethod.ReturnType) then
+  if not Assigned(AResultType) then
     Exit;
 
   LGenerator := TNeonSchemaGenerator.Create(AConfig);
@@ -844,9 +946,9 @@ begin
 
     // The method's own attributes stand in for the result's, which Delphi
     // cannot express
-    LNeonObject := LGenerator.CreateNeonObject(AMethod, AMethod.ReturnType);
+    LNeonObject := LGenerator.CreateNeonObject(AMethod, AResultType);
     try
-      Result := LGenerator.WriteDataMember(AMethod.ReturnType, LNeonObject);
+      Result := LGenerator.WriteDataMember(AResultType, LNeonObject);
     finally
       LNeonObject.Free;
     end;

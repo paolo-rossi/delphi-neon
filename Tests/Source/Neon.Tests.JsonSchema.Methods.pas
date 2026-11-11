@@ -152,6 +152,33 @@ type
     [TestCase('BelowMinimum', '{"A":-1,"B":2.5}|False', '|')]
     [TestCase('WrongType', '{"A":"one","B":2.5}|False', '|')]
     procedure TestInstanceValidatesAgainstParams(const AInstanceJSON: string; AExpectedValid: Boolean);
+
+    [Test]
+    procedure TestResolverSeesNeonDefaults;
+
+    [Test]
+    procedure TestNilResolverIsTheDefault;
+
+    [Test]
+    procedure TestResolverRenamesAndRequires;
+
+    [Test]
+    procedure TestResolverDescriptionReplacesTag;
+
+    [Test]
+    procedure TestResolverEmptyDescriptionKeepsTag;
+
+    [Test]
+    procedure TestResolverCanSkip;
+
+    [Test]
+    procedure TestResolverCanIncludeOutParam;
+
+    [Test]
+    procedure TestDuplicateParamNameRaises;
+
+    [Test]
+    procedure TestEmptyParamNameRaises;
   end;
 
   [TestFixture]
@@ -187,6 +214,12 @@ type
 
     [Test]
     procedure TestNoVersionOmitsSchemaKeyword;
+
+    [Test]
+    procedure TestResultTypeOverrideKeepsMethodTags;
+
+    [Test]
+    procedure TestNilResultTypeGivesNil;
   end;
 
 implementation
@@ -267,6 +300,16 @@ function GetSchemaMethod(const AName: string): TRttiMethod;
 begin
   Result := TRttiContext.Create.GetType(TSchemaMethods).GetMethod(AName);
   Assert.IsNotNull(Result, 'no RTTI for method ' + AName);
+end;
+
+function CountPairs(AObject: TJSONObject; const AName: string): Integer;
+var
+  LPair: TJSONPair;
+begin
+  Result := 0;
+  for LPair in AObject do
+    if LPair.JsonString.Value = AName then
+      Inc(Result);
 end;
 
 { TTestJsonSchemaMethodParams }
@@ -495,6 +538,137 @@ begin
   Assert.AreEqual(AExpectedValid, Validates(AInstanceJSON));
 end;
 
+procedure TTestJsonSchemaMethodParams.TestResolverSeesNeonDefaults;
+var
+  LSeen: string;
+begin
+  LSeen := '';
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithOut'), TNeonConfiguration.Default,
+    procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+    begin
+      LSeen := LSeen + Format('%s=%s,%s,%s,%s;', [AParam.Name, AInfo.Name, AInfo.Description,
+        BoolToStr(AInfo.Required, True), BoolToStr(AInfo.Skip, True)]);
+    end);
+  Assert.AreEqual('AInput=AInput,,False,False;AOutput=AOutput,,False,True;AInOut=AInOut,,False,False;', LSeen,
+    'every parameter is offered, the out one already marked to skip');
+
+  LSeen := '';
+  FreeAndNil(FSchema);
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('TagNamed'), TNeonConfiguration.Default,
+    procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+    begin
+      LSeen := LSeen + Format('%s=%s,%s', [AParam.Name, AInfo.Name, BoolToStr(AInfo.Required, True)]);
+    end);
+  Assert.AreEqual('AOrderId=order_id,True', LSeen, 'the name and required tags are already applied');
+end;
+
+procedure TTestJsonSchemaMethodParams.TestNilResolverIsTheDefault;
+begin
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default, nil);
+  Assert.AreEqual('First addend', Prop('A').GetValue('description').Value);
+  Assert.AreEqual(2, (FSchema.GetValue('required') as TJSONArray).Count);
+end;
+
+procedure TTestJsonSchemaMethodParams.TestResolverRenamesAndRequires;
+var
+  LRequired: TJSONArray;
+begin
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Optional'), TNeonConfiguration.Default,
+    procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+    begin
+      AInfo.Name := AParam.Name.Substring(1).ToLower;
+      AInfo.Required := True;
+    end);
+  Assert.AreEqual('string', Prop('name').GetValue('type').Value);
+  Assert.AreEqual('integer', Prop('count').GetValue('type').Value);
+  Assert.IsNull(Properties.GetValue('AName'));
+
+  LRequired := FSchema.GetValue('required') as TJSONArray;
+  Assert.IsNotNull(LRequired);
+  Assert.AreEqual(2, LRequired.Count);
+  Assert.AreEqual('name', LRequired.Items[0].Value);
+  Assert.AreEqual('count', LRequired.Items[1].Value);
+end;
+
+procedure TTestJsonSchemaMethodParams.TestResolverDescriptionReplacesTag;
+begin
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default,
+    procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+    begin
+      AInfo.Description := 'Described ' + AParam.Name;
+    end);
+  Assert.AreEqual(1, CountPairs(Prop('A'), 'description'), 'replaced, not added a second time');
+  Assert.AreEqual('Described A', Prop('A').GetValue('description').Value);
+  Assert.AreEqual(0.0, (Prop('A').GetValue('minimum') as TJSONNumber).AsDouble, 0.0, 'the other tags stay');
+  Assert.AreEqual('Described B', Prop('B').GetValue('description').Value);
+end;
+
+procedure TTestJsonSchemaMethodParams.TestResolverEmptyDescriptionKeepsTag;
+begin
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default,
+    procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+    begin
+      AInfo.Description := '';
+    end);
+  Assert.AreEqual('First addend', Prop('A').GetValue('description').Value);
+  Assert.IsNull(Prop('B').GetValue('description'), 'no description is invented');
+end;
+
+procedure TTestJsonSchemaMethodParams.TestResolverCanSkip;
+var
+  LRequired: TJSONArray;
+begin
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default,
+    procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+    begin
+      AInfo.Skip := AParam.Name = 'B';
+    end);
+  Assert.AreEqual(1, Properties.Count);
+  Assert.IsNull(Properties.GetValue('B'));
+  LRequired := FSchema.GetValue('required') as TJSONArray;
+  Assert.AreEqual(1, LRequired.Count, 'a skipped parameter is not required either');
+end;
+
+procedure TTestJsonSchemaMethodParams.TestResolverCanIncludeOutParam;
+begin
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithOut'), TNeonConfiguration.Default,
+    procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+    begin
+      AInfo.Skip := False;
+    end);
+  Assert.AreEqual(3, Properties.Count);
+  Assert.AreEqual('string', Prop('AOutput').GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaMethodParams.TestDuplicateParamNameRaises;
+begin
+  Assert.WillRaiseWithMessage(
+    procedure
+    begin
+      FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Optional'), TNeonConfiguration.Default,
+        procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+        begin
+          AInfo.Name := 'same';
+        end);
+    end,
+    ENeonException,
+    'Parameters [AName] and [ACount] are both described as [same]');
+end;
+
+procedure TTestJsonSchemaMethodParams.TestEmptyParamNameRaises;
+begin
+  Assert.WillRaise(
+    procedure
+    begin
+      FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default,
+        procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+        begin
+          AInfo.Name := '';
+        end);
+    end,
+    ENeonException);
+end;
+
 { TTestJsonSchemaMethodResult }
 
 function TTestJsonSchemaMethodResult.Method(const AName: string): TRttiMethod;
@@ -578,6 +752,20 @@ procedure TTestJsonSchemaMethodResult.TestNoVersionOmitsSchemaKeyword;
 begin
   FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('Add'));
   Assert.IsNull(FSchema.GetValue('$schema'));
+end;
+
+procedure TTestJsonSchemaMethodResult.TestResultTypeOverrideKeepsMethodTags;
+begin
+  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('Total'),
+    TRttiContext.Create.GetType(TypeInfo(Double)), TNeonConfiguration.Default);
+  Assert.AreEqual('number', FSchema.GetValue('type').Value, 'the type given, not the one declared');
+  Assert.AreEqual('The sum', FSchema.GetValue('description').Value, 'the method''s tags still apply');
+end;
+
+procedure TTestJsonSchemaMethodResult.TestNilResultTypeGivesNil;
+begin
+  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('Total'), nil, TNeonConfiguration.Default);
+  Assert.IsNull(FSchema);
 end;
 
 initialization

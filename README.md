@@ -470,6 +470,78 @@ Neon can generate and validate [JSON Schema](https://json-schema.org/) documents
 - `TJSONSchemaValidator` validates a `TJSONValue` against any JSON Schema document (`$ref`/`$anchor` resolution, `allOf`/`anyOf`/`oneOf`/`not`, numeric/string/array/object constraints, etc...), working directly against `TJSONObject` with no need for the original Delphi type
 - The `JsonSchemaAttribute` lets you annotate types for more complete schema generation (e.g. `title`, `description`, `format`, `examples`)
 
+#### Describing a method
+
+Besides types, `TNeonSchemaGenerator` describes a method's signature, which is what an RPC layer or a tool registry needs to publish: what a method takes, and what it answers with.
+
+`MethodParamsToSchema` describes the parameters as a JSON object schema, one property per parameter:
+
+```delphi
+type
+  TOrders = class
+  public
+    function Find(
+      [JsonSchema('name=customer_id,required,description=The customer,minimum=1')] ACustomerId: Integer;
+      [JsonSchema('maxLength=20')] const AStatus: string): TArray<TOrder>;
+  end;
+
+LSchema := TNeonSchemaGenerator.MethodParamsToSchema(LMethod, TNeonJSchemaVersion.v202012);
+```
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "customer_id": { "type": "integer", "description": "The customer", "minimum": 1 },
+    "AStatus": { "type": "string", "maxLength": 20 }
+  },
+  "required": ["customer_id"],
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
+```
+
+- The `[JsonSchema]` tags on a parameter apply to its schema, as they do on a class member
+- A property is named by the `name` tag of its `[JsonSchema]`, else by its `[NeonProperty]`, else as the parameter is declared (the member case of the configuration is meant for fields and properties, not parameters)
+- A parameter is listed in `required` only when its `[JsonSchema]` carries the `required` tag
+- A pure `out` parameter carries no input and is left out, as is one marked `[NeonIgnore]`; a `var` parameter is an input and stays
+- A parameter whose type has no JSON form (a method pointer, an untyped `const X`) is still described, as an unconstrained `{}` keeping its tags: the caller has to pass it all the same
+- One generator describes all the parameters, so a type referenced by several of them, or by itself, gets a single definition in the `$defs` (or Draft-07 `definitions`) at the root of the document, where every `$ref` points
+- Two parameters described under the same name, or one with an empty name, raise `ENeonException`
+
+##### Taking over the description of each parameter
+
+When the name, description or required-ness of a parameter lives somewhere other than Neon's attributes (a protocol's own parameter attribute, say), pass a resolver. The generator fills a `TNeonParamSchemaInfo` with what it would do by itself and hands it to the resolver, which may change any of it, before the parameter's schema is written:
+
+```delphi
+LSchema := TNeonSchemaGenerator.MethodParamsToSchema(LMethod, LConfig,
+  procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+  begin
+    AInfo.Name := MyParamName(AParam);          // the property it is described under
+    AInfo.Description := MyDescription(AParam); // replaces the "description" tag; empty keeps it
+    AInfo.Required := True;                     // listed in "required"
+    // AInfo.Skip: leave the parameter out (preset for "out" and [NeonIgnore])
+  end);
+```
+
+The parameter's other `[JsonSchema]` tags still apply, and the definitions are still collected once at the root. An exception raised by the resolver aborts the generation, and the partial document is freed. A `nil` resolver is the same as the overload without one.
+
+##### The result
+
+`MethodResultToSchema` describes the value a method returns. Delphi has no syntax for an attribute on a result, so the `[JsonSchema]` tags (and the other Neon attributes, e.g. `[NeonSerialize]`) are read from the method itself:
+
+```delphi
+[JsonSchema('description=The orders found')]
+function Find(...): TArray<TOrder>;
+
+LSchema := TNeonSchemaGenerator.MethodResultToSchema(LMethod);
+```
+
+It returns `nil` for a procedure, and for a result type with no JSON form. When the declared result is only a carrier of the value the method actually answers with (a box the caller opens, a future), pass the type to describe instead; the method's attributes still apply to it:
+
+```delphi
+LSchema := TNeonSchemaGenerator.MethodResultToSchema(LMethod, LPayloadType, LConfig);
+```
+
 ### Entity Generator
 
 `TNeonEntityGenerator` (in `Neon.Core.Generator`) goes the other way around: it takes a JSON document as a sample and writes the Delphi entities that hold it, attributes included.
