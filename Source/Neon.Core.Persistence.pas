@@ -350,7 +350,6 @@ type
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetOnError(AValue: TNeonErrorCallback): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
-    function SetClosedSchema(AValue: Boolean): INeonConfiguration;
 
     /// <summary>
     ///   Omits, when serializing, a member that points back to an instance
@@ -500,7 +499,7 @@ type
   ///     A configuration is mutable, and changing one is safe at any time. The
   ///     settings read while (de)serializing - UseUTCDate, EnumAsInt,
   ///     AutoCreate, StrictTypes, MapSort, PrettyPrint, RaiseExceptions,
-  ///     OnError, ClosedSchema, IgnoreCircularRefs - take effect immediately; the ones that feed
+  ///     OnError, IgnoreCircularRefs - take effect immediately; the ones that feed
   ///     the member plans - member set, sort, case, visibility, field prefix,
   ///     read-only properties, the ignore lists and the per-type Rules -
   ///     invalidate what was cached and take effect from the next top-level
@@ -530,7 +529,6 @@ type
     FEnumAsInt: Boolean;
     FAutoCreate: Boolean;
     FStrictTypes: Boolean;
-    FClosedSchema: Boolean;
     FIgnoreCircularRefs: Boolean;
     FFactoryList: TNeonFactoryRegistry;
     FIgnoreMembers: TArray<string>;
@@ -572,7 +570,6 @@ type
     function SetRaiseExceptions(AValue: Boolean): INeonConfiguration;
     function SetOnError(AValue: TNeonErrorCallback): INeonConfiguration;
     function SetPrettyPrint(AValue: Boolean): INeonConfiguration;
-    function SetClosedSchema(AValue: Boolean): INeonConfiguration;
     function SetEnumAsInt(AValue: Boolean): INeonConfiguration;
     function SetAutoCreate(AValue: Boolean): INeonConfiguration;
     function SetStrictTypes(AValue: Boolean): INeonConfiguration;
@@ -627,7 +624,6 @@ type
     property EnumAsInt: Boolean read FEnumAsInt write FEnumAsInt;
     property AutoCreate: Boolean read FAutoCreate write FAutoCreate;
     property StrictTypes: Boolean read FStrictTypes write FStrictTypes;
-    property ClosedSchema: Boolean read FClosedSchema write FClosedSchema;
     property IgnoreCircularRefs: Boolean read FIgnoreCircularRefs write FIgnoreCircularRefs;
 
     property Serializers: TNeonSerializerRegistry read FSerializers write FSerializers;
@@ -1288,7 +1284,6 @@ begin
   SetPrettyPrint(False);
   SetStrictTypes(True);
   SetIgnoreCircularRefs(True);
-  FClosedSchema := False;
 end;
 
 function TNeonConfiguration.GetRttiCache(AOperation: TNeonOperation): INeonRttiCache;
@@ -1502,16 +1497,6 @@ end;
 function TNeonConfiguration.SetEnumAsInt(AValue: Boolean): INeonConfiguration;
 begin
   FEnumAsInt := AValue;
-  Result := Self;
-end;
-
-function TNeonConfiguration.SetClosedSchema(AValue: Boolean): INeonConfiguration;
-begin
-  // When True, generated JSON Schemas for classes/records carry
-  // "additionalProperties": false - the object admits exactly the declared
-  // members. Defaults to False (open), matching the deserializer, which
-  // ignores unknown properties
-  FClosedSchema := AValue;
   Result := Self;
 end;
 

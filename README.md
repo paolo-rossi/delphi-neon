@@ -470,6 +470,36 @@ Neon can generate and validate [JSON Schema](https://json-schema.org/) documents
 - `TJSONSchemaValidator` validates a `TJSONValue` against any JSON Schema document (`$ref`/`$anchor` resolution, `allOf`/`anyOf`/`oneOf`/`not`, numeric/string/array/object constraints, etc...), working directly against `TJSONObject` with no need for the original Delphi type
 - The `JsonSchemaAttribute` lets you annotate types for more complete schema generation (e.g. `title`, `description`, `format`, `examples`)
 
+#### Schema configuration
+
+The generator is configured through `INeonSchemaConfiguration` (in `Neon.Core.Persistence.JSON.Schema`). It holds the settings that only concern the schema, and wraps the `INeonConfiguration` the schema describes:
+
+```delphi
+LSchema := TNeonSchemaGenerator.ClassToJSONSchema(TOrder,
+  TNeonSchemaConfiguration.Wrap(LConfig)          // the configuration you serialize with
+    .SetVersion(TNeonJSchemaVersion.v202012)      // "$schema" URI and "$defs" vs "definitions"
+    .SetClosedSchema(True));                      // "additionalProperties": false on objects
+```
+
+| Setting | Default | Effect |
+|---|---|---|
+| `SetVersion` | `None` | The draft the document targets. `None` writes no `$schema` and produces a fragment |
+| `SetClosedSchema` | `False` | Classes, records and method parameters get `"additionalProperties": false` |
+| `SetParamResolver` | `nil` | Decides how `MethodParamsToSchema` describes each parameter (see below) |
+
+`TNeonSchemaConfiguration.Wrap(LConfig)` returns the interface, and the wrapped configuration is shared, not copied: member case, visibility, `EnumAsInt`, ignore rules and the registered serializers all come from it, so the schema describes exactly what `TNeon` writes with the same configuration. Change those settings on it, or through `LSchemaConfig.Neon`. `TNeonSchemaConfiguration.Default` wraps a new `TNeonConfiguration.Default`; likewise `.Pretty`, `.Camel`, `.Snake`, `.Kebab` and `.ScreamingSnake` wrap a new instance of the `TNeonConfiguration` factory with the same name, e.g. `ClassToJSONSchema(TOrder, TNeonSchemaConfiguration.Camel)`.
+
+Every entry point (`TypeToJSONSchema`, `ClassToJSONSchema`, `MethodParamsToSchema`, `MethodResultToSchema`, and the `TNeonSchemaGenerator` constructor) takes only an `INeonSchemaConfiguration`; omitting it or passing `nil` is the same as `TNeonSchemaConfiguration.Default`.
+
+> **Breaking change:** the overloads taking an `INeonConfiguration` and/or a `TNeonJSchemaVersion`, and the `MethodParamsToSchema` overload taking a resolver, have been removed, as has `INeonConfiguration.SetClosedSchema`. Wrap the configuration and move the other arguments to the schema configuration:
+>
+> | Before | After |
+> |---|---|
+> | `ClassToJSONSchema(T, TNeonJSchemaVersion.v202012)` | `ClassToJSONSchema(T, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012))` |
+> | `ClassToJSONSchema(T, LConfig, AVersion)` | `ClassToJSONSchema(T, TNeonSchemaConfiguration.Wrap(LConfig).SetVersion(AVersion))` |
+> | `MethodParamsToSchema(M, LConfig, LResolver)` | `MethodParamsToSchema(M, TNeonSchemaConfiguration.Wrap(LConfig).SetParamResolver(LResolver))` |
+> | `TNeonConfiguration.Default.SetClosedSchema(True)` | `TNeonSchemaConfiguration.Default.SetClosedSchema(True)` |
+
 #### Describing a method
 
 Besides types, `TNeonSchemaGenerator` describes a method's signature, which is what an RPC layer or a tool registry needs to publish: what a method takes, and what it answers with.
@@ -485,7 +515,8 @@ type
       [JsonSchema('maxLength=20')] const AStatus: string): TArray<TOrder>;
   end;
 
-LSchema := TNeonSchemaGenerator.MethodParamsToSchema(LMethod, TNeonJSchemaVersion.v202012);
+LSchema := TNeonSchemaGenerator.MethodParamsToSchema(LMethod,
+  TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
 ```
 
 ```json
@@ -510,20 +541,22 @@ LSchema := TNeonSchemaGenerator.MethodParamsToSchema(LMethod, TNeonJSchemaVersio
 
 ##### Taking over the description of each parameter
 
-When the name, description or required-ness of a parameter lives somewhere other than Neon's attributes (a protocol's own parameter attribute, say), pass a resolver. The generator fills a `TNeonParamSchemaInfo` with what it would do by itself and hands it to the resolver, which may change any of it, before the parameter's schema is written:
+When the name, description or required-ness of a parameter lives somewhere other than Neon's attributes (a protocol's own parameter attribute, say), set a resolver on the schema configuration. The generator fills a `TNeonParamSchemaInfo` with what it would do by itself and hands it to the resolver, which may change any of it, before the parameter's schema is written:
 
 ```delphi
-LSchema := TNeonSchemaGenerator.MethodParamsToSchema(LMethod, LConfig,
-  procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
-  begin
-    AInfo.Name := MyParamName(AParam);          // the property it is described under
-    AInfo.Description := MyDescription(AParam); // replaces the "description" tag; empty keeps it
-    AInfo.Required := True;                     // listed in "required"
-    // AInfo.Skip: leave the parameter out (preset for "out" and [NeonIgnore])
-  end);
+LSchema := TNeonSchemaGenerator.MethodParamsToSchema(LMethod,
+  TNeonSchemaConfiguration.Wrap(LConfig)
+    .SetParamResolver(
+      procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+      begin
+        AInfo.Name := MyParamName(AParam);          // the property it is described under
+        AInfo.Description := MyDescription(AParam); // replaces the "description" tag; empty keeps it
+        AInfo.Required := True;                     // listed in "required"
+        // AInfo.Skip: leave the parameter out (preset for "out" and [NeonIgnore])
+      end));
 ```
 
-The parameter's other `[JsonSchema]` tags still apply, and the definitions are still collected once at the root. An exception raised by the resolver aborts the generation, and the partial document is freed. A `nil` resolver is the same as the overload without one.
+The parameter's other `[JsonSchema]` tags still apply, and the definitions are still collected once at the root. An exception raised by the resolver aborts the generation, and the partial document is freed. A `nil` resolver is the same as none.
 
 ##### The result
 
@@ -539,7 +572,7 @@ LSchema := TNeonSchemaGenerator.MethodResultToSchema(LMethod);
 It returns `nil` for a procedure, and for a result type with no JSON form. When the declared result is only a carrier of the value the method actually answers with (a box the caller opens, a future), pass the type to describe instead; the method's attributes still apply to it:
 
 ```delphi
-LSchema := TNeonSchemaGenerator.MethodResultToSchema(LMethod, LPayloadType, LConfig);
+LSchema := TNeonSchemaGenerator.MethodResultToSchema(LMethod, LPayloadType, LSchemaConfig);
 ```
 
 ### Entity Generator

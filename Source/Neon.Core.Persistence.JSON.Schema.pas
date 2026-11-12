@@ -81,11 +81,139 @@ type
   TNeonParamSchemaResolver = reference to procedure(AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo);
 
   /// <summary>
+  ///   The settings of the JSON Schema generator: the ones that only concern
+  ///   the schema, plus the serialization configuration the schema describes
+  /// </summary>
+  /// <remarks>
+  ///   <para>
+  ///     It wraps an INeonConfiguration rather than deriving from it. A schema
+  ///     has to describe what the serializer actually writes and reads, so the
+  ///     member set, visibility, case, enum format, ignore rules and registered
+  ///     serializers all come from the wrapped configuration - typically the
+  ///     very instance the application serializes with, shared as it is (with
+  ///     its RTTI cache) instead of copied
+  ///   </para>
+  ///   <code>
+  ///     LSchema := TNeonSchemaGenerator.ClassToJSONSchema(TOrder,
+  ///       TNeonSchemaConfiguration.Wrap(LConfig)
+  ///         .SetVersion(TNeonJSchemaVersion.v202012)
+  ///         .SetClosedSchema(True));
+  ///   </code>
+  /// </remarks>
+  INeonSchemaConfiguration = interface
+  ['{895286F9-87E5-49A9-A8F9-0C1C4A8913EB}']
+    /// <summary>
+    ///   The draft the document is generated for: it selects the "$schema" URI
+    ///   written at the root and the keywords used ("$defs" or "definitions").
+    ///   None (the default) writes no "$schema" and produces a fragment
+    /// </summary>
+    function SetVersion(AValue: TNeonJSchemaVersion): INeonSchemaConfiguration;
+
+    /// <summary>
+    ///   When True, the schema of a class, a record and a method's parameters
+    ///   carries "additionalProperties": false - the object admits exactly the
+    ///   declared members. Defaults to False (open), matching the deserializer,
+    ///   which ignores unknown properties. An unwrapped map's value schema
+    ///   still takes precedence
+    /// </summary>
+    function SetClosedSchema(AValue: Boolean): INeonSchemaConfiguration;
+
+    /// <summary>
+    ///   Called by MethodParamsToSchema once per parameter, to decide how it is
+    ///   described - see TNeonParamSchemaResolver. Nil (the default) keeps what
+    ///   the generator decides from the parameter's attributes
+    /// </summary>
+    function SetParamResolver(const AValue: TNeonParamSchemaResolver): INeonSchemaConfiguration;
+
+    function GetNeonConfig: INeonConfiguration;
+    function GetVersion: TNeonJSchemaVersion;
+    function GetClosedSchema: Boolean;
+    function GetParamResolver: TNeonParamSchemaResolver;
+
+    /// <summary>
+    ///   The serialization configuration the schema describes. Its settings are
+    ///   changed on it directly: LSchemaConfig.Neon.SetMemberCase(...)
+    /// </summary>
+    property Neon: INeonConfiguration read GetNeonConfig;
+    property Version: TNeonJSchemaVersion read GetVersion;
+    property ClosedSchema: Boolean read GetClosedSchema;
+    property ParamResolver: TNeonParamSchemaResolver read GetParamResolver;
+  end;
+
+  TNeonSchemaConfiguration = class sealed(TInterfacedObject, INeonSchemaConfiguration)
+  private
+    FNeonConfig: INeonConfiguration;
+    FVersion: TNeonJSchemaVersion;
+    FClosedSchema: Boolean;
+    FParamResolver: TNeonParamSchemaResolver;
+  public
+    /// <summary>
+    ///   Wraps ANeonConfig (TNeonConfiguration.Default when nil), which is
+    ///   shared, not copied
+    /// </summary>
+    constructor Create(const ANeonConfig: INeonConfiguration);
+
+    /// <summary>
+    ///   Wraps ANeonConfig (TNeonConfiguration.Default when nil), which is
+    ///   shared, not copied: settings changed on it later still apply to the
+    ///   schema. The preferred way to build a schema configuration around the
+    ///   configuration the application serializes with
+    /// </summary>
+    class function Wrap(const ANeonConfig: INeonConfiguration): INeonSchemaConfiguration; static;
+
+    /// <summary>
+    ///   Wraps a new TNeonConfiguration.Default
+    /// </summary>
+    class function Default: INeonSchemaConfiguration; static;
+
+    /// <summary>
+    ///   Wraps a new TNeonConfiguration.Pretty
+    /// </summary>
+    class function Pretty: INeonSchemaConfiguration; static;
+
+    /// <summary>
+    ///   Wraps a new TNeonConfiguration.Snake (IgnoreFieldPrefix <b>on</b>)
+    /// </summary>
+    class function Snake: INeonSchemaConfiguration; static;
+
+    /// <summary>
+    ///   Wraps a new TNeonConfiguration.Camel
+    /// </summary>
+    class function Camel: INeonSchemaConfiguration; static;
+
+    /// <summary>
+    ///   Wraps a new TNeonConfiguration.Kebab
+    /// </summary>
+    class function Kebab: INeonSchemaConfiguration; static;
+
+    /// <summary>
+    ///   Wraps a new TNeonConfiguration.ScreamingSnake (IgnoreFieldPrefix
+    ///   <b>on</b>)
+    /// </summary>
+    class function ScreamingSnake: INeonSchemaConfiguration; static;
+
+    function SetVersion(AValue: TNeonJSchemaVersion): INeonSchemaConfiguration;
+    function SetClosedSchema(AValue: Boolean): INeonSchemaConfiguration;
+    function SetParamResolver(const AValue: TNeonParamSchemaResolver): INeonSchemaConfiguration;
+
+    function GetNeonConfig: INeonConfiguration;
+    function GetVersion: TNeonJSchemaVersion;
+    function GetClosedSchema: Boolean;
+    function GetParamResolver: TNeonParamSchemaResolver;
+  end;
+
+  /// <summary>
   ///   JSON Schema generator
   ///   JSON Schema version supported: Draft 2020-12
   /// </summary>
   TNeonSchemaGenerator = class(TNeonBase)
   private
+    /// <summary>
+    ///   The schema settings this generator runs with. Its Neon configuration
+    ///   is the one TNeonBase holds as FConfig
+    /// </summary>
+    FSchemaConfig: INeonSchemaConfiguration;
+
     /// <summary>
     ///   Types currently being expanded on the current recursion path (added
     ///   before recursing into a class/record's members, removed after), so that
@@ -371,25 +499,26 @@ type
     ///   kinds whose writers produce no schema at all (interfaces, variants, ...)
     /// </summary>
     procedure SetSchemaProperties(AJSON: TJSONObject; ANeonObject: TNeonRttiObject);
+
   public
-    constructor Create(const AConfig: INeonConfiguration);
+    /// <summary>
+    ///   A nil AConfig is the same as TNeonSchemaConfiguration.Default
+    /// </summary>
+    constructor Create(const AConfig: INeonSchemaConfiguration);
     destructor Destroy; override;
 
     /// <summary>
     ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType.
-    ///   AVersion selects the "$schema" URI written into the root of the result (default: None).
-    ///   If AVersion is None the function produces a JSON-Schema Fragment.
+    ///   The version of the schema configuration selects the "$schema" URI
+    ///   written into the root of the result; None produces a JSON-Schema Fragment.
+    ///   A nil AConfig is the same as TNeonSchemaConfiguration.Default
     /// </summary>
-    class function TypeToJSONSchema(AType: TRttiType; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
-    class function TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+    class function TypeToJSONSchema(AType: TRttiType; const AConfig: INeonSchemaConfiguration = nil): TJSONObject;
 
     /// <summary>
-    ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType.
-    ///   AVersion selects the "$schema" URI written into the root of the result (default: None).
-    ///   If AVersion is None the function produces a JSON-Schema Fragment.
+    ///   As TypeToJSONSchema, for the type of AClass
     /// </summary>
-    class function ClassToJSONSchema(AClass: TClass; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
-    class function ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+    class function ClassToJSONSchema(AClass: TClass; const AConfig: INeonSchemaConfiguration = nil): TJSONObject;
 
     /// <summary>
     ///   Describes the parameters of a method as a JSON object schema: one
@@ -403,22 +532,15 @@ type
     ///   single definitions container at the root. Two parameters described
     ///   under the same name raise ENeonException. With SetClosedSchema(True)
     ///   the object carries "additionalProperties": false, as a class does.
-    ///   If AVersion is None the function produces a JSON-Schema Fragment.
+    ///   The ParamResolver of the configuration, when set, decides how each
+    ///   parameter is described: its name, description, whether it is required
+    ///   and whether it is described at all. For a caller that keeps that
+    ///   information somewhere other than Neon's attributes (a protocol's own
+    ///   parameter attribute, say), and still wants the parameter's
+    ///   [JsonSchema] tags and one document-wide definitions container.
+    ///   A nil AConfig is the same as TNeonSchemaConfiguration.Default
     /// </summary>
-    class function MethodParamsToSchema(AMethod: TRttiMethod; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
-    class function MethodParamsToSchema(AMethod: TRttiMethod; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
-
-    /// <summary>
-    ///   As MethodParamsToSchema, with AResolver deciding how each parameter is
-    ///   described: its name, description, whether it is required and whether
-    ///   it is described at all. For a caller that keeps that information
-    ///   somewhere other than Neon's attributes (a protocol's own parameter
-    ///   attribute, say), and still wants the parameter's [JsonSchema] tags and
-    ///   one document-wide definitions container. A nil resolver is the same
-    ///   as the overload without one.
-    /// </summary>
-    class function MethodParamsToSchema(AMethod: TRttiMethod; AConfig: INeonConfiguration;
-      const AResolver: TNeonParamSchemaResolver; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+    class function MethodParamsToSchema(AMethod: TRttiMethod; const AConfig: INeonSchemaConfiguration = nil): TJSONObject;
 
     /// <summary>
     ///   Describes the value a method returns. Delphi has no syntax to put an
@@ -426,10 +548,9 @@ type
     ///   attributes, e.g. [NeonSerialize]) are read from the method itself.
     ///   Returns nil for a procedure, or for a result type that has no JSON
     ///   form (a method pointer, say).
-    ///   If AVersion is None the function produces a JSON-Schema Fragment.
+    ///   A nil AConfig is the same as TNeonSchemaConfiguration.Default
     /// </summary>
-    class function MethodResultToSchema(AMethod: TRttiMethod; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
-    class function MethodResultToSchema(AMethod: TRttiMethod; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+    class function MethodResultToSchema(AMethod: TRttiMethod; const AConfig: INeonSchemaConfiguration = nil): TJSONObject; overload;
 
     /// <summary>
     ///   As MethodResultToSchema, describing AResultType in place of the type
@@ -438,8 +559,7 @@ type
     ///   with (a box the caller opens, say). Returns nil when AResultType is
     ///   nil or has no JSON form.
     /// </summary>
-    class function MethodResultToSchema(AMethod: TRttiMethod; AResultType: TRttiType;
-      AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion = TNeonJSchemaVersion.None): TJSONObject; overload;
+    class function MethodResultToSchema(AMethod: TRttiMethod; AResultType: TRttiType; const AConfig: INeonSchemaConfiguration): TJSONObject; overload;
   end;
 
   /// <summary>
@@ -597,23 +717,113 @@ const
     'dependentSchemas', 'dependencies'
   );
 
+{ TNeonSchemaConfiguration }
+
+constructor TNeonSchemaConfiguration.Create(const ANeonConfig: INeonConfiguration);
+begin
+  inherited Create;
+  if Assigned(ANeonConfig) then
+    FNeonConfig := ANeonConfig
+  else
+    FNeonConfig := TNeonConfiguration.Default;
+
+  FVersion := TNeonJSchemaVersion.None;
+  FClosedSchema := False;
+  FParamResolver := nil;
+end;
+
+class function TNeonSchemaConfiguration.Wrap(const ANeonConfig: INeonConfiguration): INeonSchemaConfiguration;
+begin
+  Result := TNeonSchemaConfiguration.Create(ANeonConfig);
+end;
+
+class function TNeonSchemaConfiguration.Default: INeonSchemaConfiguration;
+begin
+  Result := TNeonSchemaConfiguration.Create(TNeonConfiguration.Default);
+end;
+
+class function TNeonSchemaConfiguration.Pretty: INeonSchemaConfiguration;
+begin
+  Result := TNeonSchemaConfiguration.Create(TNeonConfiguration.Pretty);
+end;
+
+class function TNeonSchemaConfiguration.Snake: INeonSchemaConfiguration;
+begin
+  Result := TNeonSchemaConfiguration.Create(TNeonConfiguration.Snake);
+end;
+
+class function TNeonSchemaConfiguration.Camel: INeonSchemaConfiguration;
+begin
+  Result := TNeonSchemaConfiguration.Create(TNeonConfiguration.Camel);
+end;
+
+class function TNeonSchemaConfiguration.Kebab: INeonSchemaConfiguration;
+begin
+  Result := TNeonSchemaConfiguration.Create(TNeonConfiguration.Kebab);
+end;
+
+class function TNeonSchemaConfiguration.ScreamingSnake: INeonSchemaConfiguration;
+begin
+  Result := TNeonSchemaConfiguration.Create(TNeonConfiguration.ScreamingSnake);
+end;
+
+function TNeonSchemaConfiguration.GetClosedSchema: Boolean;
+begin
+  Result := FClosedSchema;
+end;
+
+function TNeonSchemaConfiguration.GetNeonConfig: INeonConfiguration;
+begin
+  Result := FNeonConfig;
+end;
+
+function TNeonSchemaConfiguration.GetParamResolver: TNeonParamSchemaResolver;
+begin
+  Result := FParamResolver;
+end;
+
+function TNeonSchemaConfiguration.GetVersion: TNeonJSchemaVersion;
+begin
+  Result := FVersion;
+end;
+
+function TNeonSchemaConfiguration.SetClosedSchema(AValue: Boolean): INeonSchemaConfiguration;
+begin
+  FClosedSchema := AValue;
+  Result := Self;
+end;
+
+function TNeonSchemaConfiguration.SetParamResolver(const AValue: TNeonParamSchemaResolver): INeonSchemaConfiguration;
+begin
+  FParamResolver := AValue;
+  Result := Self;
+end;
+
+function TNeonSchemaConfiguration.SetVersion(AValue: TNeonJSchemaVersion): INeonSchemaConfiguration;
+begin
+  FVersion := AValue;
+  Result := Self;
+end;
+
 { TNeonSchemaGenerator }
 
-class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; AVersion: TNeonJSchemaVersion): TJSONObject;
+class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; const AConfig: INeonSchemaConfiguration): TJSONObject;
 begin
-  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), TNeonConfiguration.Default, AVersion);
+  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), AConfig);
 end;
 
-class function TNeonSchemaGenerator.ClassToJSONSchema(AClass: TClass; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
+constructor TNeonSchemaGenerator.Create(const AConfig: INeonSchemaConfiguration);
 begin
-  Result := TypeToJSONSchema(TRttiUtils.Context.GetType(AClass), AConfig, AVersion);
-end;
+  if Assigned(AConfig) then
+    FSchemaConfig := AConfig
+  else
+    FSchemaConfig := TNeonSchemaConfiguration.Default;
 
-constructor TNeonSchemaGenerator.Create(const AConfig: INeonConfiguration);
-begin
-  inherited Create(AConfig);
+  inherited Create(FSchemaConfig.Neon);
   FOperation := TNeonOperation.Serialize;
-  FVersion := TNeonJSchemaVersion.None;
+  // Known before generating, not just when stamping "$schema" at the end, so
+  // the writers can keep to the keywords the chosen draft actually defines
+  FVersion := FSchemaConfig.Version;
   FVisitedTypes := TDictionary<PTypeInfo, Boolean>.Create;
   FDefNames := TDictionary<PTypeInfo, string>.Create;
   FDefNameSet := TDictionary<string, Boolean>.Create;
@@ -796,22 +1006,10 @@ begin
 end;
 
 class function TNeonSchemaGenerator.MethodParamsToSchema(AMethod: TRttiMethod;
-  AVersion: TNeonJSchemaVersion): TJSONObject;
-begin
-  Result := MethodParamsToSchema(AMethod, TNeonConfiguration.Default, AVersion);
-end;
-
-class function TNeonSchemaGenerator.MethodParamsToSchema(AMethod: TRttiMethod;
-  AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
-begin
-  Result := MethodParamsToSchema(AMethod, AConfig, nil, AVersion);
-end;
-
-class function TNeonSchemaGenerator.MethodParamsToSchema(AMethod: TRttiMethod;
-  AConfig: INeonConfiguration; const AResolver: TNeonParamSchemaResolver;
-  AVersion: TNeonJSchemaVersion): TJSONObject;
+  const AConfig: INeonSchemaConfiguration): TJSONObject;
 var
   LGenerator: TNeonSchemaGenerator;
+  LResolver: TNeonParamSchemaResolver;
   LProps, LParamSchema: TJSONObject;
   LRequired: TJSONArray;
   LParam: TRttiParameter;
@@ -820,14 +1018,14 @@ var
   LNames: TDictionary<string, string>;
   LOwner: string;
 begin
+  // One generator for all the parameters, so that a type referenced by more
+  // than one of them gets a single definition
   LGenerator := TNeonSchemaGenerator.Create(AConfig);
   // Property name -> the parameter described under it, so that a collision
   // can name both sides
   LNames := TDictionary<string, string>.Create;
   try
-    // One generator for all the parameters, so that a type referenced by more
-    // than one of them gets a single definition
-    LGenerator.FVersion := AVersion;
+    LResolver := LGenerator.FSchemaConfig.ParamResolver;
 
     Result := TJSONObject.Create;
     try
@@ -849,8 +1047,8 @@ begin
             // the caller, so it is not part of the input
             LInfo.Skip := (pfOut in LParam.Flags) or LNeonObject.NeonIgnore;
 
-            if Assigned(AResolver) then
-              AResolver(LParam, LInfo);
+            if Assigned(LResolver) then
+              LResolver(LParam, LInfo);
 
             if LInfo.Skip then
               Continue;
@@ -909,7 +1107,7 @@ begin
       // never sees it: [SetClosedSchema(True)] is applied here the same way.
       // A parameter cannot be [NeonUnwrapped], so no map value schema can
       // claim "additionalProperties" first
-      if LGenerator.FConfig.ClosedSchema then
+      if LGenerator.FSchemaConfig.ClosedSchema then
         Result.AddPair('additionalProperties', TJSONBool.Create(False));
 
       LGenerator.FinishDocument(Result);
@@ -924,21 +1122,15 @@ begin
 end;
 
 class function TNeonSchemaGenerator.MethodResultToSchema(AMethod: TRttiMethod;
-  AVersion: TNeonJSchemaVersion): TJSONObject;
-begin
-  Result := MethodResultToSchema(AMethod, TNeonConfiguration.Default, AVersion);
-end;
-
-class function TNeonSchemaGenerator.MethodResultToSchema(AMethod: TRttiMethod;
-  AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
+  const AConfig: INeonSchemaConfiguration): TJSONObject;
 begin
   // A procedure (or a constructor/destructor) has a nil ReturnType: nothing
   // to describe
-  Result := MethodResultToSchema(AMethod, AMethod.ReturnType, AConfig, AVersion);
+  Result := MethodResultToSchema(AMethod, AMethod.ReturnType, AConfig);
 end;
 
 class function TNeonSchemaGenerator.MethodResultToSchema(AMethod: TRttiMethod;
-  AResultType: TRttiType; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
+  AResultType: TRttiType; const AConfig: INeonSchemaConfiguration): TJSONObject;
 var
   LGenerator: TNeonSchemaGenerator;
   LNeonObject: TNeonRttiObject;
@@ -950,8 +1142,6 @@ begin
 
   LGenerator := TNeonSchemaGenerator.Create(AConfig);
   try
-    LGenerator.FVersion := AVersion;
-
     // The method's own attributes stand in for the result's, which Delphi
     // cannot express
     LNeonObject := LGenerator.CreateNeonObject(AMethod, AResultType);
@@ -1170,16 +1360,12 @@ begin
   end;
 end;
 
-class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AConfig: INeonConfiguration; AVersion: TNeonJSchemaVersion): TJSONObject;
+class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; const AConfig: INeonSchemaConfiguration): TJSONObject;
 var
   LGenerator: TNeonSchemaGenerator;
 begin
   LGenerator := TNeonSchemaGenerator.Create(AConfig);
   try
-    // Known before generating, not just when stamping "$schema" at the end, so
-    // the writers can keep to the keywords the chosen draft actually defines
-    LGenerator.FVersion := AVersion;
-
     Result := LGenerator.WriteDataMember(AType);
     if Assigned(Result) then
       LGenerator.FinishDocument(Result);
@@ -1188,10 +1374,6 @@ begin
   end;
 end;
 
-class function TNeonSchemaGenerator.TypeToJSONSchema(AType: TRttiType; AVersion: TNeonJSchemaVersion): TJSONObject;
-begin
-  Result := TypeToJSONSchema(AType, TNeonConfiguration.Default, AVersion);
-end;
 
 function TNeonSchemaGenerator.WriteArray(AType: TRttiType; ANeonObject: TNeonRttiObject): TJSONObject;
 var
@@ -1805,7 +1987,7 @@ begin
 
     if Assigned(LAdditionalProperties) then
       LSchema.AddPair('additionalProperties', LAdditionalProperties)
-    else if FConfig.ClosedSchema then
+    else if FSchemaConfig.ClosedSchema then
       // [SetClosedSchema(True)]: the object admits exactly the declared
       // members, nothing more
       LSchema.AddPair('additionalProperties', TJSONBool.Create(False));

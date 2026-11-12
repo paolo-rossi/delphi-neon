@@ -753,6 +753,49 @@ type
     procedure TestRecursionReachedFromAMemberHoistsDefsToTheRoot;
   end;
 
+  [TestFixture]
+  [Category('jsonschema')]
+  TTestJsonSchemaConfiguration = class(TObject)
+  private
+    FSchema: TJSONObject;
+  public
+    [TearDown]
+    procedure TearDown;
+
+    [Test]
+    procedure TestDefaultSettings;
+
+    [Test]
+    procedure TestNilNeonConfigFallsBackToDefault;
+
+    [Test]
+    procedure TestNeonConfigIsSharedNotCopied;
+
+    [Test]
+    procedure TestNeonSettingsShapeTheSchema;
+
+    [Test]
+    procedure TestNeonSettingsChangedAfterWrapping;
+
+    [Test]
+    procedure TestVersionComesFromTheConfig;
+
+    [Test]
+    procedure TestDraft07FromTheConfig;
+
+    [Test]
+    procedure TestNilConfigIsTheDefault;
+
+    [Test]
+    procedure TestGeneratorConstructorTakesSchemaConfig;
+
+    [Test]
+    procedure TestFactoriesKeepSchemaDefaults;
+
+    [Test]
+    procedure TestFactoriesWrapTheMatchingNeonConfig;
+  end;
+
 implementation
 
 { TSchemaTreeNode }
@@ -1108,7 +1151,7 @@ var
   LEnum: TJSONArray;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPalette,
-    TNeonConfiguration.Default.SetEnumAsInt(True));
+    TNeonSchemaConfiguration.Wrap(TNeonConfiguration.Default.SetEnumAsInt(True)));
 
   LMain := (FSchema.GetValue('properties') as TJSONObject).GetValue('Main') as TJSONObject;
   Assert.IsNotNull(LMain);
@@ -1496,7 +1539,7 @@ procedure TTestJsonSchemaEdgeCases.TestBooleanTagsHonourTheirValue;
 var
   LName, LTags: TJSONObject;
 begin
-  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBoolTags, TNeonJSchemaVersion.v202012);
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBoolTags, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
 
   LName := (FSchema.GetValue('properties') as TJSONObject).GetValue('Name') as TJSONObject;
   Assert.IsNotNull(LName.GetValue('readOnly'));
@@ -1553,7 +1596,7 @@ var
   LPoint: TJSONObject;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaShapeHolder,
-    TNeonConfiguration.Default.RegisterSerializer(TSchemaPointSerializer));
+    TNeonSchemaConfiguration.Wrap(TNeonConfiguration.Default.RegisterSerializer(TSchemaPointSerializer)));
 
   LPoint := (FSchema.GetValue('properties') as TJSONObject).GetValue('Point') as TJSONObject;
   Assert.AreEqual('string', LPoint.GetValue('type').Value,
@@ -1570,7 +1613,7 @@ begin
   // A registered serializer that does not override SerializeSchema must not
   // change anything: the structural inference applies
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaShapeHolder,
-    TNeonConfiguration.Default.RegisterSerializer(TSchemaPointNoSchema));
+    TNeonSchemaConfiguration.Wrap(TNeonConfiguration.Default.RegisterSerializer(TSchemaPointNoSchema)));
 
   LPoint := (FSchema.GetValue('properties') as TJSONObject).GetValue('Point') as TJSONObject;
   Assert.AreEqual('object', LPoint.GetValue('type').Value,
@@ -1582,7 +1625,7 @@ var
   LId: TJSONObject;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaShapeHolder,
-    TNeonConfiguration.Default.RegisterSerializer(TGUIDSerializer));
+    TNeonSchemaConfiguration.Wrap(TNeonConfiguration.Default.RegisterSerializer(TGUIDSerializer)));
 
   LId := (FSchema.GetValue('properties') as TJSONObject).GetValue('Id') as TJSONObject;
   Assert.AreEqual('string', LId.GetValue('type').Value,
@@ -1595,7 +1638,7 @@ var
   LData: TJSONObject;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBytesHolder,
-    TNeonConfiguration.Default.RegisterSerializer(TBytesSerializer));
+    TNeonSchemaConfiguration.Wrap(TNeonConfiguration.Default.RegisterSerializer(TBytesSerializer)));
 
   LData := (FSchema.GetValue('properties') as TJSONObject).GetValue('Data') as TJSONObject;
   Assert.AreEqual('string', LData.GetValue('type').Value,
@@ -1608,7 +1651,7 @@ var
   LItems: TJSONObject;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaCollectionHolder,
-    TNeonConfiguration.Default.RegisterSerializer(TCollectionSerializer));
+    TNeonSchemaConfiguration.Wrap(TNeonConfiguration.Default.RegisterSerializer(TCollectionSerializer)));
 
   LItems := (FSchema.GetValue('properties') as TJSONObject).GetValue('Items') as TJSONObject;
   Assert.AreEqual('array', LItems.GetValue('type').Value,
@@ -1622,7 +1665,7 @@ var
   LValue: TJSONObject;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTValueHolder,
-    TNeonConfiguration.Default.RegisterSerializer(TTValueSerializer));
+    TNeonSchemaConfiguration.Wrap(TNeonConfiguration.Default.RegisterSerializer(TTValueSerializer)));
 
   LValue := (FSchema.GetValue('properties') as TJSONObject).GetValue('Value') as TJSONObject;
   Assert.IsNull(LValue.GetValue('type'),
@@ -1660,13 +1703,13 @@ end;
 
 procedure TTestJsonSchemaConstraints.TestV202012SchemaHeader;
 begin
-  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonJSchemaVersion.v202012);
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
   Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
 end;
 
 procedure TTestJsonSchemaConstraints.TestDraft07SchemaHeader;
 begin
-  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonJSchemaVersion.Draft07);
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
   Assert.AreEqual('http://json-schema.org/draft-07/schema#', FSchema.GetValue('$schema').Value);
 end;
 
@@ -1741,7 +1784,7 @@ procedure TTestJsonSchemaConstraints.TestDraft07OmitsDeprecated;
 begin
   // "deprecated" arrived in 2019-09 and has no meaning in a Draft-07 document
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaMetaPerson,
-    TNeonJSchemaVersion.Draft07);
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
 
   Assert.IsNull(FSchema.GetValue('deprecated'));
 
@@ -1756,7 +1799,7 @@ var
   LKind: TJSONObject;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaMetaPerson,
-    TNeonJSchemaVersion.Draft07);
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
 
   // "const" is Draft-06 vocabulary, so Draft-07 has it
   LKind := Properties.GetValue('Kind') as TJSONObject;
@@ -1767,7 +1810,7 @@ end;
 procedure TTestJsonSchemaConstraints.TestV202012KeepsDeprecated;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaMetaPerson,
-    TNeonJSchemaVersion.v202012);
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
 
   Assert.IsNotNull(FSchema.GetValue('deprecated'));
   Assert.IsTrue((FSchema.GetValue('deprecated') as TJSONBool).AsBoolean);
@@ -1825,7 +1868,7 @@ procedure TTestJsonSchemaConstraints.TestDraft07UsesDefinitionsInsteadOfDefs;
 begin
   // Draft-07 spells the container "definitions"; $defs arrived in 2019-09
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTreeNode,
-    TNeonJSchemaVersion.Draft07);
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
 
   Assert.IsNotNull(FSchema.GetValue('definitions'));
   Assert.IsNull(FSchema.GetValue('$defs'));
@@ -1909,7 +1952,7 @@ begin
 
   FSchema.Free;
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid,
-    TNeonConfiguration.Default.SetClosedSchema(True));
+    TNeonSchemaConfiguration.Default.SetClosedSchema(True));
   Assert.IsFalse((FSchema.GetValue('additionalProperties') as TJSONBool).AsBoolean,
     'SetClosedSchema(True) must emit additionalProperties: false');
 end;
@@ -1940,10 +1983,163 @@ begin
   end;
 end;
 
+{ TTestJsonSchemaConfiguration }
+
+procedure TTestJsonSchemaConfiguration.TearDown;
+begin
+  FreeAndNil(FSchema);
+end;
+
+procedure TTestJsonSchemaConfiguration.TestDefaultSettings;
+var
+  LConfig: INeonSchemaConfiguration;
+begin
+  LConfig := TNeonSchemaConfiguration.Default;
+  Assert.IsNotNull(LConfig.Neon);
+  Assert.AreEqual(Ord(TNeonJSchemaVersion.None), Ord(LConfig.Version));
+  Assert.IsFalse(LConfig.ClosedSchema);
+  Assert.IsFalse(Assigned(LConfig.ParamResolver));
+end;
+
+procedure TTestJsonSchemaConfiguration.TestFactoriesKeepSchemaDefaults;
+var
+  LConfig: INeonSchemaConfiguration;
+begin
+  for LConfig in TArray<INeonSchemaConfiguration>.Create(
+    TNeonSchemaConfiguration.Pretty, TNeonSchemaConfiguration.Snake,
+    TNeonSchemaConfiguration.Camel, TNeonSchemaConfiguration.Kebab,
+    TNeonSchemaConfiguration.ScreamingSnake) do
+  begin
+    Assert.IsNotNull(LConfig.Neon);
+    Assert.AreEqual(Ord(TNeonJSchemaVersion.None), Ord(LConfig.Version));
+    Assert.IsFalse(LConfig.ClosedSchema);
+    Assert.IsFalse(Assigned(LConfig.ParamResolver));
+  end;
+end;
+
+procedure TTestJsonSchemaConfiguration.TestFactoriesWrapTheMatchingNeonConfig;
+var
+  LProps: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPalette, TNeonSchemaConfiguration.Camel);
+  LProps := FSchema.GetValue('properties') as TJSONObject;
+  Assert.IsNotNull(LProps.GetValue('main'), 'Camel must name the member in camelCase');
+  FreeAndNil(FSchema);
+
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPalette, TNeonSchemaConfiguration.ScreamingSnake);
+  LProps := FSchema.GetValue('properties') as TJSONObject;
+  Assert.IsNotNull(LProps.GetValue('MAIN'), 'ScreamingSnake must name the member in SCREAMING_SNAKE_CASE');
+end;
+
+procedure TTestJsonSchemaConfiguration.TestNilNeonConfigFallsBackToDefault;
+var
+  LConfig: INeonSchemaConfiguration;
+begin
+  LConfig := TNeonSchemaConfiguration.Wrap(nil);
+  Assert.IsNotNull(LConfig.Neon);
+
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid, LConfig);
+  Assert.IsNotNull(FSchema.GetValue('properties'));
+end;
+
+procedure TTestJsonSchemaConfiguration.TestNeonConfigIsSharedNotCopied;
+var
+  LNeon: INeonConfiguration;
+  LConfig: INeonSchemaConfiguration;
+begin
+  LNeon := TNeonConfiguration.Default;
+  LConfig := TNeonSchemaConfiguration.Wrap(LNeon);
+  Assert.IsTrue(LConfig.Neon = LNeon, 'the wrapped configuration must be the same instance');
+end;
+
+procedure TTestJsonSchemaConfiguration.TestNeonSettingsShapeTheSchema;
+var
+  LMain: TJSONObject;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPalette,
+    TNeonSchemaConfiguration.Wrap(TNeonConfiguration.Camel.SetEnumAsInt(True)));
+
+  // Camel case names the member, EnumAsInt shapes its schema
+  LMain := (FSchema.GetValue('properties') as TJSONObject).GetValue('main') as TJSONObject;
+  Assert.IsNotNull(LMain, 'the member case of the wrapped configuration must apply');
+  Assert.AreEqual('integer', LMain.GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaConfiguration.TestNeonSettingsChangedAfterWrapping;
+var
+  LConfig: INeonSchemaConfiguration;
+  LMain: TJSONObject;
+begin
+  LConfig := TNeonSchemaConfiguration.Default;
+  LConfig.Neon.SetEnumAsInt(True);
+
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaPalette, LConfig);
+  LMain := (FSchema.GetValue('properties') as TJSONObject).GetValue('Main') as TJSONObject;
+  Assert.AreEqual('integer', LMain.GetValue('type').Value);
+end;
+
+procedure TTestJsonSchemaConfiguration.TestVersionComesFromTheConfig;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid,
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+  Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
+
+  FreeAndNil(FSchema);
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid, TNeonSchemaConfiguration.Default);
+  Assert.IsNull(FSchema.GetValue('$schema'), 'no version, no "$schema"');
+end;
+
+procedure TTestJsonSchemaConfiguration.TestDraft07FromTheConfig;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBox<string>,
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
+  Assert.AreEqual('http://json-schema.org/draft-07/schema#', FSchema.GetValue('$schema').Value);
+  Assert.IsNotNull(FSchema.GetValue('definitions'));
+  Assert.IsNull(FSchema.GetValue('$defs'));
+end;
+
+procedure TTestJsonSchemaConfiguration.TestNilConfigIsTheDefault;
+var
+  LOmitted: TJSONObject;
+begin
+  // Omitted or nil: TNeonSchemaConfiguration.Default, open and with no version
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid, nil);
+  LOmitted := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid);
+  try
+    Assert.AreEqual(LOmitted.ToJSON, FSchema.ToJSON);
+  finally
+    LOmitted.Free;
+  end;
+  Assert.IsNull(FSchema.GetValue('additionalProperties'));
+  Assert.IsNull(FSchema.GetValue('$schema'));
+end;
+
+procedure TTestJsonSchemaConfiguration.TestGeneratorConstructorTakesSchemaConfig;
+var
+  LNeon: INeonConfiguration;
+  LGenerator: TNeonSchemaGenerator;
+begin
+  LNeon := TNeonConfiguration.Camel;
+  LGenerator := TNeonSchemaGenerator.Create(TNeonSchemaConfiguration.Wrap(LNeon));
+  try
+    Assert.IsTrue(LGenerator.GetConfiguration = LNeon, 'the engine runs on the wrapped configuration');
+  finally
+    LGenerator.Free;
+  end;
+
+  LGenerator := TNeonSchemaGenerator.Create(nil);
+  try
+    Assert.IsNotNull(LGenerator.Config, 'nil falls back to the default configuration');
+  finally
+    LGenerator.Free;
+  end;
+end;
+
 initialization
   TDUnitX.RegisterTestFixture(TTestJsonSchemaAttribute);
   TDUnitX.RegisterTestFixture(TTestJsonSchemaGenerator);
   TDUnitX.RegisterTestFixture(TTestJsonSchemaEdgeCases);
   TDUnitX.RegisterTestFixture(TTestJsonSchemaConstraints);
+  TDUnitX.RegisterTestFixture(TTestJsonSchemaConfiguration);
 
 end.

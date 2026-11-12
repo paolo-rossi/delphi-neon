@@ -172,6 +172,9 @@ type
     procedure TestResolverRenamesAndRequires;
 
     [Test]
+    procedure TestResolverFromSchemaConfig;
+
+    [Test]
     procedure TestResolverDescriptionReplacesTag;
 
     [Test]
@@ -229,6 +232,9 @@ type
 
     [Test]
     procedure TestNilResultTypeGivesNil;
+
+    [Test]
+    procedure TestSchemaConfigOverloads;
   end;
 
 implementation
@@ -426,7 +432,7 @@ begin
   // The parameters object is no Delphi type, so it does not go through the
   // writer that applies the option to classes and records
   FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'),
-    TNeonConfiguration.Default.SetClosedSchema(True));
+    TNeonSchemaConfiguration.Default.SetClosedSchema(True));
   Assert.IsFalse((FSchema.GetValue('additionalProperties') as TJSONBool).AsBoolean,
     'SetClosedSchema(True) must close the parameters object too');
 end;
@@ -434,7 +440,7 @@ end;
 procedure TTestJsonSchemaMethodParams.TestClosedSchemaRefusesExtraArgument;
 begin
   FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'),
-    TNeonConfiguration.Default.SetClosedSchema(True));
+    TNeonSchemaConfiguration.Default.SetClosedSchema(True));
   Assert.IsTrue(Validates('{"A":1,"B":2.5}'));
   Assert.IsFalse(Validates('{"A":1,"B":2.5,"C":3}'));
 end;
@@ -486,7 +492,7 @@ end;
 
 procedure TTestJsonSchemaMethodParams.TestParamNamesIgnoreMemberCase;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('PascalName'), TNeonConfiguration.Snake);
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('PascalName'), TNeonSchemaConfiguration.Wrap(TNeonConfiguration.Snake));
   Assert.IsNotNull(Prop('SomeValue'), 'parameters keep their declared name');
   Assert.IsNull(Properties.GetValue('some_value'));
 end;
@@ -533,7 +539,7 @@ procedure TTestJsonSchemaMethodParams.TestRecursiveTypeSharesOneDefinition;
 var
   LDefs: TJSONObject;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithNodes'), TNeonJSchemaVersion.v202012);
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithNodes'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
   LDefs := FSchema.GetValue('$defs') as TJSONObject;
   Assert.IsNotNull(LDefs, 'the definitions belong at the root');
   Assert.AreEqual(1, LDefs.Count);
@@ -547,7 +553,7 @@ end;
 
 procedure TTestJsonSchemaMethodParams.TestDraft07UsesDefinitions;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithNodes'), TNeonJSchemaVersion.Draft07);
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithNodes'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
   Assert.IsNotNull(FSchema.GetValue('definitions'));
   Assert.IsNull(FSchema.GetValue('$defs'));
   Assert.AreEqual('#/definitions/TSchemaMethodNode', Prop('ARoot').GetValue('$ref').Value);
@@ -561,14 +567,14 @@ end;
 
 procedure TTestJsonSchemaMethodParams.TestVersionWritesSchemaKeyword;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonJSchemaVersion.v202012);
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
   Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
 end;
 
 procedure TTestJsonSchemaMethodParams.TestInstanceValidatesAgainstParams(const AInstanceJSON: string;
   AExpectedValid: Boolean);
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonJSchemaVersion.v202012);
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
   Assert.AreEqual(AExpectedValid, Validates(AInstanceJSON));
 end;
 
@@ -577,28 +583,28 @@ var
   LSeen: string;
 begin
   LSeen := '';
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithOut'), TNeonConfiguration.Default,
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithOut'), TNeonSchemaConfiguration.Default.SetParamResolver(
     procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
     begin
       LSeen := LSeen + Format('%s=%s,%s,%s,%s;', [AParam.Name, AInfo.Name, AInfo.Description,
         BoolToStr(AInfo.Required, True), BoolToStr(AInfo.Skip, True)]);
-    end);
+    end));
   Assert.AreEqual('AInput=AInput,,False,False;AOutput=AOutput,,False,True;AInOut=AInOut,,False,False;', LSeen,
     'every parameter is offered, the out one already marked to skip');
 
   LSeen := '';
   FreeAndNil(FSchema);
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('TagNamed'), TNeonConfiguration.Default,
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('TagNamed'), TNeonSchemaConfiguration.Default.SetParamResolver(
     procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
     begin
       LSeen := LSeen + Format('%s=%s,%s', [AParam.Name, AInfo.Name, BoolToStr(AInfo.Required, True)]);
-    end);
+    end));
   Assert.AreEqual('AOrderId=order_id,True', LSeen, 'the name and required tags are already applied');
 end;
 
 procedure TTestJsonSchemaMethodParams.TestNilResolverIsTheDefault;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default, nil);
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetParamResolver(nil));
   Assert.AreEqual('First addend', Prop('A').GetValue('description').Value);
   Assert.AreEqual(2, (FSchema.GetValue('required') as TJSONArray).Count);
 end;
@@ -607,12 +613,12 @@ procedure TTestJsonSchemaMethodParams.TestResolverRenamesAndRequires;
 var
   LRequired: TJSONArray;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Optional'), TNeonConfiguration.Default,
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Optional'), TNeonSchemaConfiguration.Default.SetParamResolver(
     procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
     begin
       AInfo.Name := AParam.Name.Substring(1).ToLower;
       AInfo.Required := True;
-    end);
+    end));
   Assert.AreEqual('string', Prop('name').GetValue('type').Value);
   Assert.AreEqual('integer', Prop('count').GetValue('type').Value);
   Assert.IsNull(Properties.GetValue('AName'));
@@ -624,13 +630,29 @@ begin
   Assert.AreEqual('count', LRequired.Items[1].Value);
 end;
 
+procedure TTestJsonSchemaMethodParams.TestResolverFromSchemaConfig;
+begin
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Optional'),
+    TNeonSchemaConfiguration.Default
+      .SetVersion(TNeonJSchemaVersion.v202012)
+      .SetParamResolver(
+        procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
+        begin
+          AInfo.Name := AParam.Name.Substring(1).ToLower;
+        end));
+  Assert.IsNotNull(Prop('name'));
+  Assert.IsNotNull(Prop('count'));
+  Assert.IsNull(Properties.GetValue('AName'));
+  Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
+end;
+
 procedure TTestJsonSchemaMethodParams.TestResolverDescriptionReplacesTag;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default,
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetParamResolver(
     procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
     begin
       AInfo.Description := 'Described ' + AParam.Name;
-    end);
+    end));
   Assert.AreEqual(1, CountPairs(Prop('A'), 'description'), 'replaced, not added a second time');
   Assert.AreEqual('Described A', Prop('A').GetValue('description').Value);
   Assert.AreEqual(0.0, (Prop('A').GetValue('minimum') as TJSONNumber).AsDouble, 0.0, 'the other tags stay');
@@ -639,11 +661,11 @@ end;
 
 procedure TTestJsonSchemaMethodParams.TestResolverEmptyDescriptionKeepsTag;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default,
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetParamResolver(
     procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
     begin
       AInfo.Description := '';
-    end);
+    end));
   Assert.AreEqual('First addend', Prop('A').GetValue('description').Value);
   Assert.IsNull(Prop('B').GetValue('description'), 'no description is invented');
 end;
@@ -652,11 +674,11 @@ procedure TTestJsonSchemaMethodParams.TestResolverCanSkip;
 var
   LRequired: TJSONArray;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default,
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetParamResolver(
     procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
     begin
       AInfo.Skip := AParam.Name = 'B';
-    end);
+    end));
   Assert.AreEqual(1, Properties.Count);
   Assert.IsNull(Properties.GetValue('B'));
   LRequired := FSchema.GetValue('required') as TJSONArray;
@@ -665,11 +687,11 @@ end;
 
 procedure TTestJsonSchemaMethodParams.TestResolverCanIncludeOutParam;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithOut'), TNeonConfiguration.Default,
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithOut'), TNeonSchemaConfiguration.Default.SetParamResolver(
     procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
     begin
       AInfo.Skip := False;
-    end);
+    end));
   Assert.AreEqual(3, Properties.Count);
   Assert.AreEqual('string', Prop('AOutput').GetValue('type').Value);
 end;
@@ -679,11 +701,11 @@ begin
   Assert.WillRaiseWithMessage(
     procedure
     begin
-      FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Optional'), TNeonConfiguration.Default,
+      FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Optional'), TNeonSchemaConfiguration.Default.SetParamResolver(
         procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
         begin
           AInfo.Name := 'same';
-        end);
+        end));
     end,
     ENeonException,
     'Parameters [AName] and [ACount] are both described as [same]');
@@ -694,11 +716,11 @@ begin
   Assert.WillRaise(
     procedure
     begin
-      FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonConfiguration.Default,
+      FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetParamResolver(
         procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
         begin
           AInfo.Name := '';
-        end);
+        end));
     end,
     ENeonException);
 end;
@@ -757,7 +779,7 @@ procedure TTestJsonSchemaMethodResult.TestRecursiveResultCarriesDefinitions;
 var
   LInstance: TJSONValue;
 begin
-  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('GetTree'), TNeonJSchemaVersion.v202012);
+  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('GetTree'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
   Assert.IsNotNull(FSchema.GetValue('$defs'));
   Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
 
@@ -773,7 +795,7 @@ procedure TTestJsonSchemaMethodResult.TestDraft07RecursiveResultWrapsRefInAllOf;
 var
   LAllOf: TJSONArray;
 begin
-  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('GetTree'), TNeonJSchemaVersion.Draft07);
+  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('GetTree'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
   Assert.IsNotNull(FSchema.GetValue('definitions'));
   Assert.IsNull(FSchema.GetValue('$ref'), 'a Draft-07 "$ref" would hide its sibling definitions');
   LAllOf := FSchema.GetValue('allOf') as TJSONArray;
@@ -791,15 +813,36 @@ end;
 procedure TTestJsonSchemaMethodResult.TestResultTypeOverrideKeepsMethodTags;
 begin
   FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('Total'),
-    TRttiContext.Create.GetType(TypeInfo(Double)), TNeonConfiguration.Default);
+    TRttiContext.Create.GetType(TypeInfo(Double)), TNeonSchemaConfiguration.Default);
   Assert.AreEqual('number', FSchema.GetValue('type').Value, 'the type given, not the one declared');
   Assert.AreEqual('The sum', FSchema.GetValue('description').Value, 'the method''s tags still apply');
 end;
 
 procedure TTestJsonSchemaMethodResult.TestNilResultTypeGivesNil;
 begin
-  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('Total'), nil, TNeonConfiguration.Default);
+  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('Total'), nil, TNeonSchemaConfiguration.Default);
   Assert.IsNull(FSchema);
+end;
+
+procedure TTestJsonSchemaMethodResult.TestSchemaConfigOverloads;
+var
+  LConfig: INeonSchemaConfiguration;
+begin
+  LConfig := TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012);
+
+  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('Total'), LConfig);
+  Assert.AreEqual('integer', FSchema.GetValue('type').Value);
+  Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
+
+  FreeAndNil(FSchema);
+  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('Total'),
+    TRttiContext.Create.GetType(TypeInfo(Double)), LConfig);
+  Assert.AreEqual('number', FSchema.GetValue('type').Value);
+  Assert.AreEqual('The sum', FSchema.GetValue('description').Value);
+
+  FreeAndNil(FSchema);
+  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('NoParams'), LConfig);
+  Assert.IsNull(FSchema, 'a procedure has no result, whatever the overload');
 end;
 
 initialization

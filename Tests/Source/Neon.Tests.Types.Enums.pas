@@ -208,7 +208,7 @@ begin
   LConfig := TNeonConfiguration.Default.SetMemberCase(TNeonCase.SnakeCase);
   LRtti := TRttiContext.Create;
   LSchema := TNeonSchemaGenerator.TypeToJSONSchema(
-    LRtti.GetType(TypeInfo(TMultiWordEnum)), LConfig);
+    LRtti.GetType(TypeInfo(TMultiWordEnum)), TNeonSchemaConfiguration.Wrap(LConfig));
   try
     LEnum := LSchema.GetValue('enum') as TJSONArray;
     Assert.IsNotNull(LEnum, 'the enum schema must list the allowed names');
