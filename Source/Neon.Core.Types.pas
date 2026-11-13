@@ -30,7 +30,11 @@ type
   TNeonVisibility = set of TMemberVisibility;
   TNeonIncludeOption = (Default, Include, Exclude);
   TNeonOperation = (Serialize, Deserialize);
-  TNeonJSchemaVersion = (None, Draft07, v202012);
+  /// <summary>
+  ///   The JSON Schema draft a generated document follows, in chronological
+  ///   order so that "from this draft on" checks can compare ordinals
+  /// </summary>
+  TNeonJSchemaVersion = (Draft07, Draft2019_09, Draft2020_12);
 
   /// <summary>
   ///   Which of the structural shapes in Neon.Core.DynamicTypes a class matches:

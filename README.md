@@ -477,13 +477,15 @@ The generator is configured through `INeonSchemaConfiguration` (in `Neon.Core.Pe
 ```delphi
 LSchema := TNeonSchemaGenerator.ClassToJSONSchema(TOrder,
   TNeonSchemaConfiguration.Wrap(LConfig)          // the configuration you serialize with
-    .SetVersion(TNeonJSchemaVersion.v202012)      // "$schema" URI and "$defs" vs "definitions"
+    .SetVersion(TNeonJSchemaVersion.Draft2020_12) // keywords used, e.g. "$defs" vs "definitions"
+    .SetEmitSchemaURI(True)                       // "$schema" URI at the root
     .SetClosedSchema(True));                      // "additionalProperties": false on objects
 ```
 
 | Setting | Default | Effect |
 |---|---|---|
-| `SetVersion` | `None` | The draft the document targets. `None` writes no `$schema` and produces a fragment |
+| `SetVersion` | `Draft2020_12` | The draft the document follows (`Draft07`, `Draft2019_09` or `Draft2020_12`): it selects the keywords used (`$defs` vs `definitions`, `deprecated`, ...) and the `$schema` URI |
+| `SetEmitSchemaURI` | `False` | Writes the `$schema` URI of the version at the root. Off, the result is a fragment (e.g. for an OpenAPI document or a tool definition) that still follows the version's rules |
 | `SetClosedSchema` | `False` | Classes, records and method parameters get `"additionalProperties": false` |
 | `SetParamResolver` | `nil` | Decides how `MethodParamsToSchema` describes each parameter (see below) |
 
@@ -495,10 +497,12 @@ Every entry point (`TypeToJSONSchema`, `ClassToJSONSchema`, `MethodParamsToSchem
 >
 > | Before | After |
 > |---|---|
-> | `ClassToJSONSchema(T, TNeonJSchemaVersion.v202012)` | `ClassToJSONSchema(T, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012))` |
-> | `ClassToJSONSchema(T, LConfig, AVersion)` | `ClassToJSONSchema(T, TNeonSchemaConfiguration.Wrap(LConfig).SetVersion(AVersion))` |
+> | `ClassToJSONSchema(T, TNeonJSchemaVersion.v202012)` | `ClassToJSONSchema(T, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True))` |
+> | `ClassToJSONSchema(T, LConfig, AVersion)` | `ClassToJSONSchema(T, TNeonSchemaConfiguration.Wrap(LConfig).SetVersion(AVersion).SetEmitSchemaURI(True))` |
 > | `MethodParamsToSchema(M, LConfig, LResolver)` | `MethodParamsToSchema(M, TNeonSchemaConfiguration.Wrap(LConfig).SetParamResolver(LResolver))` |
 > | `TNeonConfiguration.Default.SetClosedSchema(True)` | `TNeonSchemaConfiguration.Default.SetClosedSchema(True)` |
+>
+> `TNeonJSchemaVersion` no longer has a `None` value, and `v202012` is now `Draft2020_12`. The version only selects the draft's rules; whether `$schema` is written is the separate `SetEmitSchemaURI` (off by default). `None` is simply the default configuration, and `SetVersion(X)` becomes `SetVersion(X).SetEmitSchemaURI(True)` where the `$schema` URI is wanted.
 
 #### Describing a method
 
@@ -516,7 +520,7 @@ type
   end;
 
 LSchema := TNeonSchemaGenerator.MethodParamsToSchema(LMethod,
-  TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+  TNeonSchemaConfiguration.Default.SetEmitSchemaURI(True));
 ```
 
 ```json

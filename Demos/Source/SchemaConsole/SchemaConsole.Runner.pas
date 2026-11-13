@@ -181,7 +181,7 @@ begin
 
   FConfig := TNeonConfiguration.Camel;
 
-  FOrderSchema := TNeonSchemaGenerator.ClassToJSONSchema(TOrder, TNeonSchemaConfiguration.Wrap(FConfig).SetVersion(TNeonJSchemaVersion.v202012));
+  FOrderSchema := TNeonSchemaGenerator.ClassToJSONSchema(TOrder, TNeonSchemaConfiguration.Wrap(FConfig).SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
 
   FDataFolder := TPath.GetFullPath(TPath.Combine(
     TPath.GetDirectoryName(ParamStr(0)), '..' + PathDelim + 'Data'));
@@ -423,7 +423,7 @@ begin
   WriteLn('so a tree of any depth is checked by the one definition.');
   WriteLn;
 
-  LSchema := TNeonSchemaGenerator.ClassToJSONSchema(TCategory, TNeonSchemaConfiguration.Wrap(FConfig).SetVersion(TNeonJSchemaVersion.v202012));
+  LSchema := TNeonSchemaGenerator.ClassToJSONSchema(TCategory, TNeonSchemaConfiguration.Wrap(FConfig).SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
   try
     PrintJSON('Schema for TCategory:', LSchema);
 
@@ -522,7 +522,7 @@ begin
     LOrder.Free;
   end;
 
-  LSchema := TNeonSchemaGenerator.ClassToJSONSchema(TCategory, TNeonSchemaConfiguration.Wrap(FConfig).SetVersion(TNeonJSchemaVersion.v202012));
+  LSchema := TNeonSchemaGenerator.ClassToJSONSchema(TCategory, TNeonSchemaConfiguration.Wrap(FConfig).SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
   try
     LCatalog := BuildCatalog;
     try

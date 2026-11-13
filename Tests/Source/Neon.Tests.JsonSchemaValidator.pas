@@ -279,6 +279,14 @@ type
       '{"$defs":{"a":{"$dynamicRef":"#/$defs/a"}}}|42', '|')]
     [TestCase('$dynamicRef hidden in an untaken then branch is still refused',
       '{"if":{"type":"string"},"then":{"$dynamicRef":"#node"}}|5', '|')]
+    [TestCase('root 2019-09 $recursiveRef refused',
+      '{"$recursiveRef":"#"}|{}', '|')]
+    [TestCase('root 2019-09 $recursiveAnchor refused',
+      '{"$recursiveAnchor":true}|{}', '|')]
+    [TestCase('2019-09 $recursiveRef under a property refused',
+      '{"properties":{"child":{"$recursiveRef":"#"}}}|{"child":42}', '|')]
+    [TestCase('2019-09 $recursiveRef hidden in an untaken then branch is still refused',
+      '{"if":{"type":"string"},"then":{"$recursiveRef":"#"}}|5', '|')]
     procedure TestDynamicRefKeywordsAreRefused(const ASchemaJSON, AInstanceJSON: string);
 
     [Test]

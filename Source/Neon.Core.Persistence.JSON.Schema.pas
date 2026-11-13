@@ -96,18 +96,28 @@ type
   ///   <code>
   ///     LSchema := TNeonSchemaGenerator.ClassToJSONSchema(TOrder,
   ///       TNeonSchemaConfiguration.Wrap(LConfig)
-  ///         .SetVersion(TNeonJSchemaVersion.v202012)
+  ///         .SetVersion(TNeonJSchemaVersion.Draft2020_12)
+  ///         .SetEmitSchemaURI(True)
   ///         .SetClosedSchema(True));
   ///   </code>
   /// </remarks>
   INeonSchemaConfiguration = interface
   ['{895286F9-87E5-49A9-A8F9-0C1C4A8913EB}']
     /// <summary>
-    ///   The draft the document is generated for: it selects the "$schema" URI
-    ///   written at the root and the keywords used ("$defs" or "definitions").
-    ///   None (the default) writes no "$schema" and produces a fragment
+    ///   The draft the document is generated for: it selects the keywords used
+    ///   ("$defs" or "definitions", "deprecated", ...) and, when
+    ///   EmitSchemaURI is set, the "$schema" URI written at the root. Defaults
+    ///   to Draft2020_12
     /// </summary>
     function SetVersion(AValue: TNeonJSchemaVersion): INeonSchemaConfiguration;
+
+    /// <summary>
+    ///   When True, the root of the document carries the "$schema" URI of the
+    ///   configured Version. Defaults to False, which produces a schema
+    ///   fragment (e.g. for embedding in an OpenAPI document or a tool
+    ///   definition) that still follows the configured Version's rules
+    /// </summary>
+    function SetEmitSchemaURI(AValue: Boolean): INeonSchemaConfiguration;
 
     /// <summary>
     ///   When True, the schema of a class, a record and a method's parameters
@@ -127,6 +137,7 @@ type
 
     function GetNeonConfig: INeonConfiguration;
     function GetVersion: TNeonJSchemaVersion;
+    function GetEmitSchemaURI: Boolean;
     function GetClosedSchema: Boolean;
     function GetParamResolver: TNeonParamSchemaResolver;
 
@@ -136,6 +147,7 @@ type
     /// </summary>
     property Neon: INeonConfiguration read GetNeonConfig;
     property Version: TNeonJSchemaVersion read GetVersion;
+    property EmitSchemaURI: Boolean read GetEmitSchemaURI;
     property ClosedSchema: Boolean read GetClosedSchema;
     property ParamResolver: TNeonParamSchemaResolver read GetParamResolver;
   end;
@@ -144,6 +156,7 @@ type
   private
     FNeonConfig: INeonConfiguration;
     FVersion: TNeonJSchemaVersion;
+    FEmitSchemaURI: Boolean;
     FClosedSchema: Boolean;
     FParamResolver: TNeonParamSchemaResolver;
   public
@@ -193,18 +206,20 @@ type
     class function ScreamingSnake: INeonSchemaConfiguration; static;
 
     function SetVersion(AValue: TNeonJSchemaVersion): INeonSchemaConfiguration;
+    function SetEmitSchemaURI(AValue: Boolean): INeonSchemaConfiguration;
     function SetClosedSchema(AValue: Boolean): INeonSchemaConfiguration;
     function SetParamResolver(const AValue: TNeonParamSchemaResolver): INeonSchemaConfiguration;
 
     function GetNeonConfig: INeonConfiguration;
     function GetVersion: TNeonJSchemaVersion;
+    function GetEmitSchemaURI: Boolean;
     function GetClosedSchema: Boolean;
     function GetParamResolver: TNeonParamSchemaResolver;
   end;
 
   /// <summary>
   ///   JSON Schema generator
-  ///   JSON Schema version supported: Draft 2020-12
+  ///   JSON Schema versions supported: Draft-07, 2019-09 and 2020-12
   /// </summary>
   TNeonSchemaGenerator = class(TNeonBase)
   private
@@ -244,8 +259,7 @@ type
 
     /// <summary>
     ///   The draft the document is being generated for, so that the writers can
-    ///   leave out keywords that draft does not have. None means "no dialect
-    ///   declared", and is treated as the newest one
+    ///   leave out keywords that draft does not have
     /// </summary>
     FVersion: TNeonJSchemaVersion;
 
@@ -272,7 +286,7 @@ type
 
     /// <summary>
     ///   Completes a generated document: attaches the definitions collected
-    ///   while generating it and, unless FVersion is None, the "$schema" URI.
+    ///   while generating it and, when EmitSchemaURI is set, the "$schema" URI.
     ///   Shared by every public entry point, so that a document built from
     ///   several types (a method's parameters) still gets a single root-level
     ///   definitions container
@@ -509,8 +523,9 @@ type
 
     /// <summary>
     ///   Serialize any Delphi type into a JSONValue, the Delphi type must be passed as a TRttiType.
-    ///   The version of the schema configuration selects the "$schema" URI
-    ///   written into the root of the result; None produces a JSON-Schema Fragment.
+    ///   The version of the schema configuration selects the keywords used and,
+    ///   when EmitSchemaURI is set, the "$schema" URI written into the root of
+    ///   the result; otherwise the result is a JSON-Schema Fragment.
     ///   A nil AConfig is the same as TNeonSchemaConfiguration.Default
     /// </summary>
     class function TypeToJSONSchema(AType: TRttiType; const AConfig: INeonSchemaConfiguration = nil): TJSONObject;
@@ -601,8 +616,9 @@ type
   ///   only; a $ref to another document is unsupported. allOf/anyOf/oneOf/not,
   ///   if/then/else and dependentRequired/dependentSchemas are implemented (as
   ///   is Draft-07's "dependencies", which merges the last two);
-  ///   unevaluatedProperties/unevaluatedItems and $dynamicRef/$dynamicAnchor are
-  ///   not implemented, and rather than silently accepting instances the schema
+  ///   unevaluatedProperties/unevaluatedItems, $dynamicRef/$dynamicAnchor and
+  ///   their 2019-09 predecessors $recursiveRef/$recursiveAnchor are not
+  ///   implemented, and rather than silently accepting instances the schema
   ///   rejects, the constructor refuses any schema that uses them
   ///   (ENeonException). format is annotation-only (never validated) in v1;
   ///   pattern is evaluated with the RTL's .NET regexes after normalizing the
@@ -727,7 +743,8 @@ begin
   else
     FNeonConfig := TNeonConfiguration.Default;
 
-  FVersion := TNeonJSchemaVersion.None;
+  FVersion := TNeonJSchemaVersion.Draft2020_12;
+  FEmitSchemaURI := False;
   FClosedSchema := False;
   FParamResolver := nil;
 end;
@@ -772,6 +789,11 @@ begin
   Result := FClosedSchema;
 end;
 
+function TNeonSchemaConfiguration.GetEmitSchemaURI: Boolean;
+begin
+  Result := FEmitSchemaURI;
+end;
+
 function TNeonSchemaConfiguration.GetNeonConfig: INeonConfiguration;
 begin
   Result := FNeonConfig;
@@ -790,6 +812,12 @@ end;
 function TNeonSchemaConfiguration.SetClosedSchema(AValue: Boolean): INeonSchemaConfiguration;
 begin
   FClosedSchema := AValue;
+  Result := Self;
+end;
+
+function TNeonSchemaConfiguration.SetEmitSchemaURI(AValue: Boolean): INeonSchemaConfiguration;
+begin
+  FEmitSchemaURI := AValue;
   Result := Self;
 end;
 
@@ -1218,7 +1246,7 @@ begin
     FDefs := nil; // ownership passed to the document
   end;
 
-  if (FVersion <> TNeonJSchemaVersion.None) then
+  if FSchemaConfig.EmitSchemaURI then
     ARoot.AddPair('$schema', SchemaURIFor(FVersion));
 
   // Draft-07 nuance: "$ref" replaces its sibling keywords in the same
@@ -1270,7 +1298,7 @@ begin
   // "deprecated" only exists from 2019-09 onwards, so it is left out of a
   // Draft-07 document. ("const", by contrast, dates from Draft-06 and is emitted
   // for every draft this generator can target.)
-  if LTags.Exists('deprecated') and (FVersion <> TNeonJSchemaVersion.Draft07) then
+  if LTags.Exists('deprecated') and (FVersion >= TNeonJSchemaVersion.Draft2019_09) then
     AJSON.AddPair('deprecated', TJSONBool.Create(LTags.GetBoolValue('deprecated')));
 
   if LTags.Exists('default') then
@@ -1354,7 +1382,8 @@ class function TNeonSchemaGenerator.SchemaURIFor(AVersion: TNeonJSchemaVersion):
 begin
   case AVersion of
     TNeonJSchemaVersion.Draft07: Result := 'http://json-schema.org/draft-07/schema#';
-    TNeonJSchemaVersion.v202012: Result := 'https://json-schema.org/draft/2020-12/schema';
+    TNeonJSchemaVersion.Draft2019_09: Result := 'https://json-schema.org/draft/2019-09/schema';
+    TNeonJSchemaVersion.Draft2020_12: Result := 'https://json-schema.org/draft/2020-12/schema';
   else
     Result := '';
   end;
@@ -2242,6 +2271,17 @@ begin
 
   if Assigned(LObj.GetValue('$dynamicAnchor')) then
     raise ENeonException.CreateFmt(SNeonErrorSchemaKeywordUnsupportedF1, ['$dynamicAnchor']);
+
+  // $recursiveRef/$recursiveAnchor are the 2019-09 predecessors of the two
+  // above, with the same dynamic-scope semantics. Left unchecked they would be
+  // ignored as unknown keywords - and a $recursiveRef carries the reference
+  // itself, so the whole subschema would accept anything - hence the same
+  // up-front refusal
+  if Assigned(LObj.GetValue('$recursiveRef')) then
+    raise ENeonException.CreateFmt(SNeonErrorSchemaKeywordUnsupportedF1, ['$recursiveRef']);
+
+  if Assigned(LObj.GetValue('$recursiveAnchor')) then
+    raise ENeonException.CreateFmt(SNeonErrorSchemaKeywordUnsupportedF1, ['$recursiveAnchor']);
 
   LAnchor := LObj.GetValue('$anchor');
   if Assigned(LAnchor) and (LAnchor is TJSONString) then

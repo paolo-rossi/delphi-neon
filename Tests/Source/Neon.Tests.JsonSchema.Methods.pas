@@ -539,7 +539,7 @@ procedure TTestJsonSchemaMethodParams.TestRecursiveTypeSharesOneDefinition;
 var
   LDefs: TJSONObject;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithNodes'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('WithNodes'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
   LDefs := FSchema.GetValue('$defs') as TJSONObject;
   Assert.IsNotNull(LDefs, 'the definitions belong at the root');
   Assert.AreEqual(1, LDefs.Count);
@@ -567,14 +567,14 @@ end;
 
 procedure TTestJsonSchemaMethodParams.TestVersionWritesSchemaKeyword;
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
   Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
 end;
 
 procedure TTestJsonSchemaMethodParams.TestInstanceValidatesAgainstParams(const AInstanceJSON: string;
   AExpectedValid: Boolean);
 begin
-  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+  FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Add'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
   Assert.AreEqual(AExpectedValid, Validates(AInstanceJSON));
 end;
 
@@ -634,7 +634,8 @@ procedure TTestJsonSchemaMethodParams.TestResolverFromSchemaConfig;
 begin
   FSchema := TNeonSchemaGenerator.MethodParamsToSchema(Method('Optional'),
     TNeonSchemaConfiguration.Default
-      .SetVersion(TNeonJSchemaVersion.v202012)
+      .SetVersion(TNeonJSchemaVersion.Draft2020_12)
+      .SetEmitSchemaURI(True)
       .SetParamResolver(
         procedure (AParam: TRttiParameter; var AInfo: TNeonParamSchemaInfo)
         begin
@@ -779,7 +780,7 @@ procedure TTestJsonSchemaMethodResult.TestRecursiveResultCarriesDefinitions;
 var
   LInstance: TJSONValue;
 begin
-  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('GetTree'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+  FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('GetTree'), TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
   Assert.IsNotNull(FSchema.GetValue('$defs'));
   Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
 
@@ -828,7 +829,7 @@ procedure TTestJsonSchemaMethodResult.TestSchemaConfigOverloads;
 var
   LConfig: INeonSchemaConfiguration;
 begin
-  LConfig := TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012);
+  LConfig := TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True);
 
   FSchema := TNeonSchemaGenerator.MethodResultToSchema(Method('Total'), LConfig);
   Assert.AreEqual('integer', FSchema.GetValue('type').Value);

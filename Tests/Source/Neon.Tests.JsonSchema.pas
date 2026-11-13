@@ -687,10 +687,13 @@ type
     procedure TestDefaultVersionOmitsSchemaHeader;
 
     [Test]
-    procedure TestV202012SchemaHeader;
+    procedure TestDraft2020_12SchemaHeader;
 
     [Test]
     procedure TestDraft07SchemaHeader;
+
+    [Test]
+    procedure TestDraft2019_09SchemaHeader;
 
     [Test]
     procedure TestStringConstraints;
@@ -717,7 +720,10 @@ type
     procedure TestDraft07KeepsConst;
 
     [Test]
-    procedure TestV202012KeepsDeprecated;
+    procedure TestDraft2020_12KeepsDeprecated;
+
+    [Test]
+    procedure TestDraft2019_09KeepsDeprecatedAndUsesDefs;
 
     [Test]
     procedure TestRecursiveTypeGoesIntoDefs;
@@ -782,6 +788,12 @@ type
 
     [Test]
     procedure TestDraft07FromTheConfig;
+
+    [Test]
+    procedure TestDraft07FragmentKeepsDraftRules;
+
+    [Test]
+    procedure TestEmitSchemaURIUsesDefaultVersion;
 
     [Test]
     procedure TestNilConfigIsTheDefault;
@@ -1539,7 +1551,7 @@ procedure TTestJsonSchemaEdgeCases.TestBooleanTagsHonourTheirValue;
 var
   LName, LTags: TJSONObject;
 begin
-  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBoolTags, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBoolTags, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
 
   LName := (FSchema.GetValue('properties') as TJSONObject).GetValue('Name') as TJSONObject;
   Assert.IsNotNull(LName.GetValue('readOnly'));
@@ -1695,21 +1707,27 @@ end;
 
 procedure TTestJsonSchemaConstraints.TestDefaultVersionOmitsSchemaHeader;
 begin
-  // Default (None) is backward-compatible with pre-existing callers and lets the
-  // result be embedded as a schema fragment (e.g. under $defs) without its own $schema
+  // EmitSchemaURI is off by default, so the result can be embedded as a schema
+  // fragment (e.g. under $defs) without its own $schema
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson);
   Assert.IsNull(FSchema.GetValue('$schema'));
 end;
 
-procedure TTestJsonSchemaConstraints.TestV202012SchemaHeader;
+procedure TTestJsonSchemaConstraints.TestDraft2020_12SchemaHeader;
 begin
-  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
   Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
+end;
+
+procedure TTestJsonSchemaConstraints.TestDraft2019_09SchemaHeader;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2019_09).SetEmitSchemaURI(True));
+  Assert.AreEqual('https://json-schema.org/draft/2019-09/schema', FSchema.GetValue('$schema').Value);
 end;
 
 procedure TTestJsonSchemaConstraints.TestDraft07SchemaHeader;
 begin
-  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaConstraintPerson, TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07).SetEmitSchemaURI(True));
   Assert.AreEqual('http://json-schema.org/draft-07/schema#', FSchema.GetValue('$schema').Value);
 end;
 
@@ -1807,10 +1825,26 @@ begin
   Assert.AreEqual('person', LKind.GetValue('const').Value);
 end;
 
-procedure TTestJsonSchemaConstraints.TestV202012KeepsDeprecated;
+procedure TTestJsonSchemaConstraints.TestDraft2019_09KeepsDeprecatedAndUsesDefs;
+begin
+  // Both "deprecated" and "$defs" arrived in 2019-09, so the earlier draft the
+  // generator can target already has them
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaMetaPerson,
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2019_09));
+  Assert.IsNotNull(FSchema.GetValue('deprecated'));
+  Assert.IsTrue((FSchema.GetValue('deprecated') as TJSONBool).AsBoolean);
+  FreeAndNil(FSchema);
+
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaTreeNode,
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2019_09));
+  Assert.IsNotNull(FSchema.GetValue('$defs'));
+  Assert.IsNull(FSchema.GetValue('definitions'));
+end;
+
+procedure TTestJsonSchemaConstraints.TestDraft2020_12KeepsDeprecated;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaMetaPerson,
-    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
 
   Assert.IsNotNull(FSchema.GetValue('deprecated'));
   Assert.IsTrue((FSchema.GetValue('deprecated') as TJSONBool).AsBoolean);
@@ -1996,7 +2030,8 @@ var
 begin
   LConfig := TNeonSchemaConfiguration.Default;
   Assert.IsNotNull(LConfig.Neon);
-  Assert.AreEqual(Ord(TNeonJSchemaVersion.None), Ord(LConfig.Version));
+  Assert.AreEqual(Ord(TNeonJSchemaVersion.Draft2020_12), Ord(LConfig.Version));
+  Assert.IsFalse(LConfig.EmitSchemaURI);
   Assert.IsFalse(LConfig.ClosedSchema);
   Assert.IsFalse(Assigned(LConfig.ParamResolver));
 end;
@@ -2011,7 +2046,8 @@ begin
     TNeonSchemaConfiguration.ScreamingSnake) do
   begin
     Assert.IsNotNull(LConfig.Neon);
-    Assert.AreEqual(Ord(TNeonJSchemaVersion.None), Ord(LConfig.Version));
+    Assert.AreEqual(Ord(TNeonJSchemaVersion.Draft2020_12), Ord(LConfig.Version));
+    Assert.IsFalse(LConfig.EmitSchemaURI);
     Assert.IsFalse(LConfig.ClosedSchema);
     Assert.IsFalse(Assigned(LConfig.ParamResolver));
   end;
@@ -2081,21 +2117,38 @@ end;
 procedure TTestJsonSchemaConfiguration.TestVersionComesFromTheConfig;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid,
-    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.v202012));
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft2020_12).SetEmitSchemaURI(True));
   Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
 
   FreeAndNil(FSchema);
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid, TNeonSchemaConfiguration.Default);
-  Assert.IsNull(FSchema.GetValue('$schema'), 'no version, no "$schema"');
+  Assert.IsNull(FSchema.GetValue('$schema'), 'EmitSchemaURI off by default, no "$schema"');
 end;
 
 procedure TTestJsonSchemaConfiguration.TestDraft07FromTheConfig;
 begin
   FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBox<string>,
-    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07).SetEmitSchemaURI(True));
   Assert.AreEqual('http://json-schema.org/draft-07/schema#', FSchema.GetValue('$schema').Value);
   Assert.IsNotNull(FSchema.GetValue('definitions'));
   Assert.IsNull(FSchema.GetValue('$defs'));
+end;
+
+procedure TTestJsonSchemaConfiguration.TestDraft07FragmentKeepsDraftRules;
+begin
+  // The version still selects the vocabulary when no "$schema" is written
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaBox<string>,
+    TNeonSchemaConfiguration.Default.SetVersion(TNeonJSchemaVersion.Draft07));
+  Assert.IsNull(FSchema.GetValue('$schema'));
+  Assert.IsNotNull(FSchema.GetValue('definitions'));
+  Assert.IsNull(FSchema.GetValue('$defs'));
+end;
+
+procedure TTestJsonSchemaConfiguration.TestEmitSchemaURIUsesDefaultVersion;
+begin
+  FSchema := TNeonSchemaGenerator.ClassToJSONSchema(TSchemaGrid,
+    TNeonSchemaConfiguration.Default.SetEmitSchemaURI(True));
+  Assert.AreEqual('https://json-schema.org/draft/2020-12/schema', FSchema.GetValue('$schema').Value);
 end;
 
 procedure TTestJsonSchemaConfiguration.TestNilConfigIsTheDefault;
