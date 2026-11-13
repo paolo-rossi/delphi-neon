@@ -22,6 +22,17 @@
 
 **Neon** is a serialization library for [Delphi](https://www.embarcadero.com/products/delphi) that helps you to convert (back and forth) objects and other values to JSON. It supports simple Delphi types but also complex class and records. **Neon** has been designed with **REST** in mind, to exchange pure data between applications with no *"metadata"* or added fields, in fact **Neon** is the default JSON serialization engine for the [WiRL REST Library](https://github.com/delphi-blocks/WiRL).
 
+### Projects using Neon
+
+| Project | Description |
+|---|---|
+| [WiRL](https://github.com/delphi-blocks/WiRL) | RESTful library for Delphi |
+| [OpenAPI-Delphi](https://github.com/paolo-rossi/OpenAPI-Delphi) | OpenAPI 3.0 document generator and parser for Delphi |
+| [nats.delphi](https://github.com/paolo-rossi/nats.delphi) | Delphi client for NATS, the cloud native messaging system |
+| [Delphi-JRPC](https://github.com/delphi-blocks/Delphi-JRPC) | JSON-RPC 2.0 library for Delphi |
+| [MCPConnect](https://github.com/delphi-blocks/MCPConnect) | Building MCP (Model Context Protocol) servers with Delphi |
+| [WalKey](https://github.com/delphi-blocks/WalKey) | A pluggable interface for key-value stores |
+
 Please take a look at the Demos to see **Neon** in action.
 
 ### Neon Main Demo
