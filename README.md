@@ -24,14 +24,14 @@
 
 ### Projects using Neon
 
-| Project | Description |
-|---|---|
-| [WiRL](https://github.com/delphi-blocks/WiRL) | RESTful library for Delphi |
-| [OpenAPI-Delphi](https://github.com/paolo-rossi/OpenAPI-Delphi) | OpenAPI 3.0 document generator and parser for Delphi |
-| [nats.delphi](https://github.com/paolo-rossi/nats.delphi) | Delphi client for NATS, the cloud native messaging system |
-| [Delphi-JRPC](https://github.com/delphi-blocks/Delphi-JRPC) | JSON-RPC 2.0 library for Delphi |
-| [MCPConnect](https://github.com/delphi-blocks/MCPConnect) | Building MCP (Model Context Protocol) servers with Delphi |
-| [WalKey](https://github.com/delphi-blocks/WalKey) | A pluggable interface for key-value stores |
+| | Project | Description |
+| :---: | --- | --- |
+| <a href="https://github.com/delphi-blocks/WiRL"><img src="https://raw.githubusercontent.com/delphi-blocks/WiRL/master/media/logo.png" alt="WiRL" width="200" /></a> | [WiRL](https://github.com/delphi-blocks/WiRL) | RESTful library for Delphi, inspired by the Java JAX-RS specification: it exposes plain Delphi classes as REST resources through attributes. Uses Neon to serialize and deserialize the objects and records exchanged in request and response bodies |
+| <a href="https://github.com/paolo-rossi/OpenAPI-Delphi"><img src="https://raw.githubusercontent.com/paolo-rossi/OpenAPI-Delphi/master/openapi-delphi-square.png" alt="OpenAPI-Delphi" width="200" /></a> | [OpenAPI-Delphi](https://github.com/paolo-rossi/OpenAPI-Delphi) | OpenAPI 3.0 library for Delphi: build the documentation of your API with plain Delphi classes, or load and parse an existing OpenAPI document. Uses Neon to turn the OpenAPI model into JSON and back, in one line of code |
+| <a href="https://github.com/paolo-rossi/nats.delphi"><img src="https://raw.githubusercontent.com/paolo-rossi/nats.delphi/main/nats-delphi-square.png" alt="nats.delphi" width="200" /></a> | [nats.delphi](https://github.com/paolo-rossi/nats.delphi) | Delphi client for NATS, the cloud native messaging system, with Core NATS and JetStream support (streams, consumers, Key/Value and Object Store). Uses Neon to map the JSON messages of the NATS protocol and JetStream API to Delphi entities |
+| <a href="https://github.com/delphi-blocks/Delphi-JRPC"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/delphi-blocks/Delphi-JRPC/main/logo-for-dark.png" /><img src="https://raw.githubusercontent.com/delphi-blocks/Delphi-JRPC/main/logo-for-light.png" alt="Delphi-JRPC" width="200" /></picture></a> | [Delphi-JRPC](https://github.com/delphi-blocks/Delphi-JRPC) | Attribute-driven JSON-RPC 2.0 framework for Delphi, built on RTTI: map Delphi methods to JSON-RPC endpoints with attributes like `[JRPCMethod]` and `[JRPCParam]`. Uses Neon to marshal parameters and results between JSON and Delphi types (classes, records, arrays, enums) |
+| <a href="https://github.com/delphi-blocks/MCPConnect"><img src="https://raw.githubusercontent.com/delphi-blocks/MCPConnect/main/logo-white.png" alt="MCPConnect" width="200" /></a> | [MCPConnect](https://github.com/delphi-blocks/MCPConnect) | Attribute-driven framework for building MCP (Model Context Protocol) servers in Delphi, to expose your tools, resources and prompts to LLMs and AI agents. Built on Delphi-JRPC, it uses Neon for the JSON messages of the protocol and for its configuration |
+| <a href="https://github.com/delphi-blocks/WalKey"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/delphi-blocks/WalKey/main/walkey-for-dark.png" /><img src="https://raw.githubusercontent.com/delphi-blocks/WalKey/main/walkey-for-light.png" alt="WalKey" width="200" /></picture></a> | [WalKey](https://github.com/delphi-blocks/WalKey) | Pluggable key-value stores for Delphi: write your code against one interface (`IKeyValue`) and swap an in-memory store for a persistent one, or wrap it with compression, logging or a fallback chain, without changing the code that uses it. Its Neon adapter stores records and objects as JSON |
 
 Please take a look at the Demos to see **Neon** in action.
 
